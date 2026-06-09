@@ -45,6 +45,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 47 | [Tipos de Sala & Rota](design/47_Room_Types_Routing.md) 🆕 | Variedade de salas (elite/tesouro/loja/santuário) + **preview de porta** (rota com escolha) |
 | 48 | [Pacto / Heat](design/48_Pact_Heat.md) 🆕 | Dificuldade customizada (Calor → recompensa/desbloqueio) — **o rei da retenção** |
 | 49 | [Codex & Vozes do Limiar](design/49_Codex_Limiar.md) 🆕 | Drip narrativo: a Voz da Fenda, codex dos caídos, reações de NPC, eventos |
+| 53 | [Economia In-Run / Loja](design/53_In_Run_Economy_Shop.md) 🆕 | Fragmentos (ouro da run), `DT_ShopInventory`, sala Loja — mecânica C do [46](design/46_Depth_Replayability.md) |
 | — | [**Revisão de Design 2026-06**](design/Design_Review_2026-06.md) | Mesa-redonda macro (4 especialistas) → veredito que atualizou o plano |
 | — | [**Revisão de Combate 2026-06**](design/Design_Review_Combat_2026-06.md) 🆕 | Roundtable combate/feel/juice → perfect-dodge (M1), parry P1, 1 esquiva, launcher no spike |
 | — | [**Revisão de Corpus 2026-06**](design/Design_Review_Corpus_2026-06.md) 🆕 | Auditoria dos 53 docs (4 revisores) → consistência aplicada: física do juggle, atributos GAS, cap=7, golpe Heavy, etc. |
@@ -77,6 +78,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 15 | [Visão Geral do Combate](combat/15_Combat_Overview.md) | 🟢 P0 | Sistema de combo melee data-driven via GAS, hit detection, hit-stop |
 | 16 | [Combos Aéreos](combat/16_Aerial_Combos.md) | 🟢 P0 | Launcher, juggle, gravidade em ar, slam, finisher |
 | 50 | [Armas & Arsenal](combat/50_Weapons_Arsenal.md) 🆕 | **Arma = identidade:** habilidades + **locomoção (Linked Anim Layers)** + ataques próprios; 1 arma no MVP, arsenal pós-MVP |
+| 51 | [Combate Defensivo](combat/51_Defensive_Combat.md) 🆕 | Perfect-dodge (M1), parry ofensivo (P1), dodge-offset — consolida Review de Combate |
 
 ### 🔬 Deep Dives — Combate · Habilidades · Feel · Juice 🆕
 > Aprofundamentos escritos pela *writers' room* (4 agentes-autores). Leia após os overviews (15/16). Jogo **single-player** (local-authoritative) → combate agressivo, slow-mo livre.
@@ -93,6 +95,11 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 |---|---|---|
 | 17 | [Roadmap de Implementação](17_Implementation_Roadmap.md) | Plano em fases, MVP-first, com critérios de aceite por milestone |
 | 43 | [Spike M⁻¹ (playbook)](43_Spike_Minus1.md) 🆕 | Protótipo descartável: cubos, co-altitude, `DT_SpikeTuning`, go/no-go |
+
+### 🌍 World & Level Design 🆕
+| # | Doc | Conteúdo |
+|---|---|---|
+| 52 | [Arena & Level Design](world/52_Arena_Level_Design.md) 🆕 | Playbook: 6 arenas + boss, spawn points, `DT_RunLayout`, NavMesh, streaming |
 
 ### 🎬 Produção & Assets 🆕
 | # | Doc | Conteúdo |
@@ -122,6 +129,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 32 | [Comportamento de Combate](enemies/32_Enemy_Combat_Behavior.md) | 🟢 P0 | **Telegrafe (decal)**, frame data, hyperarmor, poise→launch, token de ataque |
 | 33 | [Spawning & Encontros](enemies/33_Spawning_Encounters.md) | 🟢 P0 | Encounter manager, ondas, colocação, escalada, token director |
 | 34 | [Mini-Boss](enemies/34_MiniBoss.md) | 🟡 P1 | Fases, ataques-assinatura, **janela de vulnerabilidade** (combar o boss) |
+| 51 | [Catálogo Inimigos MVP](enemies/51_Enemy_Catalog_MVP.md) 🆕 | 🟢 P0 | **4 inimigos** concretos: stats, abilities, frame data, encontros → `UDDREnemyData` |
 
 ### 🔊 Áudio · ✨ VFX · 🎯 Projéteis 🆕
 > Camada sensorial e ranged do M3. Áudio/VFX aprofundam [21 — Juice](feel/21_Juice_FX.md); projéteis são **P0** pro Atirador.

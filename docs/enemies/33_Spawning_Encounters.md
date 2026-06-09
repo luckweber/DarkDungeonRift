@@ -96,7 +96,7 @@ A cada N inimigos na sala, só MaxAtacantes (1-2) recebem "token de ataque".
 
 ## 7. "Procedural sem procedural" (variação barata)
 
-- Monte **6-8 arenas** à mão, cada uma com seus spawn points + templates de wave.
+- Monte **6-8 arenas** à mão, cada uma com seus spawn points + templates de wave — playbook em **[52 — Arena & Level Design](../world/52_Arena_Level_Design.md)**.
 - Sorteie 4 por run ([03 §2](../design/03_Core_Loop_Roguelike.md)).
 - Varie o **mix** de inimigos por sorteio dentro de um template.
 - Resultado: cada run sente diferente **sem** um gerador procedural. Procedural de verdade = pós-MVP.
@@ -143,4 +143,4 @@ A cada N inimigos na sala, só MaxAtacantes (1-2) recebem "token de ataque".
 
 ## 11. Próximo passo
 
-→ [42 — Run & Room Manager](../systems/42_Run_Room_Manager.md) · [34 — Mini-Boss](34_MiniBoss.md).
+→ [52 — Arena & Level Design](../world/52_Arena_Level_Design.md) · [51 — Catálogo Inimigos](51_Enemy_Catalog_MVP.md) · [42 — Run & Room Manager](../systems/42_Run_Room_Manager.md) · [34 — Mini-Boss](34_MiniBoss.md).

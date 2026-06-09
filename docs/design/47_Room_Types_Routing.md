@@ -15,7 +15,7 @@ Estende `FDDRRoomDefinition` ([42 §3](../systems/42_Run_Room_Manager.md)) com u
 | **Combate** | ⚔️ | ondas normais ([33](../enemies/33_Spawning_Encounters.md)) | Eco (1 de 3) | câmara da Fenda |
 | **Elite** | 💀 | 1-2 inimigos fortes (poise alto) | **Eco garantido Raro+** | guardião menor |
 | **Tesouro** | 💰 | sem combate | Essência/ouro/Eco grátis | veio de Essência |
-| **Loja** | 🪙 | gasta **ouro** in-run ([§C do 46](46_Depth_Replayability.md)) | comprar Eco/cura/reroll | um caído mercador |
+| **Loja** | 🪙 | gasta **Fragmentos** in-run ([53 §3](53_In_Run_Economy_Shop.md)) | comprar Eco/cura/reroll | um caído mercador |
 | **Santuário** | ⛧ | risco/recompensa (oferta com custo) | Eco Lendário ↔ maldição | altar de um caído |
 | **Descanso** | 🔥 | cura + subir um Eco de tier | sustain/build | brecha calma na Fenda |
 | **Evento** | ❓ | escolha narrativa ([49](49_Codex_Limiar.md)) | variável | encontro com a Voz |

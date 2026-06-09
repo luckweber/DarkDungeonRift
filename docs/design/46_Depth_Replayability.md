@@ -36,7 +36,7 @@
 
 ## 3. 🍱 O menu de mecânicas (priorizado)
 
-> 📂 **A, B, D e H têm doc próprio** (o detalhe vive lá; aqui é só o resumo do menu): **A/B → [47 — Tipos de Sala & Rota](47_Room_Types_Routing.md)** · **D → [48 — Pacto/Heat](48_Pact_Heat.md)** · **H → [49 — Codex/Voz](49_Codex_Limiar.md)**. C/E/F/G/I/J são detalhados só aqui.
+> 📂 **Docs filhos:** **A/B → [47 — Tipos de Sala & Rota](47_Room_Types_Routing.md)** · **C → [53 — Economia/Loja](53_In_Run_Economy_Shop.md)** · **D → [48 — Pacto/Heat](48_Pact_Heat.md)** · **H → [49 — Codex/Voz](49_Codex_Limiar.md)**. E/F/G/I/J são detalhados só aqui.
 
 ### A. 🚪 Variedade de tipos de sala · 🟡 P1 → detalhe em [47](47_Room_Types_Routing.md)
 Hoje toda sala é combate ([33](../enemies/33_Spawning_Encounters.md)). Adicione **8 tipos** (Combate/Elite/Tesouro/Loja/Santuário/Descanso/Evento/Boss) ao `EDDRRoomType` em `FDDRRoomDefinition` ([42 §3](../systems/42_Run_Room_Manager.md)). **MVP = 3** (Combate/Elite/Tesouro). Tabela completa de tipos: **[47 §1](47_Room_Types_Routing.md)**.
@@ -55,7 +55,7 @@ Antes de escolher a próxima sala, **mostre o que ela oferece** (tipo + recompen
 
 > 🎯 **Transforma o corredor em decisão.** "Quero o Eco de Carniça mas a porta de combate é arriscada..." = agência = engajamento. Barato: o `RunManager` ([42 §4](../systems/42_Run_Room_Manager.md)) já sorteia salas — só **revele 2 e deixe escolher**.
 
-### C. 💰 Economia in-run (ouro + loja) · 🟡 P1
+### C. 💰 Economia in-run (ouro + loja) · 🟡 P1 → detalhe em [53 — Economia/Loja](53_In_Run_Economy_Shop.md)
 Uma 2ª moeda **temporária** (some no fim da run), separada da Essência (meta):
 
 | Moeda | Escopo | Gasta em |

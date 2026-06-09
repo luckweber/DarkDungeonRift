@@ -273,7 +273,7 @@ ActivateAbility:
 
 > 🎛️ **Números de feel do dash são canônicos em [20 §8](../feel/20_Game_Feel.md):** distância **500–650 cm**, duração **0.20–0.25 s**, i-frames **0.20–0.30 s**, cooldown **~0.5–0.8 s**. A ability os consome via `SetByCaller`/atributo (§4) — fonte única, lida por feel **e** ability (um Eco que "buffa o dash" mexe no atributo).
 
-> 🥷 **Perfect-dodge — M1 (Review de Combate, Rha+Vi):** o melhor ROI defensivo do projeto. É **um `if` no pipeline de dano que já existe** ([18 §3](18_Combat_System_Deep.md)): "o hit cruzou a sub-janela *perfect*? → witch-time + cue". Zero sistema novo, reusa o dash do MVP, e converte *evasão burra* em *leitura recompensada* — a alma do counterplay. A cue `GameplayCue.Dodge.Perfect` **já existe** em [21](../feel/21_Juice_FX.md). ⚠️ **Roll está CORTADO do MVP** — uma esquiva só (Dodge→Dash); Roll só volta pós-MVP com assinatura distinta (longo, comprometido, **sem** i-frame frontal). Origem: [Review de Combate](../design/Design_Review_Combat_2026-06.md).
+> 🥷 **Perfect-dodge — M1 (Review de Combate, Rha+Vi):** detalhe completo em **[51 — Combate Defensivo](51_Defensive_Combat.md)**. Resumo: um `if` no pipeline de dano ([18 §3](18_Combat_System_Deep.md)) — "hit cruzou sub-janela perfect? → witch-time + cue". Zero sistema novo, reusa o dash do MVP. A cue `GameplayCue.Dodge.Perfect` **já existe** em [21](../feel/21_Juice_FX.md). ⚠️ **Roll está CORTADO do MVP** — uma esquiva só (Dodge→Dash); Roll só volta pós-MVP com assinatura distinta (longo, comprometido, **sem** i-frame frontal). Origem: [Review de Combate](../design/Design_Review_Combat_2026-06.md).
 
 ---
 
@@ -436,4 +436,4 @@ Para mostrar que o roster **escala** sem reescrever a base — duas ultimates qu
 
 ## 10. Próximo passo
 
-→ A **máquina de combo, frame data, hit detection e fórmula de dano** que estas abilities acionam: [18 — Combat System Deep](18_Combat_System_Deep.md). O **juice** do impacto/slam: [21 — Juice & FX](../feel/21_Juice_FX.md). O pool de Ecos que concede/transforma estas abilities: [03b — Sistema de Recompensa](../design/03b_Reward_System.md).
+→ A **máquina de combo, frame data, hit detection e fórmula de dano** que estas abilities acionam: [18 — Combat System Deep](18_Combat_System_Deep.md). **Defesa** (perfect-dodge, parry): [51 — Combate Defensivo](51_Defensive_Combat.md). O **juice** do impacto/slam: [21 — Juice & FX](../feel/21_Juice_FX.md). O pool de Ecos que concede/transforma estas abilities: [03b — Sistema de Recompensa](../design/03b_Reward_System.md).

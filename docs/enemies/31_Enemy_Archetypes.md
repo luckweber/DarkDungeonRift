@@ -125,4 +125,4 @@ Cada arquétipo precisa das reações que vendem o combo ([18 §5.1](../combat/1
 
 ## 9. Próximo passo
 
-→ [32 — Comportamento de Combate](32_Enemy_Combat_Behavior.md): telegrafe (leitura topdown), padrões de ataque, hyperarmor, spacing.
+→ **[51 — Catálogo Inimigos MVP](51_Enemy_Catalog_MVP.md)** (stats, abilities e encontros concretos) · [32 — Comportamento de Combate](32_Enemy_Combat_Behavior.md): telegrafe, hyperarmor, spacing.
