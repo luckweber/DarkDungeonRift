@@ -176,7 +176,7 @@ Health  -= Final
 |---|---|---|---|
 | `BaseDamage` | `FDDRAttackData` | por golpe | finisher > jab |
 | `AttackPower` | AttributeSet (doc 05 §3) | 100 (base) | upgrades de run escalam (×%) |
-| `CritChance` | AttributeSet (run-scoped) | 0% base | boons/build sobem |
+| `CritChance` | AttributeSet (run-scoped) | 0% base | Ecos/build sobem |
 | `CritMultiplier` | AttributeSet/const | 1.75 | |
 | `Armor` | AttributeSet do alvo | por inimigo | `100/(100+Armor)`: 100 armor = -50% |
 
@@ -315,7 +315,7 @@ CanLaunch(Target, AttackData):
       && Target.Mass <= LaunchMassCap                  // "tonelagem": inimigo gigante não voa
 ```
 
-> 🥊 **Recomendado: launcher exige poise quebrado** (`Poise<=0`). Isso amarra os dois sistemas — você *trabalha* o inimigo no chão (combo) até abrir, **então** lança. Lançar à vontade trivializa; lançar só após quebrar dá arco dramático e ensina o combo. `bForceLaunch` fica pra launchers especiais/boons.
+> 🥊 **Recomendado: launcher exige poise quebrado** (`Poise<=0`). Isso amarra os dois sistemas — você *trabalha* o inimigo no chão (combo) até abrir, **então** lança. Lançar à vontade trivializa; lançar só após quebrar dá arco dramático e ensina o combo. `bForceLaunch` fica pra launchers especiais/Ecos.
 
 ### 5.5 Gancho para a SM aérea do alvo
 

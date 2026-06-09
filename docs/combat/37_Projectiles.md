@@ -250,7 +250,7 @@ A mesma infra serve habilidades do player:
 
 | Ability | Diferença |
 |---|---|
-| `GA_Player_Bolt` (Boon) | Instigator = player; mira = cursor/stick direito (Modelo B, [06 §3](../systems/06_Camera_TopDown.md)) |
+| `GA_Player_Bolt` (Eco) | Instigator = player; mira = cursor/stick direito (Modelo B, [06 §3](../systems/06_Camera_TopDown.md)) |
 | `GA_Player_Spread` | spawna N projéteis com spread angle |
 
 No MVP o player é **melee** — só o inimigo Atirador usa projéteis. Mas projete `ADDProjectileBase` **agnóstico** (Instigator define o lado).

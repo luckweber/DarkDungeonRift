@@ -2,7 +2,7 @@
 
 > O **finale da run** ([02 M4](../design/02_MVP_Scope.md), [03 §2](../design/03_Core_Loop_Roguelike.md)): um inimigo maior, multi-fase, com ataques-assinatura telegrafados. É o clímax que valida a build do jogador. Pré-req: [30-32](30_AI_Overview.md), [28 §1 — boss bar](../ui/28_HUD.md).
 
-> 🎯 **O boss é o teste da build.** Depois de pegar boons a run inteira, o player chega aqui e descobre se sua build funciona. Um bom mini-boss é **legível, justo e derrotável com skill+build** — não um saco de HP.
+> 🎯 **O boss é o teste da build.** Depois de pegar Ecos a run inteira, o player chega aqui e descobre se sua build funciona. Um bom mini-boss é **legível, justo e derrotável com skill+build** — não um saco de HP.
 
 ---
 

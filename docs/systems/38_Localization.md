@@ -12,7 +12,7 @@
 
 | Tipo | Uso | Localizável? |
 |---|---|:---:|
-| **`FText`** | Tudo que o **jogador lê** (UI, HUD, prompts, nomes de boon) | ✅ |
+| **`FText`** | Tudo que o **jogador lê** (UI, HUD, prompts, nomes de Eco) | ✅ |
 | **`FString`** | IDs internos, paths, debug, logs, chaves de save | ❌ |
 | **`FName`** | Tags GAS, identificadores de gameplay | ❌ |
 
@@ -41,14 +41,14 @@ Content/
   UI/
     StringTables/
       ST_DDR_UI.uasset       ← menus, HUD, settings
-      ST_DDR_Combat.uasset   ← nomes de abilities, boons
+      ST_DDR_Combat.uasset   ← nomes de abilities, Ecos
       ST_DDR_Items.uasset    ← itens, recompensas (futuro)
 ```
 
 | Namespace / String Table | Conteúdo | Exemplos de chave |
 |---|---|---|
 | **`ST_DDR_UI`** | menus, HUD, settings, loading | `MainMenu_NewRun`, `Settings_Audio_Master`, `HUD_HP` |
-| **`ST_DDR_Combat`** | abilities, boons, status | `Ability_Dash`, `Boon_Fireball_Name`, `Boon_Fireball_Desc` |
+| **`ST_DDR_Combat`** | abilities, Ecos, status | `Ability_Dash`, `Eco_Fireball_Name`, `Eco_Fireball_Desc` |
 | **`ST_DDR_World`** | salas, inimigos (display name) | `Enemy_Grunt`, `Room_Combat_01` |
 | **`ST_DDR_System`** | erros, confirmações | `Confirm_AbandonRun`, `Error_SaveFailed` |
 
@@ -77,11 +77,11 @@ O **Localization Gathering** exporta `LOCTEXT` automaticamente pro `.po`.
 - Use **String Table Reference** no campo Text quando possível (melhor pra tabelas grandes).
 - Bindings dinâmicos: propriedade `FText`, nunca `FString`.
 
-### 3.3 — DataAssets (Boons, inimigos)
+### 3.3 — DataAssets (Ecos, inimigos)
 
 ```cpp
 UCLASS()
-class UDDRBoonData : public UPrimaryDataAsset
+class UDDREcoData : public UPrimaryDataAsset
 {
     UPROPERTY(EditDefaultsOnly, meta=(DisplayName="Name"))
     FText DisplayName;          // localizável no editor
@@ -106,7 +106,7 @@ No editor, cada campo `FText` ganha aba de tradução quando o pacote de idioma 
 | Alemão | `de` | 🔵 P2 | |
 | Japonês | `ja` | 🔵 P2 | Fonte dedicada (§8) |
 
-> 🎯 **MVP:** suporte técnico completo + **PT-BR + EN**. Traduza só o que aparece na tela (UI + boons do MVP). Texto placeholder em EN até ter tradutor.
+> 🎯 **MVP:** suporte técnico completo + **PT-BR + EN**. Traduza só o que aparece na tela (UI + Ecos do MVP). Texto placeholder em EN até ter tradutor.
 
 ---
 
@@ -181,13 +181,13 @@ void UDDRLocalizationSubsystem::SetLanguage(const FString& CultureCode)
 
 | Milestone | Textos | Prioridade |
 |---|---|---|
-| **M4-M5** (HUD + boons) | HP labels, nomes/descrições de 6-8 boons, death screen | 🟢 P0 técnico / 🟡 tradução |
+| **M4-M5** (HUD + Ecos) | HP labels, nomes/descrições de 6-8 Ecos, death screen | 🟢 P0 técnico / 🟡 tradução |
 | **Menus** | Main menu, pause, settings, confirmações | 🟡 P1 |
 | **Combate** | Damage numbers não precisam (são números); ability names no HUD sim | 🟡 P1 |
 | **Inimigos** | Display names (opcional no MVP — grunts sem nome na tela) | 🔵 P2 |
 | **Tutoriais / lore** | Pós-MVP | 🔵 P2 |
 
-> 🎯 **No MVP, foque em:** botões de menu, settings, seleção de boon (nome + descrição curta), game over. Isso já cobre 90% do que o jogador lê.
+> 🎯 **No MVP, foque em:** botões de menu, settings, Seleção de Eco (nome + descrição curta), game over. Isso já cobre 90% do que o jogador lê.
 
 ---
 
@@ -277,7 +277,7 @@ Checklist de QA por idioma:
 - [ ] Main menu navegável (gamepad)
 - [ ] Settings aplica idioma sem restart (ou avisa se precisar)
 - [ ] Nenhum `FText::FromString` literal em UI
-- [ ] Boon selection: nome + descrição traduzidos
+- [ ] Seleção de Eco: nome + descrição traduzidos
 - [ ] Textos não cortam em botões (DE/ES)
 
 ---
@@ -286,7 +286,7 @@ Checklist de QA por idioma:
 
 | Item | Prioridade |
 |---|---|
-| `FText` em todo UMG + DataAssets de boon | 🟢 P0 (técnico) |
+| `FText` em todo UMG + DataAssets de Eco | 🟢 P0 (técnico) |
 | String Tables `ST_DDR_UI` + `ST_DDR_Combat` | 🟢 P0 |
 | `UDDRLocalizationSubsystem` + save | 🟡 P1 |
 | Dropdown idioma em Settings | 🟡 P1 |
@@ -306,7 +306,7 @@ Checklist de QA por idioma:
 - [ ] `UDDRLocalizationSubsystem` + persistência em `UDDRSettingsSave`
 - [ ] Settings → Idioma ([27 §1](../ui/27_Settings.md))
 - [ ] `OnLanguageChanged` → refresh de widgets abertos
-- [ ] `FText` em `UDDRBoonData` (nome + descrição)
+- [ ] `FText` em `UDDREcoData` (nome + descrição)
 - [ ] Composite Font com acentos (PT/ES)
 - [ ] Gather + Compile testado; Preview Language no editor
 
@@ -320,11 +320,11 @@ Checklist de QA por idioma:
 | Aparece chave em vez de texto | Tradução faltando no .locres | Compile + import .po |
 | `LOCTEXT` não exporta | Namespace errado / não gather | §6 — Localization Dashboard |
 | Botão corta texto em DE | Layout fixo narrow | §8 — wrap + min-width |
-| Boon em inglês na build PT | DataAsset não gatherado | Incluir DataAssets no target |
+| Eco em inglês na build PT | DataAsset não gatherado | Incluir DataAssets no target |
 | Precisa restart pra mudar | Cultura não aplicada em runtime | `SetCurrentCulture` (§5) |
 
 ---
 
 ## 15. Próximo passo
 
-→ [27 — Settings](../ui/27_Settings.md) (dropdown idioma) · [24 — Main Menu](../ui/24_MainMenu.md) (atalho) · [03b — Boons](../design/03b_Reward_System.md) (nomes localizáveis).
+→ [27 — Settings](../ui/27_Settings.md) (dropdown idioma) · [24 — Main Menu](../ui/24_MainMenu.md) (atalho) · [03b — Ecos](../design/03b_Reward_System.md) (nomes localizáveis).

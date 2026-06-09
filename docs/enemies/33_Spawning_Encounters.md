@@ -14,7 +14,7 @@ Do [03 §3](../design/03_Core_Loop_Roguelike.md):
 1. Player entra → portas TRANCAM.
 2. Spawn da(s) onda(s).
 3. Player limpa (combate — combo de chão + aéreo).
-4. Última onda morre → portas ABREM + recompensa (boon, doc 29 §3).
+4. Última onda morre → portas ABREM + recompensa (Eco, doc 29 §3).
 5. Avança.
 ```
 
@@ -125,7 +125,7 @@ A cada N inimigos na sala, só MaxAtacantes (1-2) recebem "token de ataque".
 - [ ] **Token de ataque** gerenciado aqui (1-2 atacam por vez)
 - [ ] Respiro entre ondas (1-2s)
 - [ ] Escalada de dificuldade por profundidade (P1)
-- [ ] Conecta com RunManager → recompensa/boon ([03](../design/03_Core_Loop_Roguelike.md), [29 §3](../ui/29_Run_Flow_Menus.md))
+- [ ] Conecta com RunManager → recompensa/Eco ([03](../design/03_Core_Loop_Roguelike.md), [29 §3](../ui/29_Run_Flow_Menus.md))
 
 ---
 
@@ -143,4 +143,4 @@ A cada N inimigos na sala, só MaxAtacantes (1-2) recebem "token de ataque".
 
 ## 11. Próximo passo
 
-→ [34 — Mini-Boss](34_MiniBoss.md): o finale da run.
+→ [42 — Run & Room Manager](../systems/42_Run_Room_Manager.md) · [34 — Mini-Boss](34_MiniBoss.md).

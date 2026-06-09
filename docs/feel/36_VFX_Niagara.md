@@ -64,7 +64,7 @@ Content/VFX/
 | **`NS_Telegraph_Zone`** | windup melee | Decal pulsante (círculo/cone) | = windup | `Radius`, `Color`, `PulseRate` | 🟢 |
 | **`NS_Telegraph_Line`** | windup ranged | Linha no chão atirador→alvo | = windup | `Start`, `End`, `Color` | 🟢 |
 | **`NS_Dash_Trail`** | dash | Afterimage / streak no chão | 0.2s | `Direction` | 🟡 |
-| **`NS_Boon_Pickup`** | boon | Brilho + partículas ascendentes | loop até pickup | `RarityColor` | 🟡 |
+| **`NS_Eco_Pickup`** | Eco | Brilho + partículas ascendentes | loop até pickup | `RarityColor` | 🟡 |
 | **`NS_Projectile`** | projétil em voo | Core glow + ribbon trail horizontal | até impacto | `Speed`, `Tint` | 🟢 |
 | **`NS_Proj_Impact`** | projétil acerta | Burst + faíscas | 0.2s | `ImpactNormal` | 🟢 |
 
@@ -79,7 +79,7 @@ Defina estes **User Parameters** no Niagara System (namespace `User.`):
 | Parameter | Tipo | Quem seta | Uso |
 |---|---|---|---|
 | `User.HitWeight` | float | GameplayCue | 0.3 light → 1.0 slam; escala tamanho/intensidade |
-| `User.Tint` | LinearColor | GameplayCue / Boon | cor por família elemental |
+| `User.Tint` | LinearColor | GameplayCue / Eco | cor por família elemental |
 | `User.ImpactNormal` | Vec3 | Hit detection | orienta faíscas na superfície |
 | `User.Radius` | float | Ability / Telegraph | AoE slam, zona de perigo |
 | `User.Direction` | Vec3 | Dash / Knockback | trail, shockwave bias |
@@ -292,7 +292,7 @@ O par **áudio ([35 §3](../audio/35_Audio_Music.md)) + VFX** tem que desacelera
 | `NS_Projectile` + `NS_Proj_Impact` | 🟢 P0 |
 | User Params (HitWeight, Tint, Normal) | 🟢 P0 |
 | GameplayCue wiring | 🟢 P0 |
-| Trails slash/dash, poeira, death, boon | 🟡 P1 |
+| Trails slash/dash, poeira, death, Eco | 🟡 P1 |
 | Pooling + scalability | 🟡 P1 |
 | Ground shadow em projétil | 🟡 P1 |
 | Deformer/efeitos avançados | 🔵 P2 |

@@ -1,6 +1,6 @@
-# 29 — Menus do Fluxo de Run (Pause · Boon · Morte · Hub) · 🟢 P0 (boon) / 🟡 P1
+# 29 — Menus do Fluxo de Run (Pause · Eco · Morte · Hub) · 🟢 P0 (Eco) / 🟡 P1
 
-> As telas que aparecem **durante e entre** as runs: pause, **seleção de boon** (a UI mais importante do loop), morte/vitória, e o hub de meta-progressão. Pré-req: [23 — UI Overview](23_UI_Overview.md), [03 — Core Loop](../design/03_Core_Loop_Roguelike.md), [03b — Boons](../design/03b_Reward_System.md).
+> As telas que aparecem **durante e entre** as runs: pause, **Seleção de Eco** (a UI mais importante do loop), morte/vitória, e o hub de meta-progressão. Pré-req: [23 — UI Overview](23_UI_Overview.md), [03 — Core Loop](../design/03_Core_Loop_Roguelike.md), [03b — Ecos](../design/03b_Reward_System.md).
 
 ---
 
@@ -11,7 +11,7 @@
       │
    (limpa sala)
       ↓
- [Seleção de Boon] ──escolhe──→ próxima sala
+ [Seleção de Eco] ──escolhe──→ próxima sala
       │
    (morre/vence)
       ↓
@@ -40,13 +40,13 @@
 
 ---
 
-## 3. 🌟 Seleção de Boon · 🟢 P0 (a UI do coração do jogo)
+## 3. 🌟 Seleção de Eco · 🟢 P0 (a UI do coração do jogo)
 
 Aparece ao **limpar uma sala** ([03 §3-4](../design/03_Core_Loop_Roguelike.md)). É **onde a build acontece** → é UI **gameplay-crítica**, não menu de borda. Referência: Boons do Hades, Deuses do Death Must Die.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│              ESCOLHA UMA BÊNÇÃO                               │
+│              ESCOLHA UM ECO                                     │
 │  ┌────────────┐   ┌────────────┐   ┌────────────┐           │
 │  │ 🔥 LENDÁRIO │   │ 🩸 RARO     │   │ ⚡ COMUM    │           │
 │  │ Slam vira  │   │ Combo aéreo │   │ +15% dano  │           │
@@ -61,15 +61,15 @@ Aparece ao **limpar uma sala** ([03 §3-4](../design/03_Core_Loop_Roguelike.md))
 
 | Elemento do card | Lê de | Por quê |
 |---|---|---|
-| **Nome + descrição** | [03b](../design/03b_Reward_System.md) (pool de boons) | o que o boon faz |
+| **Nome + descrição** | [03b](../design/03b_Reward_System.md) (pool de Ecos) | o que o Eco faz |
 | **Cor da borda = raridade** | tier ([03b §5](../design/03b_Reward_System.md)) | cobiça (Comum/Raro/Lendário) |
 | **Família** (ícone/tag) | família temática ([03b §3](../design/03b_Reward_System.md)) | identidade de build |
-| **Dica de sinergia** | checa boons já pegos ([03b §4](../design/03b_Reward_System.md)) | "isto combina com o que você tem" → decisão melhor |
-| **"transforma o combo"** | regra de ouro ([03b §1](../design/03b_Reward_System.md)) | destaca boons que mudam *como* você joga |
+| **Dica de sinergia** | checa Ecos já pegos ([03b §4](../design/03b_Reward_System.md)) | "isto combina com o que você tem" → decisão melhor |
+| **"transforma o combo"** | regra de ouro ([03b §1](../design/03b_Reward_System.md)) | destaca Ecos que mudam *como* você joga |
 
 > 🎰 **A leitura desta tela é decisão, não menu.** Mostre raridade (cor), família e **sinergia** — é o que torna "1 de 3" uma escolha empolgante e não um clique. Navegável por gamepad (foco no card do meio).
 
-> 🟢 **P0 no MVP:** sem o boon-select, não há build → não há roguelike. Pode ser **feio**, mas tem que **comunicar** nome/raridade/sinergia.
+> 🟢 **P0 no MVP:** sem o eco-select, não há build → não há roguelike. Pode ser **feio**, mas tem que **comunicar** nome/raridade/sinergia.
 
 ---
 
@@ -105,7 +105,7 @@ O espaço entre runs. Pode ser uma **tela** (simples) ou um **nível** (com NPC/
 ┌──────────────────────────────────────────────┐
 │  SANTUÁRIO            🟣 Essência: 340         │
 │  ┌──────────────┐ ┌──────────────┐            │
-│  │ +5% vida ini │ │ Desbloq. boon │            │
+│  │ +5% vida ini │ │ Desbloq. Eco │            │
 │  │   🟣 80       │ │ família Vazio │            │
 │  │  [Comprar]   │ │   🟣 150      │            │
 │  └──────────────┘ └──────────────┘            │
@@ -118,7 +118,7 @@ O espaço entre runs. Pode ser uma **tela** (simples) ou um **nível** (com NPC/
 - Comprar = autosave ([25 §3](25_Save_Load_Slots.md)).
 - "Iniciar Nova Run" → loading → gameplay.
 
-> 🔗 [03b §7](../design/03b_Reward_System.md): meta-upgrade bom **destrava** (nova família de boon, +1 slot de escolha, habilidade inicial), não só engorda um número.
+> 🔗 [03b §7](../design/03b_Reward_System.md): meta-upgrade bom **destrava** (nova família de Eco, +1 slot de escolha, habilidade inicial), não só engorda um número.
 
 ---
 
@@ -126,20 +126,20 @@ O espaço entre runs. Pode ser uma **tela** (simples) ou um **nível** (com NPC/
 
 | Tela | Prioridade |
 |---|---|
-| **Seleção de Boon** | 🟢 **P0** (sem ela não há loop) |
+| **Seleção de Eco** | 🟢 **P0** (sem ela não há loop) |
 | Morte/Vitória (resumo + Essência) | 🟡 P1 |
 | Hub (gastar Essência) | 🟡 P1 |
 | Pause | 🟡 P1 |
 | Animações/cards bonitos/SFX | 🔵 P2 |
 
-> 🎯 Ordem real: **boon-select** (M4, com o loop) → **morte+hub** (M5, fecha o meta) → pause (qualquer hora). Pause é o mais fácil; boon-select é o mais importante.
+> 🎯 Ordem real: **eco-select** (M4, com o loop) → **morte+hub** (M5, fecha o meta) → pause (qualquer hora). Pause é o mais fácil; eco-select é o mais importante.
 
 ---
 
 ## 7. Checklist
 
-- [ ] **Boon-select** mostra nome + raridade (cor) + família + **sinergia** ([03b](../design/03b_Reward_System.md))
-- [ ] Boon-select navegável por gamepad (foco inicial)
+- [ ] **eco-select** mostra nome + raridade (cor) + família + **sinergia** ([03b](../design/03b_Reward_System.md))
+- [ ] eco-select navegável por gamepad (foco inicial)
 - [ ] Morte/Vitória mostra resumo + **Essência ganha** (o anzol)
 - [ ] Hub gasta Essência → autosave ([25](25_Save_Load_Slots.md))
 - [ ] Pause: SetPause + UIOnly; Abandonar/Sair com modal
@@ -151,14 +151,14 @@ O espaço entre runs. Pode ser uma **tela** (simples) ou um **nível** (com NPC/
 
 | Sintoma | Causa | Fix |
 |---|---|---|
-| Boon-select sente "menu", não decisão | Sem raridade/sinergia visível | §3 — cor + dica de sinergia |
+| eco-select sente "menu", não decisão | Sem raridade/sinergia visível | §3 — cor + dica de sinergia |
 | Jogo roda durante o pause | `SetPause` não chamado / input errado | §2 |
 | Morte não dá sensação de progresso | Não mostra Essência ganha | §4 |
-| Boons não aparecem na tela | UI não lê o pool/RunManager | §3 — bind ao [03b](../design/03b_Reward_System.md)/RunManager |
+| Ecos não aparecem na tela | UI não lê o pool/RunManager | §3 — bind ao [03b](../design/03b_Reward_System.md)/RunManager |
 | Essência some | Compra não fez autosave | §5 / [25 §3](25_Save_Load_Slots.md) |
 
 ---
 
 ## 9. Próximo passo
 
-UI completa. → Volte ao [Index](../00_Index.md) ou ao [Roadmap (17)](../17_Implementation_Roadmap.md). A UI segue o roadmap: **HUD + boon-select** com o combate/loop (M1-M4); menus de borda (main/settings/pause) no M4-M5.
+UI completa. → Volte ao [Index](../00_Index.md) ou ao [Roadmap (17)](../17_Implementation_Roadmap.md). A UI segue o roadmap: **HUD + eco-select** com o combate/loop (M1-M4); menus de borda (main/settings/pause) no M4-M5.

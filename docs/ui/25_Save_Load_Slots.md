@@ -12,10 +12,10 @@
 |---|---|---|
 | **Meta: Essência** (recurso) ([03 §5](../design/03_Core_Loop_Roguelike.md)) | ✅ Sim | SaveGame |
 | **Meta: upgrades permanentes** comprados | ✅ Sim | SaveGame |
-| **Meta: desbloqueios** (boons/habilidades/famílias) | ✅ Sim | SaveGame |
+| **Meta: desbloqueios** (Ecos/habilidades/famílias) | ✅ Sim | SaveGame |
 | **Settings** (volume, qualidade) | ✅ Sim | SaveGame separado ([27](27_Settings.md)) ou GameUserSettings |
 | **Estatísticas** (runs, kills, melhor combo) | ✅ Sim | SaveGame |
-| **Build da run atual** (boons pegos) | ⚠️ Só se houver **run-resume** (§4) | SaveGame de run (P1) |
+| **Build da run atual** (Ecos pegos) | ⚠️ Só se houver **run-resume** (§4) | SaveGame de run (P1) |
 | **Estado momento-a-momento** (HP, posição) | ❌ Não no MVP | — |
 
 > 🎯 **MVP ([03 §5](../design/03_Core_Loop_Roguelike.md), [02](../design/02_MVP_Scope.md)):** persistir **só a meta** (Essência + upgrades + desbloqueios). Salvar a run no meio (resume) é **P1** (Hades faz; é ótimo, mas não é o core).
@@ -33,14 +33,14 @@ class UDDRSaveGame : public USaveGame {
   // meta-progressão:
   UPROPERTY() int32 Essencia = 0;
   UPROPERTY() TArray<FGameplayTag> UpgradesComprados;   // ex.: Meta.Upgrade.Health
-  UPROPERTY() TArray<FGameplayTag> Desbloqueios;        // ex.: Boon.Family.Storm
+  UPROPERTY() TArray<FGameplayTag> Desbloqueios;        // ex.: Eco.Family.Storm
 
   // estatísticas:
   UPROPERTY() int32 RunsJogadas = 0;
   UPROPERTY() int32 MelhorCombo = 0;
 
   // (P1) run em andamento:
-  UPROPERTY() FDDRRunState RunSalva;   // boons, sala atual, seed
+  UPROPERTY() FDDRRunState RunSalva;   // Ecos, sala atual, seed
   UPROPERTY() bool bTemRunAtiva = false;
 };
 ```

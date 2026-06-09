@@ -99,7 +99,12 @@ Content/DarkDungeonRift/
 │   ├── Locomotion/    BlendSpaces, Start/Stop/Loop, Turn, Jump
 │   └── Combat/        AM_Combo_*, AM_Aerial_*, AM_Launcher
 ├── Input/             IMC_Default, IA_Move/Look/Attack/Dash/Jump/Sprint
-├── Run/               salas (levels/sublevels), DataTables de recompensa
+├── Data/              DataTables + DataAssets (ver 44)
+│   ├── Tables/        DT_AttackData, DT_EcoPool, DT_RunLayout...
+│   ├── Ecos/          DA_Eco_* (18 — doc 40)
+│   ├── Enemies/       DA_Enemy_*
+│   └── Encounters/    DA_Encounter_*
+├── Run/               salas (levels/sublevels)
 └── UI/                HUD funcional
 ```
 
@@ -126,7 +131,7 @@ GameplayCue.Hit.Impact
 GameplayCue.Land.Hard
 ```
 
-> Detalhes de como usar em [05 — GAS](05_GAS_Architecture.md). Registre-as agora pra não espalhar strings mágicas.
+> Catálogo completo em **[41 — Gameplay Tags](41_Gameplay_Tags.md)**. Detalhes de uso em [05 — GAS](05_GAS_Architecture.md). Dados tunáveis em **[44 — Data-Driven](44_Data_Driven.md)**.
 
 ---
 

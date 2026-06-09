@@ -10,7 +10,7 @@
 
 ## 1. O que é "feel" e por que importa 🎯
 
-Game feel é a **resposta tátil em tempo real** a uma ação contínua, vestida de espetáculo (Steve Swink). Em um hack'n'slash de combo, ele é literalmente o produto: o jogador passa 95% do tempo no loop `aperta → personagem responde → lê → aperta de novo`. Se esse loop tem atrito, **nenhuma** quantidade de boons, salas ou VFX salva.
+Game feel é a **resposta tátil em tempo real** a uma ação contínua, vestida de espetáculo (Steve Swink). Em um hack'n'slash de combo, ele é literalmente o produto: o jogador passa 95% do tempo no loop `aperta → personagem responde → lê → aperta de novo`. Se esse loop tem atrito, **nenhuma** quantidade de Ecos, salas ou VFX salva.
 
 A fantasia que o doc de visão promete ([01 §3](../design/01_Game_Vision.md)) é cinestésica antes de ser visual:
 

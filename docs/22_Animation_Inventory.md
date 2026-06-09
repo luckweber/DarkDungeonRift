@@ -45,7 +45,7 @@
 | **2 Run attacks** | [15](combat/15_Combat_Overview.md)/[19](combat/19_Abilities_Deep.md) | 🟡 P1 | Ataque correndo / lunge ("sprint cancela p/ atacar", [09 §3.2](locomotion/09_Gaits.md)). |
 | **2 Charge Attack** | [18](combat/18_Combat_System_Deep.md)/[19](combat/19_Abilities_Deep.md) | 🟡/🔵 | Pesado/carregado — ótimo, mas além do combo MVP. |
 | **1 Parry counter** | — (sistema de parry) | 🔵 P2 | **Over-scope** — parry não está no MVP (§5). |
-| **2 Buff** | [19](combat/19_Abilities_Deep.md) (ability/ultimate) | 🔵 P2 | Auto-buff; casa com Boons/ultimate ([03b](design/03b_Reward_System.md)). |
+| **2 Buff** | [19](combat/19_Abilities_Deep.md) (ability/ultimate) | 🔵 P2 | Auto-buff; casa com Ecos/ultimate ([03b](design/03b_Reward_System.md)). |
 | **3 Execution** | — (finisher cinemático) | 🔵 P2 | **Over-scope** — execuções são pós-MVP (§5). |
 
 ### 🚶 Walk (92) & 🏃 Run (80) — locomoção
@@ -115,7 +115,7 @@ Estes clips implicam **sistemas inteiros** que o [escopo do MVP (02)](design/02_
 | **Block + Walk block 8-way** | Guarda/bloqueio direcional | Pós-MVP |
 | **3 Execution** | Finishers em inimigos fracos (cinemático) | Pós-MVP (alto polish) |
 | **2 Charge Attack** | Ataque carregado (hold) | P1-P2 (extensão do combo) |
-| **2 Buff** | Abilities de auto-buff | P2 (casa com Boons/ultimate, [03b](design/03b_Reward_System.md)/[19](combat/19_Abilities_Deep.md)) |
+| **2 Buff** | Abilities de auto-buff | P2 (casa com Ecos/ultimate, [03b](design/03b_Reward_System.md)/[19](combat/19_Abilities_Deep.md)) |
 | **Walk/Run equip** | Troca/saque de arma | Pós-MVP (MVP = 1 arma fixa) |
 
 > ⚠️ **Armadilha de escopo:** ter o clip ≠ precisar do sistema. **Exceção (Review de Combate):** o **parry é barato** (janela+tag, reusa poise) → promovido a **P1 ofensivo** (parry→launch), primeiro item pós-core. Block/execution/charge/buff/equip **continuam over-scope**. O MVP-core segue combo de chão + aéreo ([02](design/02_MVP_Scope.md)).

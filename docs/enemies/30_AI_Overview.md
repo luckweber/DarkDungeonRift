@@ -12,7 +12,7 @@ Decisão-chave: **inimigos usam o mesmo GAS** ([05](../systems/05_GAS_Architectu
 
 - O **pipeline de dano** ([18 §3](../combat/18_Combat_System_Deep.md)), **poise/stagger** ([18 §5](../combat/18_Combat_System_Deep.md)) e **hit detection** já funcionam pros dois lados — simétrico.
 - O ataque do inimigo é uma `GameplayAbility` (telegrafe→hitbox→recovery), tocada via ASC — mesma arquitetura do player ([19](../combat/19_Abilities_Deep.md)).
-- Os Boons/effects que mexem em dano funcionam contra inimigos sem código especial.
+- Os Ecos/effects que mexem em dano funcionam contra inimigos sem código especial.
 
 ```
 ADDREnemyCharacter : ADDRCharacterBase   (já tem ASC + AttributeSet, doc 05)

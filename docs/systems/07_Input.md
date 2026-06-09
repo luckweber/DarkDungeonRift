@@ -4,6 +4,8 @@
 
 > O template já usa **Enhanced Input** (`IMC`, `IA_*`). Vamos estender pra combate e ligar no GAS.
 
+> 🎮 **Mapa de teclas e botões (o que o jogador aperta):** [39 — Controles](39_Controls.md) — tabela canônica KB+M e gamepad. Este doc (07) cobre a **implementação**; o 39 cobre o **layout**.
+
 ---
 
 ## 1. Input Actions necessárias (MVP)
@@ -148,4 +150,4 @@ Buffer:          └─ guarda ──────┘ consome quando janela abre 
 
 ## 9. Próximo passo
 
-Sistemas base prontos. → Locomoção: [08 — Visão Geral](../locomotion/08_Locomotion_Overview.md).
+→ [39 — Controles](39_Controls.md) (bindings default) · Locomoção: [08 — Visão Geral](../locomotion/08_Locomotion_Overview.md).

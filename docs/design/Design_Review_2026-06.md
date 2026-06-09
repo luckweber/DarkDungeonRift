@@ -39,7 +39,7 @@
 | # | Tensão | Cadeiras | Resolução adotada |
 |---|---|---|---|
 | 1 | **Profundidade vs Escopo** | Kael & Mara (mais profundidade) × Sofia (menos, construa) | Sequência, não contradição: **spike primeiro** (Sofia define *quando*); profundidade de combate/build recebe orçamento *depois* que o núcleo se provar (Kael/Mara definem *onde*). |
-| 2 | **🔥 Boons TÊM que modificar o combo** | Kael + Mara + Sofia convergiram | Virou **princípio de design** no [03b §1](03b_Reward_System.md): todo Boon passa no teste "muda como eu jogo?". |
+| 2 | **🔥 Ecos TÊM que modificar o combo** | Kael + Mara + Sofia convergiram | Virou **princípio de design** no [03b §1](03b_Reward_System.md): todo Eco passa no teste "muda como eu jogo?". |
 | 3 | **🔥 Follow-launch × legibilidade topdown** | Sofia × Kael (Davi por baixo) | **Não resolvida — é o que o spike M⁻¹ responde.** Documentada como "pergunta de um milhão" em [16 §6](../combat/16_Aerial_Combos.md). |
 
 ---
@@ -51,7 +51,7 @@
 | 1 | **M⁻¹: spike de validação** do combo aéreo antes do M0 | Davi+Sofia | [Roadmap §1.5](../17_Implementation_Roadmap.md) | ✅ |
 | 2 | **Launcher = `RootMotionSource` ancorado** (não `LaunchCharacter`) | Davi | [16 §2](../combat/16_Aerial_Combos.md) | ✅ |
 | 3 | **State machine do ALVO** separada do `bIsFalling` do player | Davi | [16 §3.1](../combat/16_Aerial_Combos.md) | ✅ |
-| 4 | **Boons = sistema de 1ª classe** (pool 15-20, famílias, sinergias, raridade, "modificam o combo") | Mara | **novo doc [03b](03b_Reward_System.md)** | ✅ |
+| 4 | **Ecos = sistema de 1ª classe** (pool 15-20, famílias, sinergias, raridade, "modificam o combo") | Mara | **novo doc [03b](03b_Reward_System.md)** | ✅ |
 | 5 | **Gramática de cancelamento** (tabela estado×ação×janela) elevada a **P0 do M1** | Kael | [15 §6](../combat/15_Combat_Overview.md) + [Roadmap M1](../17_Implementation_Roadmap.md) | ✅ |
 | 6 | **Hit-stop = freeze global** (congela CMC, não só montage) | Kael | [15 §5](../combat/15_Combat_Overview.md) | ✅ |
 | 7 | **Modelo numérico do juggle** + `ddr.JuggleDebug` / `ddr.CombatDebug` | Kael | [16 §3](../combat/16_Aerial_Combos.md), [15 §6](../combat/15_Combat_Overview.md) | ✅ |

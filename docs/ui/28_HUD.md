@@ -1,6 +1,6 @@
 # 28 — HUD de Combate + Diagrama de Posição · 🟢 P0
 
-> O HUD é a UI **mais importante do MVP** — é a que o jogador olha *durante o fun*. Cobre o que mostrar, **onde** (diagrama), e como ler do GAS. Pré-req: [23 — UI Overview](23_UI_Overview.md), [05 — GAS](../systems/05_GAS_Architecture.md).
+> O HUD é a UI **mais importante do MVP** — é a que o jogador olha *durante o fun*. Cobre o que mostrar, **onde** (diagrama), e como ler do GAS. Pré-req: [23 — UI Overview](23_UI_Overview.md), [05 — GAS](../systems/05_GAS_Architecture.md), [39 — Controles](../systems/39_Controls.md) (símbolos de tecla/botão).
 
 > 🧭 **Regra de ouro topdown:** o personagem fica no **centro** da tela e o **combo aéreo sobe acima dele**. Então o **centro e a faixa central-superior são SAGRADOS** — o HUD vive nas **bordas e cantos**. HUD no meio = tapa o combate = quebra o Pilar 4 (leitura, [01 §2](../design/01_Game_Vision.md)).
 
@@ -21,7 +21,7 @@
 │                  ▓        aéreo sobe AQUI ↑         ▓              │    LIMPO)
 │                                                                    │
 │                                                                    │
-│  ┌─ BOONS ATIVOS ─┐                                  ┌─ COMBO ─┐   │ ← MEIO-BAIXO
+│  ┌─ ECOS ATIVOS ─┐                                  ┌─ COMBO ─┐   │ ← MEIO-BAIXO
 │  │ 🔥 💧 ⚡ 🩸     │                                  │  x14    │   │
 │  └────────────────┘                                  │ A-RANK! │   │
 │                                                       └─────────┘   │
@@ -37,7 +37,7 @@
 | **Topo-esquerda** | Sala X/Y · Essência/ouro da run · tempo | Info de contexto, glance ocasional |
 | **Topo-centro** | Barra de **boss** (só quando há boss) | Visível mas não no caminho do combate |
 | **Centro** | **NADA** (zona sagrada) | É onde o jogador olha e o combo aéreo sobe |
-| **Meio-baixo-esquerda** | **Boons ativos** (ícones da build) | Lembra a build sem roubar o centro |
+| **Meio-baixo-esquerda** | **ECOS ATIVOS** (ícones da build) | Lembra a build sem roubar o centro |
 | **Meio-baixo-direita** | **Contador de combo / rank** | O pilar! Feedback de estilo (ver §3) |
 | **Rodapé-esquerda** | **HP + Stamina** | Padrão ARPG; canto = glance rápido |
 | **Rodapé-direita** | **Abilities + cooldowns** | Mão direita "vê" os cooldowns ali |
@@ -53,7 +53,7 @@
 | **HP** (barra) | `Health`/`MaxHealth` ([05 §3](../systems/05_GAS_Architecture.md)) via delegate | 🟢 P0 |
 | **Stamina** (se houver) | `Stamina`/`MaxStamina` | 🟡 P1 (stamina é opcional, [09 §3](../locomotion/09_Gaits.md)) |
 | **Cooldowns** (dash, ultimate) | tag `Cooldown.*` + tempo restante do GE | 🟢 P0 |
-| **Boons ativos** | lista de `GE` Infinite de run ([03b](../design/03b_Reward_System.md)) | 🟢 P0 (a build!) |
+| **ECOS ATIVOS** | lista de `GE` Infinite de run ([03b](../design/03b_Reward_System.md)) | 🟢 P0 (a build!) |
 | **Combo / rank** | contador do combo ([18 §4](../combat/18_Combat_System_Deep.md)) | 🟡 P1 (mas é o pilar — ver §3) |
 | **Run info** (sala, Essência) | RunManager ([03](../design/03_Core_Loop_Roguelike.md)) | 🟡 P1 |
 | **Boss bar** | Health do boss (só no boss) | 🟡 P1 |
@@ -75,7 +75,7 @@ O jogo é hack'n'slash de combo aéreo → o HUD deve **recompensar o estilo** (
 
 - **Contador de hits** sobe a cada acerto encadeado; zera ao tomar hit (conecta com **player flinch**, [18 §5.6](../combat/18_Combat_System_Deep.md)) ou ao parar.
 - **Rank de estilo** (P1/P2): premia *variedade* (não repetir o mesmo golpe) + combo aéreo + perfect-dodge. É o que faz o jogador *querer* combar com estilo.
-- 🔗 Conecta com [03b](../design/03b_Reward_System.md): um Boon pode dar "+Essência por rank alto" → estilo vira recurso.
+- 🔗 Conecta com [03b](../design/03b_Reward_System.md): um Eco pode dar "+Essência por rank alto" → estilo vira recurso.
 
 > 🎯 No MVP, **um contador de hits simples** (x14) já dá o feedback essencial. O rank S/SS é polish P1-P2, mas é barato e muito alinhado ao pilar.
 
@@ -101,7 +101,7 @@ WBP_HUD (camada 1, [23 §2]) — sempre na tela durante o jogo
   • OnInit: inscreve nos delegates:
       ASC->GetGameplayAttributeValueChangeDelegate(Health) → AtualizaBarraHP
       ASC->RegisterGameplayTagEvent(Cooldown.Dash) → liga/desliga ícone
-      RunManager->OnBoonAdded / OnRoomChanged → atualiza boons/sala
+      RunManager->OnEcoAdded / OnRoomChanged → atualiza Ecos/sala
   • SÓ lê e exibe — nunca decide gameplay ([08 §2.1](../locomotion/08_Locomotion_Overview.md))
 ```
 
@@ -114,7 +114,7 @@ WBP_HUD (camada 1, [23 §2]) — sempre na tela durante o jogo
 | Item | Prioridade |
 |---|---|
 | HP + cooldowns (dash/ultimate) | 🟢 P0 |
-| Boons ativos (ícones) | 🟢 P0 |
+| ECOS ATIVOS (ícones) | 🟢 P0 |
 | Contador de combo (x N) | 🟡 P1 |
 | Run info (sala/Essência) + boss bar | 🟡 P1 |
 | Rank de estilo (S/SS) | 🟡/🔵 |
@@ -126,7 +126,7 @@ WBP_HUD (camada 1, [23 §2]) — sempre na tela durante o jogo
 
 - [ ] **Centro/central-superior livres** (zona sagrada — combo aéreo)
 - [ ] HP (rodapé-esq) + abilities/cooldowns (rodapé-dir)
-- [ ] Boons ativos visíveis (a build)
+- [ ] ECOS ATIVOS visíveis (a build)
 - [ ] Contador de combo (rodapé-dir/meio)
 - [ ] HUD lê GAS por delegate (não faz polling no Tick)
 - [ ] Legível a -55°/950 (contraste, tamanho)
@@ -149,4 +149,4 @@ WBP_HUD (camada 1, [23 §2]) — sempre na tela durante o jogo
 
 ## 9. Próximo passo
 
-→ [29 — Run-Flow Menus](29_Run_Flow_Menus.md): pause, **seleção de boon** e telas de morte/vitória.
+→ [29 — Run-Flow Menus](29_Run_Flow_Menus.md): pause, **Seleção de Eco** e telas de morte/vitória.

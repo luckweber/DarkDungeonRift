@@ -12,7 +12,7 @@
 |---|---|---|
 | **🎬 Vídeo** | Resolução · Modo janela (Fullscreen/Borderless/Windowed) · VSync · Cap de FPS · Qualidade (escala) | 🟡 P1 |
 | **🔊 Áudio** | Master · Música · SFX · UI (sliders 0-100) | 🟢 P0 (volume é básico) |
-| **🎮 Controles** | Sprint hold/toggle · Sensibilidade (Modelo B) · Vibração on/off · Rebind | 🟡 P1 (rebind P2) |
+| **🎮 Controles** | Sprint hold/toggle · Sensibilidade (Modelo B) · Vibração on/off · Rebind ([39](../systems/39_Controls.md)) | 🟡 P1 (rebind P2) |
 | **🕹️ Jogabilidade** | Idioma ([38](../systems/38_Localization.md)) · Mostrar damage numbers · Auto-pickup · Dificuldade (P2) | 🟡 P1 |
 | **♿ Acessibilidade** | **Escala de screen-shake** · **Escala de hit-stop** · Reduzir flashes · Daltonismo · Tamanho de texto | 🟡 P1 (alto valor) |
 

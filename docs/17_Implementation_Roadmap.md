@@ -24,6 +24,8 @@ M⁻¹ SPIKE ─→ M0 Esqueleto ─→ M1 Bater ─→ M2 VOAR ─→ M3 Lutar 
 
 ## 1.5. ⚡ M⁻¹ — Spike de Validação (FAÇA ANTES DO M0)
 
+> 📋 **Playbook completo:** [43 — Spike M⁻¹](43_Spike_Minus1.md) (passo a passo, checklist, `DT_SpikeTuning`).
+
 **Meta:** num protótipo **descartável**, sobre o template Third Person atual, **sem GAS, sem arte, sem roadmap**, responder a pergunta existencial do projeto: *o combo aéreo em topdown é divertido E legível?*
 
 > 🧠 **Por que isto vem ANTES do M0** (consenso Davi + Sofia, apoiado por Kael): o plano inteiro repousa numa suposição **não testada** de fun/legibilidade. Docs lindos não são evidência. Uma tarde de spike vale mais que uma semana de infra construída sobre fé.
@@ -129,9 +131,9 @@ M⁻¹ SPIKE ─→ M0 Esqueleto ─→ M1 Bater ─→ M2 VOAR ─→ M3 Lutar 
 
 | Tarefa | Doc |
 |---|---|
-| `DDRRunManager` / `DDRRoomManager`: sequência de salas | [03](design/03_Core_Loop_Roguelike.md) |
-| 6-8 arenas à mão, sorteia 4 por run (procedural-sem-procedural) | [03](design/03_Core_Loop_Roguelike.md) |
-| Recompensa entre salas: escolher 1 de 2-3 (GE/ability) | [03](design/03_Core_Loop_Roguelike.md), [05](systems/05_GAS_Architecture.md) |
+| `DDRRunManager` / `EncounterManager`: sequência de salas | [42](systems/42_Run_Room_Manager.md), [03](design/03_Core_Loop_Roguelike.md) |
+| 6-8 arenas à mão, sorteia 4 por run (`DT_RunLayout`) | [42](systems/42_Run_Room_Manager.md), [44](systems/44_Data_Driven.md) |
+| Recompensa entre salas: 1 de 3 Ecos (`UDDREcoData`, pool 18) | [40](design/40_Eco_Pool_Catalog.md), [03b](design/03b_Reward_System.md), [05](systems/05_GAS_Architecture.md) |
 | Mini-boss (2 fases, ataques-assinatura, janela de launch) | [34](enemies/34_MiniBoss.md) |
 | HUD funcional (HP, recurso) | — |
 

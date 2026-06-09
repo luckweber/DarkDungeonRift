@@ -49,14 +49,15 @@ Tudo que entrar no jogo precisa servir a **pelo menos um** pilar. Se não serve,
 
 | Referência | O que aprender |
 |---|---|
-| **[Hades](https://hades.fandom.com/wiki/Hades_Wiki)** ↗ wiki | Core loop roguelike, ritmo de sala, **sistema de boons/bênçãos** (escolha de upgrade entre salas), feedback de hit, meta-progressão que vicia. **O modelo a seguir pro [core loop](03_Core_Loop_Roguelike.md).** |
+| **[Hades](https://hades.fandom.com/wiki/Hades_Wiki)** ↗ wiki | Core loop roguelike, ritmo de sala, **sistema de Boons/bênçãos** (escolha de upgrade entre salas), feedback de hit, meta-progressão que vicia. **O modelo a seguir pro [core loop](03_Core_Loop_Roguelike.md).** |
 | **[Death Must Die](https://store.steampowered.com/app/2334730/Death_Must_Die/)** ↗ Steam | **A referência de gênero mais próxima:** ARPG **topdown** roguelite, dodge como verbo, **builds por "Deuses"/bênçãos**, progressão run-a-run de itens, leitura de horda densa de cima. ⚠️ É mais *bullet heaven* que combo — roube a **estrutura de run e o sistema de build**, não o combate (o combate vem do DMC). |
 | **Devil May Cry / Bayonetta** | Gramática de combo, **launcher/juggle**, ranking de estilo, cancelamentos. **A alma do combo aéreo (Pilar 1).** |
-| **Diablo / Path of Exile** | Câmera topdown, densidade de inimigos, leitura de habilidade em área. |
+| **[Diablo 4](https://diablo4.blizzard.com/)** ↗ | Câmera isométrica/topdown moderna, **telegrafe no chão** (zonas vermelhas), dodge como verbo defensivo, densidade de horda + elites, leitura de AoE em combate denso. ⚠️ Roube **leitura e ritmo de arena** — não a profundidade de loot/endgame (§7). |
+| **[Path of Exile 2](https://pathofexile2.com/)** ↗ | ARPG topdown com combate **mais ativo** que o POE1: skills legíveis de cima, telegrafes claros, variedade de build por modificadores (inspira famílias de Ecos). ⚠️ Roube **clareza de skill e densidade visual** — não a economia/loot de planilha. |
 | **Hyper Light Drifter** | Dash como verbo central, clareza visual, combate de posicionamento. |
 | **Returnal** | "Bullet-hell" topdown legível, agressão recompensada, morte como reset narrativo. |
 
-> 📚 **Referências externas linkadas:** [Hades Wiki](https://hades.fandom.com/wiki/Hades_Wiki) (estude o sistema de **Boons** e a estrutura de câmaras) · [Death Must Die — Steam](https://store.steampowered.com/app/2334730/Death_Must_Die/) (estude **builds de Deuses**, dodge e leitura topdown). Ambas alimentam o [doc 03 — Core Loop](03_Core_Loop_Roguelike.md).
+> 📚 **Referências externas linkadas:** [Hades Wiki](https://hades.fandom.com/wiki/Hades_Wiki) (Boons + câmaras) · [Death Must Die — Steam](https://store.steampowered.com/app/2334730/Death_Must_Die/) (builds, dodge, horda topdown) · [Diablo 4](https://diablo4.blizzard.com/) (telegrafe no chão, dodge, elites) · [Path of Exile 2](https://pathofexile2.com/) (skills legíveis, build por modificadores). Alimentam o [doc 03 — Core Loop](03_Core_Loop_Roguelike.md) e o **Pilar 4** (leitura topdown).
 
 ---
 
@@ -74,7 +75,7 @@ Tudo que entrar no jogo precisa servir a **pelo menos um** pilar. Se não serve,
 
 Definir o "não" evita scope creep:
 
-- ❌ Não é um ARPG de loot infinito estilo Diablo (foco é combate ativo, não build de planilha).
+- ❌ Não é um ARPG de loot infinito estilo **Diablo 4 / Path of Exile 2** (foco é combate ativo e combo, não build de planilha/endgame).
 - ❌ Não é mundo aberto. É **run estruturada** sala-a-sala.
 - ❌ Não é cobertura/stealth. Crouch é, no máximo, P2.
 - ❌ Não é multiplayer no MVP (mas o GAS já deixa a porta aberta — ver doc 05).

@@ -26,7 +26,7 @@
 │         (arte / cena escura)                 │
 │                                              │
 │   💡 "Combos aéreos curam se você pegar       │  ← dica/lore (Hades/DMD style)
-│      a bênção de Carniça."                    │
+│      o Eco de Carniça."                       │
 │                                              │
 │                              Carregando… ◐   │  ← spinner / progresso
 └──────────────────────────────────────────────┘

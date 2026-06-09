@@ -1,8 +1,8 @@
 # 19 — Roster de Abilities (Profundo) · 🟢 P0
 
-> O **conteúdo GAS** do combate: cada habilidade como **dado** — sua classe base, taxonomia de tags, fichas completas do roster MVP e o padrão de **conceder/trocar abilities em runtime** (o que os Boons fazem 20× por run). Aprofunda o §4 do [05 — Arquitetura GAS](../systems/05_GAS_Architecture.md): lá você montou o ASC/AttributeSet; **aqui** você especifica as abilities que vivem nele.
+> O **conteúdo GAS** do combate: cada habilidade como **dado** — sua classe base, taxonomia de tags, fichas completas do roster MVP e o padrão de **conceder/trocar abilities em runtime** (o que os Ecos fazem 20× por run). Aprofunda o §4 do [05 — Arquitetura GAS](../systems/05_GAS_Architecture.md): lá você montou o ASC/AttributeSet; **aqui** você especifica as abilities que vivem nele.
 
-> **Pré-requisitos:** [05 — GAS](../systems/05_GAS_Architecture.md) (ASC, Effects, Tags), [07 — Input](../systems/07_Input.md) (InputID → ability), [15 — Combate](15_Combat_Overview.md) (montages, janelas, gramática de cancelamento), [16 — Combos Aéreos](16_Aerial_Combos.md) (launcher/juggle/slam), [03b — Boons](../design/03b_Reward_System.md) (recompensa data-driven).
+> **Pré-requisitos:** [05 — GAS](../systems/05_GAS_Architecture.md) (ASC, Effects, Tags), [07 — Input](../systems/07_Input.md) (InputID → ability), [15 — Combate](15_Combat_Overview.md) (montages, janelas, gramática de cancelamento), [16 — Combos Aéreos](16_Aerial_Combos.md) (launcher/juggle/slam), [03b — Ecos](../design/03b_Reward_System.md) (recompensa data-driven).
 
 > 🔒 **Single-player, local-authoritative** (decisão 2026-06, [Index](../00_Index.md)). Sem replicação/predição. Toda ability roda local; `InitAbilityActorInfo(this, this)` com server==client. Onde docs antigos do GAS falarem "networked/prediction window/minimal replication", **trate como resolvido: não se aplica aqui.** Isso simplifica MUITO o roster — sem `bReplicateInputDirectly`, sem prediction key dramas, sem mixed replication mode.
 
@@ -12,7 +12,7 @@
 
 ## 1. Por que uma classe base própria
 
-Sem uma base, cada ability vira um floco de neve: instancing inconsistente, tags digitadas à mão, helpers copiados. **`UDDRGameplayAbility`** padroniza o roster e é onde os Boons "encaixam" (§4). Toda ability do jogo herda dela.
+Sem uma base, cada ability vira um floco de neve: instancing inconsistente, tags digitadas à mão, helpers copiados. **`UDDRGameplayAbility`** padroniza o roster e é onde Os Ecos "encaixam" (§4). Toda ability do jogo herda dela.
 
 ```cpp
 UCLASS(Abstract)
@@ -22,7 +22,7 @@ class UDDRGameplayAbility : public UGameplayAbility
 public:
     UDDRGameplayAbility();
 
-    // Ativa-na-concessão? (ex.: passivas de Boon). MVP: false p/ ações.
+    // Ativa-na-concessão? (ex.: passivas de Eco). MVP: false p/ ações.
     UPROPERTY(EditDefaultsOnly, Category="DDR|Activation")
     bool bActivateOnGranted = false;
 
@@ -249,37 +249,37 @@ ActivateAbility:
 
 > ⚔️ **Dash-cancel é o cancelamento-âncora nº 1** ([15 §6](15_Combat_Overview.md)). `CancelAbilitiesWithTag: Ability.Attack` faz o dash **sempre** interromper o combo (chão ou ar) — responsividade e escape. É a regra de cancelamento mais importante do MVP; sem ela o combate sente "preso".
 
-> 🛡️ **i-frames = tag, não código de dano.** `GA_Dash` só **concede** `State.Movement.Dashing` (via GE Duration). Quem *lê* e ignora o dano é o pipeline do [18](18_Combat_System_Deep.md). Isto mantém a ability burra e data-driven — um Boon pode estender a duração do i-frame mexendo no GE, sem tocar a ability.
+> 🛡️ **i-frames = tag, não código de dano.** `GA_Dash` só **concede** `State.Movement.Dashing` (via GE Duration). Quem *lê* e ignora o dano é o pipeline do [18](18_Combat_System_Deep.md). Isto mantém a ability burra e data-driven — um Eco pode estender a duração do i-frame mexendo no GE, sem tocar a ability.
 
-> 🎛️ **Números de feel do dash são canônicos em [20 §8](../feel/20_Game_Feel.md):** distância **500–650 cm**, duração **0.20–0.25 s**, i-frames **0.20–0.30 s**, cooldown **~0.5–0.8 s**. A ability os consome via `SetByCaller`/atributo (§4) — fonte única, lida por feel **e** ability (um Boon que "buffa o dash" mexe no atributo).
+> 🎛️ **Números de feel do dash são canônicos em [20 §8](../feel/20_Game_Feel.md):** distância **500–650 cm**, duração **0.20–0.25 s**, i-frames **0.20–0.30 s**, cooldown **~0.5–0.8 s**. A ability os consome via `SetByCaller`/atributo (§4) — fonte única, lida por feel **e** ability (um Eco que "buffa o dash" mexe no atributo).
 
 > 🥷 **Perfect-dodge — M1 (Review de Combate, Rha+Vi):** o melhor ROI defensivo do projeto. É **um `if` no pipeline de dano que já existe** ([18 §3](18_Combat_System_Deep.md)): "o hit cruzou a sub-janela *perfect*? → witch-time + cue". Zero sistema novo, reusa o dash do MVP, e converte *evasão burra* em *leitura recompensada* — a alma do counterplay. A cue `GameplayCue.Dodge.Perfect` **já existe** em [21](../feel/21_Juice_FX.md). ⚠️ **Roll está CORTADO do MVP** — uma esquiva só (Dodge→Dash); Roll só volta pós-MVP com assinatura distinta (longo, comprometido, **sem** i-frame frontal). Origem: [Review de Combate](../design/Design_Review_Combat_2026-06.md).
 
 ---
 
-## 4. Abilities data-driven (para os Boons mexerem)
+## 4. Abilities data-driven (para Os Ecos mexerem)
 
-> 🔑 **Princípio [03b §1](../design/03b_Reward_System.md): "todo Boon transforma o combo."** Para um Boon *modular* uma ability sem reescrevê-la, a ability **não pode ter números hard-coded**. Tudo que um Boon possa querer mexer entra por um destes três canais:
+> 🔑 **Princípio [03b §1](../design/03b_Reward_System.md): "todo Eco transforma o combo."** Para um Eco *modular* uma ability sem reescrevê-la, a ability **não pode ter números hard-coded**. Tudo que um Eco possa querer mexer entra por um destes três canais:
 
-| Canal | Para quê | Como o Boon usa |
+| Canal | Para quê | Como o Eco usa |
 |---|---|---|
-| **`SetByCaller`** (tag→float) | magnitudes por-ativação (dano, PopHeight, distância do dash) | o GE de dano/efeito tem modifier `SetByCaller`; a ability seta o valor lendo um **atributo** (que o Boon buffa) |
+| **`SetByCaller`** (tag→float) | magnitudes por-ativação (dano, PopHeight, distância do dash) | o GE de dano/efeito tem modifier `SetByCaller`; a ability seta o valor lendo um **atributo** (que o Eco buffa) |
 | **Nível da ability** (`AbilityLevel`) | escalonar a ability inteira por tier | `GE`/curvas indexadas por nível; conceder a ability em nível maior = versão mais forte |
-| **Atributo lido pela ability** | parâmetros "donos da ability" (cap de juggle, nº de hits) | Boon aplica `GE_RunUpgrade_*` Infinite no atributo (ex.: `MaxJuggleHits`); a ability lê em runtime |
+| **Atributo lido pela ability** | parâmetros "donos da ability" (cap de juggle, nº de hits) | Eco aplica `GE_RunUpgrade_*` Infinite no atributo (ex.: `MaxJuggleHits`); a ability lê em runtime |
 
 ```cpp
-// Exemplo: PopHeight do re-float NÃO é constante — vem de atributo (Boon-mutável):
+// Exemplo: PopHeight do re-float NÃO é constante — vem de atributo (Eco-mutável):
 const float Pop = ASC->GetNumericAttribute(UDDRAttributeSet::GetJugglePopHeightAttribute());
-// aplica RootMotionSource com 'Pop'. Boon "+altura de juggle" = GE Infinite no atributo. Zero edição da ability.
+// aplica RootMotionSource com 'Pop'. Eco "+altura de juggle" = GE Infinite no atributo. Zero edição da ability.
 
 // Exemplo: dano via SetByCaller (magnitude data-driven):
 FGameplayEffectSpecHandle Spec = MakeOutgoingGameplayEffectSpec(GE_Damage, GetAbilityLevel());
 Spec.Data->SetSetByCallerMagnitude(DDRTags.Cost_Stamina /*ou Data.Damage*/, ComputedDamage);
 ```
 
-> 🧩 **Quem é dono do quê** (evita stacking quebrado, [03b §6](../design/03b_Reward_System.md)): o **cap de hits do juggle pertence à `GA_AirAttack`** (lê `MaxJuggleHits`), **não** a um `GE` empilhável. Boons ajustam o atributo; a ability é a autoridade única. Regra geral: **estado contínuo/cap → atributo lido pela ability; efeito pontual → `SetByCaller` no GE**.
+> 🧩 **Quem é dono do quê** (evita stacking quebrado, [03b §6](../design/03b_Reward_System.md)): o **cap de hits do juggle pertence à `GA_AirAttack`** (lê `MaxJuggleHits`), **não** a um `GE` empilhável. Ecos ajustam o atributo; a ability é a autoridade única. Regra geral: **estado contínuo/cap → atributo lido pela ability; efeito pontual → `SetByCaller` no GE**.
 
-**Checklist data-driven por ability:** nenhum número mágico no `.cpp`; magnitudes vêm de `SetByCaller` ou atributo; a montage/GE são `EditDefaultsOnly` (trocáveis por subclasse/Boon); o que um Boon "transforma" (ex.: slam→AoE elétrica) é um **GE adicional condicional**, não um `if` na ability.
+**Checklist data-driven por ability:** nenhum número mágico no `.cpp`; magnitudes vêm de `SetByCaller` ou atributo; a montage/GE são `EditDefaultsOnly` (trocáveis por subclasse/Eco); o que um Eco "transforma" (ex.: slam→AoE elétrica) é um **GE adicional condicional**, não um `if` na ability.
 
 ---
 
@@ -305,42 +305,42 @@ Spec.Data->SetSetByCallerMagnitude(DDRTags.Cost_Stamina /*ou Data.Damage*/, Comp
 
 🔒 **Single-player facilita muito:** sem replicação de specs, sem prediction key ao dar/remover, sem `MarkAbilitySpecDirty`. `GiveAbility`/`ClearAbility` são **operações locais síncronas**. O risco real não é rede — é **leak de spec** e **handle inválido**.
 
-### Padrão DDR: um `UDDRBoonComponent` dono dos handles concedidos
+### Padrão DDR: um `UDDREcoComponent` dono dos handles concedidos
 
 ```cpp
-// Concessão (Boon pego): guarde SEMPRE o handle retornado.
-FGameplayAbilitySpecHandle UDDRBoonComponent::GrantAbility(TSubclassOf<UGameplayAbility> Ab, int32 Level)
+// Concessão (Eco pego): guarde SEMPRE o handle retornado.
+FGameplayAbilitySpecHandle UDDREcoComponent::GrantAbility(TSubclassOf<UGameplayAbility> Ab, int32 Level)
 {
     FGameplayAbilitySpec Spec(Ab, Level);                 // InputID opcional aqui
     const FGameplayAbilitySpecHandle H = ASC->GiveAbility(Spec);
-    GrantedByBoon.Add(H);                                  // rastreia p/ limpeza
+    GrantedByEco.Add(H);                                  // rastreia p/ limpeza
     return H;
 }
 
-// Troca (Boon que SUBSTITUI uma ability, ex.: "dash causa dano"):
-void UDDRBoonComponent::ReplaceAbility(FGameplayAbilitySpecHandle Old, TSubclassOf<UGameplayAbility> New)
+// Troca (Eco que SUBSTITUI uma ability, ex.: "dash causa dano"):
+void UDDREcoComponent::ReplaceAbility(FGameplayAbilitySpecHandle Old, TSubclassOf<UGameplayAbility> New)
 {
-    if (Old.IsValid()) { ASC->ClearAbility(Old); GrantedByBoon.Remove(Old); }  // remove a antiga
+    if (Old.IsValid()) { ASC->ClearAbility(Old); GrantedByEco.Remove(Old); }  // remove a antiga
     GrantAbility(New, 1);                                                       // concede a nova
 }
 
 // Fim de run: limpeza determinística (evita leak entre runs).
-void UDDRBoonComponent::ClearAllGranted()
+void UDDREcoComponent::ClearAllGranted()
 {
-    for (const FGameplayAbilitySpecHandle& H : GrantedByBoon)
+    for (const FGameplayAbilitySpecHandle& H : GrantedByEco)
         if (H.IsValid()) ASC->ClearAbility(H);
-    GrantedByBoon.Reset();
+    GrantedByEco.Reset();
 }
 ```
 
 | Risco | Sintoma | Mitigação DDR |
 |---|---|---|
-| **Leak de spec** | abilities acumulam entre runs; "fantasmas" ativam | rastrear **todo** handle em `GrantedByBoon`; `ClearAllGranted()` no fim da run (ou recriar o pawn — o roguelike já faz, [05 §2](../systems/05_GAS_Architecture.md)) |
-| **`ClearAbility` durante ativação** | ability some no meio do golpe → crash/estado preso | use `SetRemoveAbilityOnEnd()` ou só troque **fora de ativação** (entre salas — o Boon é escolhido na recompensa, não no meio do combo) |
+| **Leak de spec** | abilities acumulam entre runs; "fantasmas" ativam | rastrear **todo** handle em `GrantedByEco`; `ClearAllGranted()` no fim da run (ou recriar o pawn — o roguelike já faz, [05 §2](../systems/05_GAS_Architecture.md)) |
+| **`ClearAbility` durante ativação** | ability some no meio do golpe → crash/estado preso | use `SetRemoveAbilityOnEnd()` ou só troque **fora de ativação** (entre salas — o Eco é escolhido na recompensa, não no meio do combo) |
 | **Handle inválido reutilizado** | `ActivateAbility` num spec já removido | sempre `H.IsValid()` antes de usar; nunca cache o `FGameplayAbilitySpec*` (ponteiro), só o **handle** |
-| **Dois Boons concedem a mesma ability** | duplicata ativa 2× | antes de `GiveAbility`, cheque `ASC->FindAbilitySpecFromClass(Ab)`; se existe, **suba o nível** em vez de duplicar |
+| **Dois Ecos concedem a mesma ability** | duplicata ativa 2× | antes de `GiveAbility`, cheque `ASC->FindAbilitySpecFromClass(Ab)`; se existe, **suba o nível** em vez de duplicar |
 
-> ✅ **Padrão recomendado:** **conceda/troque Boons só na tela de recompensa entre salas** (estado seguro, fora de combate). Isso elimina 90% dos riscos (nunca mexe em spec durante ativação). O `UDDRBoonComponent` é a **autoridade única** sobre o que foi concedido — nada chama `GiveAbility` direto. Como o pawn é recriado a cada run, mesmo um leak é contido a uma run; ainda assim, `ClearAllGranted()` por higiene.
+> ✅ **Padrão recomendado:** **conceda/troque Ecos só na tela de recompensa entre salas** (estado seguro, fora de combate). Isso elimina 90% dos riscos (nunca mexe em spec durante ativação). O `UDDREcoComponent` é a **autoridade única** sobre o que foi concedido — nada chama `GiveAbility` direto. Como o pawn é recriado a cada run, mesmo um leak é contido a uma run; ainda assim, `ClearAllGranted()` por higiene.
 
 > 🧪 **Valide no M1** ([Roadmap M1](../17_Implementation_Roadmap.md)): conceda+remova uma ability 30× num loop e confirme — sem crescimento de specs (`ASC->GetActivatableAbilities().Num()` estável), sem warning de handle. Prova o encanamento antes do M4 depender dele.
 
@@ -360,7 +360,7 @@ Para mostrar que o roster **escala** sem reescrever a base — duas ultimates qu
 | **Cancel** | `Ability.Attack.Air` |
 | **Cooldown** | `GE_Cooldown_Ultimate` (longo, ~recurso de meta-charge) |
 
-**O que é:** um slam que, em vez de AoE simples, encadeia raios entre **todos** os inimigos `State.Combat.Airborne` próximos (limpa-tela controlado). **Como reusa:** é `GA_AirSlam` + um `GE` condicional extra disparado por tag — exatamente o padrão "Boon transforma o slam" do [03b §4 (sinergia Trovão final)](../design/03b_Reward_System.md). Concedida por meta-progressão ([03b §7](../design/03b_Reward_System.md)) como **escolha desbloqueada**, não percentual.
+**O que é:** um slam que, em vez de AoE simples, encadeia raios entre **todos** os inimigos `State.Combat.Airborne` próximos (limpa-tela controlado). **Como reusa:** é `GA_AirSlam` + um `GE` condicional extra disparado por tag — exatamente o padrão "Eco transforma o slam" do [03b §4 (sinergia Trovão final)](../design/03b_Reward_System.md). Concedida por meta-progressão ([03b §7](../design/03b_Reward_System.md)) como **escolha desbloqueada**, não percentual.
 
 ### 🕳️ GA_Ultimate_Singularity — "vazio" (família Vazio)
 
@@ -390,8 +390,8 @@ Para mostrar que o roster **escala** sem reescrever a base — duas ultimates qu
 - [ ] Abilities data-driven: zero número mágico; magnitudes via `SetByCaller` / atributo
 - [ ] Cap de juggle é dono da **ability** (`MaxJuggleHits`), não de `GE` empilhável
 - [ ] Cooldowns via `CooldownGameplayEffectClass`; custo de Stamina só se necessário (P1)
-- [ ] `UDDRBoonComponent` rastreia handles; `ClearAllGranted()` no fim de run
-- [ ] Conceder/trocar Boons **só na recompensa entre salas** (fora de ativação)
+- [ ] `UDDREcoComponent` rastreia handles; `ClearAllGranted()` no fim de run
+- [ ] Conceder/trocar Ecos **só na recompensa entre salas** (fora de ativação)
 - [ ] Runtime granting validado em loop no M1 (sem leak de spec)
 
 ---
@@ -404,9 +404,9 @@ Para mostrar que o roster **escala** sem reescrever a base — duas ultimates qu
 | Mesma tecla, ataque errado sai | Ambas (chão/ar) concedidas, mas Req não distingue | garanta `InAir` só na aérea; mantenha as duas concedidas (§3) |
 | Dash não cancela o combo | `Ability.Attack` ausente em `CancelAbilitiesWithTag` do dash | §3 (ficha Dash) — âncora nº 1 |
 | Launcher relança no ar / spam | Faltou `State.Combat.InAir`/`Cooldown.Launcher` em Block | §3 (ficha Launcher) |
-| Boon "+dano" não afeta a ability | número hard-coded no `.cpp` em vez de atributo/`SetByCaller` | §4 — mova p/ atributo lido em runtime |
+| Eco "+dano" não afeta a ability | número hard-coded no `.cpp` em vez de atributo/`SetByCaller` | §4 — mova p/ atributo lido em runtime |
 | Abilities "fantasma" entre runs | leak de spec; handles não limpos | §6 — `ClearAllGranted()` + recriar pawn |
-| Crash ao pegar Boon no meio do combo | `ClearAbility` durante ativação | §6 — troque só na recompensa (fora de ativação) |
+| Crash ao pegar Eco no meio do combo | `ClearAbility` durante ativação | §6 — troque só na recompensa (fora de ativação) |
 | Cooldown não bloqueia | ability sem `CooldownGameplayEffectClass` ou tag não em Block | §5 + [05 §10](../systems/05_GAS_Architecture.md) |
 | Tag não gate corretamente | tag no slot errado (Owned vs Block vs Req) | §2 — tabela de slots |
 
@@ -414,4 +414,4 @@ Para mostrar que o roster **escala** sem reescrever a base — duas ultimates qu
 
 ## 10. Próximo passo
 
-→ A **máquina de combo, frame data, hit detection e fórmula de dano** que estas abilities acionam: [18 — Combat System Deep](18_Combat_System_Deep.md). O **juice** do impacto/slam: [21 — Juice & FX](../feel/21_Juice_FX.md). O pool de Boons que concede/transforma estas abilities: [03b — Sistema de Recompensa](../design/03b_Reward_System.md).
+→ A **máquina de combo, frame data, hit detection e fórmula de dano** que estas abilities acionam: [18 — Combat System Deep](18_Combat_System_Deep.md). O **juice** do impacto/slam: [21 — Juice & FX](../feel/21_Juice_FX.md). O pool de Ecos que concede/transforma estas abilities: [03b — Sistema de Recompensa](../design/03b_Reward_System.md).

@@ -133,7 +133,7 @@ Em topdown, ameaças nas **bordas da tela** somem da vista — mas o **som as an
 | **Tell sonoro de telegrafe** ([32 §1](../enemies/32_Enemy_Combat_Behavior.md)) | cada ataque inimigo tem som de windup distinto | `SFX_Telegraph_MeleeSwing`, `SFX_Telegraph_RangedCharge` |
 | **Spatialização leve** | ouvir "de que lado" vem o perigo/projétil | Attenuation com `bSpatialize=true`, falloff curto (~1500uu) |
 | **Som de spawn** ([33 §3](../enemies/33_Spawning_Encounters.md)) | inimigo entrando avisa antes de chegar | `SFX_Enemy_Spawn` 2D ou posicional |
-| **Pickup de boon / cura** | confirma o que você pegou sem olhar o HUD | `SFX_Boon_Pickup` + sting musical curto |
+| **Pickup de Eco / cura** | confirma o que você pegou sem olhar o HUD | `SFX_Eco_Pickup` + sting musical curto |
 | **Projétil em voo** | "zip" direcional ([37 §8](../combat/37_Projectiles.md)) | attenuation no tracer; volume sobe ao se aproximar |
 
 ### Attenuation topdown (preset sugerido)
@@ -241,7 +241,7 @@ Configure em **Project Settings → Audio → Concurrency**.
 |---|---|---|
 | **UI** | click, hover, confirm, error | UI |
 | **Ambiente** | vento dungeon, tocha, porta | SFX_World |
-| **Feedback positivo** | level up boon, cura | UI + sting musical curto |
+| **Feedback positivo** | level up Eco, cura | UI + sting musical curto |
 
 Volume UI independente do SFX de combate — jogadores frequentemente abaixam combate mas mantêm UI audível.
 

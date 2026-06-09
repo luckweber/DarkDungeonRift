@@ -35,10 +35,11 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 ### 🎯 Design & Escopo
 | # | Doc | Conteúdo |
 |---|---|---|
-| 01 | [Visão do Jogo](design/01_Game_Vision.md) | Pilares, fantasia, referências (Hades, Death Must Die), identidade |
+| 01 | [Visão do Jogo](design/01_Game_Vision.md) | Pilares, fantasia, referências (Hades, DMD, Diablo 4, POE2, DMC), identidade |
 | 02 | [Escopo do MVP](design/02_MVP_Scope.md) | O que entra/fica de fora, milestones (incl. **M⁻¹ spike**), definição de "pronto" |
 | 03 | [Core Loop Roguelike](design/03_Core_Loop_Roguelike.md) | Estrutura da run, salas, recompensas, meta-progressão |
-| 03b | [Sistema de Recompensa/Boons](design/03b_Reward_System.md) 🆕 | Pool, famílias, sinergias, raridade — *"Boon transforma o combo"* |
+| 03b | [Sistema de Recompensa / Ecos](design/03b_Reward_System.md) 🆕 | Pool, famílias, sinergias, raridade — *"Eco transforma o combo"* |
+| 40 | [Catálogo de Ecos (conteúdo)](design/40_Eco_Pool_Catalog.md) 🆕 | **18 Ecos** MVP: nome, GAS, raridade, sinergias → `UDDREcoData` |
 | — | [**Revisão de Design 2026-06**](design/Design_Review_2026-06.md) | Mesa-redonda macro (4 especialistas) → veredito que atualizou o plano |
 | — | [**Revisão de Combate 2026-06**](design/Design_Review_Combat_2026-06.md) 🆕 | Roundtable combate/feel/juice → perfect-dodge (M1), parry P1, 1 esquiva, launcher no spike |
 
@@ -49,6 +50,10 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 05 | [Arquitetura GAS](systems/05_GAS_Architecture.md) | 🟢 P0 | ASC, Attributes, Abilities, Effects, Gameplay Tags |
 | 06 | [Câmera Topdown](systems/06_Camera_TopDown.md) | 🟢 P0 | Spring arm, framing, zoom, foco em alvo |
 | 07 | [Input (Enhanced Input)](systems/07_Input.md) | 🟢 P0 | Mapeamento, buffer de input, ativação de habilidade |
+| 39 | [Controles (Teclado & Gamepad)](systems/39_Controls.md) | 🟢 P0 | **Mapa canônico** de teclas/botões: combate, UI, gamepad, símbolos do HUD |
+| 41 | [Gameplay Tags (catálogo)](systems/41_Gameplay_Tags.md) 🆕 | 🟢 P0 | Referência única: `Ability.*`, `State.*`, `Eco.*`, `Event.*`, slots GAS |
+| 42 | [Run & Room Manager](systems/42_Run_Room_Manager.md) 🆕 | 🟢 P0 | `DDRRunManager`, fluxo sala→onda→Eco, `DT_RunLayout` |
+| 44 | [Arquitetura Data-Driven](systems/44_Data_Driven.md) 🆕 | 🟢 P0 | **DataTables vs DataAssets**, catálogo de dados, pastas, workflow designer |
 
 ### 🏃 Locomoção (os 11 recursos)
 | # | Doc | Recursos cobertos | Prioridade topdown |
@@ -72,7 +77,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | # | Doc | Prioridade | Conteúdo |
 |---|---|---|---|
 | 18 | [Combate Profundo](combat/18_Combat_System_Deep.md) | 🟢 P0 | **As REGRAS:** `FDDRAttackData` + frame data, hit detection, fórmula de dano, máquina de combo/cancelamento, poise/stagger, soft-lock |
-| 19 | [Habilidades (GAS) Profundo](combat/19_Abilities_Deep.md) | 🟢 P0 | **O roster:** fichas das abilities, base `UDDRGameplayAbility`, taxonomia de tags, custo/cooldown, runtime granting de Boons |
+| 19 | [Habilidades (GAS) Profundo](combat/19_Abilities_Deep.md) | 🟢 P0 | **O roster:** fichas das abilities, base `UDDRGameplayAbility`, taxonomia de tags, custo/cooldown, runtime granting de Ecos |
 | 20 | [Game Feel](feel/20_Game_Feel.md) | 🟢 P0 | **O TATO** (você→jogo): responsividade, peso, feel de dash/pulo/sprint/aéreo, cancelamento sentido, tabela-mestra de knobs |
 | 21 | [Juice & FX](feel/21_Juice_FX.md) | 🟢 P0 | **O ECO** (jogo→você): hit-stop, shake, slow-mo, VFX/SFX, catálogo de GameplayCues, escala de juice por golpe |
 
@@ -80,6 +85,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | # | Doc | Conteúdo |
 |---|---|---|
 | 17 | [Roadmap de Implementação](17_Implementation_Roadmap.md) | Plano em fases, MVP-first, com critérios de aceite por milestone |
+| 43 | [Spike M⁻¹ (playbook)](43_Spike_Minus1.md) 🆕 | Protótipo descartável: cubos, co-altitude, `DT_SpikeTuning`, go/no-go |
 
 ### 🎬 Produção & Assets 🆕
 | # | Doc | Conteúdo |
@@ -87,7 +93,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 22 | [Inventário de Animação](22_Animation_Inventory.md) | Mapa do set (~334 clips) → sistemas → prioridade MVP; **gaps** (launcher!) e **over-scope** (parry/charge/buff/execution/block) |
 
 ### 🖥️ UI & Menus 🆕
-> **UI funcional, não bonita** no MVP ([02 §2](design/02_MVP_Scope.md)). As mais importantes são as que o jogador usa *durante o fun*: **HUD** (28) e **seleção de boon** (29) — não os menus de borda.
+> **UI funcional, não bonita** no MVP ([02 §2](design/02_MVP_Scope.md)). As mais importantes são as que o jogador usa *durante o fun*: **HUD** (28) e **Seleção de Eco** (29) — não os menus de borda.
 
 | # | Doc | Prioridade | Conteúdo |
 |---|---|---|---|
@@ -96,8 +102,8 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 25 | [Save/Load & Slots](ui/25_Save_Load_Slots.md) | 🟡 P1 | O que persiste (meta vs run), `USaveGame`+versão, autosave, slots |
 | 26 | [Loading](ui/26_Loading_System.md) | 🟡 P1 | Tela + load assíncrono, streaming entre salas, preload anti-hitch |
 | 27 | [Settings](ui/27_Settings.md) | 🟡 P1 | Vídeo/áudio/controles/**acessibilidade** (liga `ddr.ShakeScale`/`HitStopScale`) |
-| 28 | [HUD + Diagrama](ui/28_HUD.md) | 🟢 P0 | HP/abilities/boons/combo; **diagrama de posição** (centro = zona sagrada) |
-| 29 | [Run-Flow Menus](ui/29_Run_Flow_Menus.md) | 🟢/🟡 | Pause, **seleção de boon** (P0), morte/vitória, hub |
+| 28 | [HUD + Diagrama](ui/28_HUD.md) | 🟢 P0 | HP/abilities/Ecos/combo; **diagrama de posição** (centro = zona sagrada) |
+| 29 | [Run-Flow Menus](ui/29_Run_Flow_Menus.md) | 🟢/🟡 | Pause, **Seleção de Eco** (P0), morte/vitória, hub |
 
 ### 👹 Inimigos & IA 🆕
 > Preenche o gap que a [Revisão de Design (Sofia)](design/Design_Review_2026-06.md) apontou no **M3**. IA via GAS, **pausa no juggle**, telegrafe = leitura topdown P0.
@@ -134,11 +140,12 @@ Estas premissas guiam toda a doc. Mude aqui se discordar — o resto se ajusta.
 
 | Decisão | Escolha | Por quê |
 |---|---|---|
-| **Câmera** | Topdown 3/4 fixa (pitch ~-55°), spring arm longo | Identidade ARPG (Diablo/Hades). Define o que vale animar. |
+| **Câmera** | Topdown 3/4 fixa (pitch ~-55°), spring arm longo | Identidade ARPG (Diablo 4/POE2/Hades). Define o que vale animar. |
 | **Rotação do personagem** | Orient-to-movement **ou** orient-to-cursor (ver doc 06) | ARPG topdown padrão; **Turn In Place removido do escopo**. |
 | **Locomoção** | **Foundation bespoke** (state machine + distance match), Motion Matching como spike opcional | Menos assets p/ MVP; você já domina esse padrão no DungeonForged. |
 | **Modo / Rede** | 🔒 **Single-player** (local-authoritative) | Decisão 2026-06. Sem replicação/predição → combate **agressivo**: CMC direto, `CustomTimeDilation`/slow-mo global, hitstop local, RootMotion sem reconciliação. Resolve a dívida de networking do juggle. |
 | **Combate** | **GAS-driven** (abilities + montages + tags) | Escalável, data-driven, **local-authoritative**. É o coração do jogo. |
+| **Dados** | **DataTables + DataAssets** ([44](systems/44_Data_Driven.md)) | Ataques, Ecos, inimigos, encontros, run — tuning sem recompile. |
 | **Aéreo** | **`RootMotionSource` ancorado** (não `LaunchCharacter`) + state machine própria do alvo | Pilar de design; co-altitude previsível (rev. 2026-06, doc 16 §2). |
 | **Idioma da doc** | PT-BR | Padrão dos seus projetos. |
 
@@ -148,4 +155,4 @@ Estas premissas guiam toda a doc. Mude aqui se discordar — o resto se ajusta.
 
 📝 Documentação inicial criada e **revisada por mesa-redonda de design** ([Revisão 2026-06](design/Design_Review_2026-06.md)). Código do jogo ainda é o **template Third Person** (`ADarkDungeonRiftCharacter`).
 
-🔬 **Próximo passo concreto mudou:** a revisão inseriu o **M⁻¹ — spike de validação** ([Roadmap §1.5](17_Implementation_Roadmap.md)) **antes** do M0. Antes de habilitar plugins/estruturar pastas, faça o protótipo descartável do combo aéreo (cubo+sombra+1 hit) pra provar que o pilar é *fun e legível em topdown*. Só depois → doc 04 (setup) → doc 17 (ordem de ataque).
+🔬 **Próximo passo concreto:** **M⁻¹ — spike de validação** ([43 — playbook](43_Spike_Minus1.md), [Roadmap §1.5](17_Implementation_Roadmap.md)) **antes** do M0. Conteúdo e arquitetura data-driven já estão no papel: [40 Ecos](design/40_Eco_Pool_Catalog.md) · [41 Tags](systems/41_Gameplay_Tags.md) · [42 Run Manager](systems/42_Run_Room_Manager.md) · [44 Data-Driven](systems/44_Data_Driven.md). Depois do spike → [04 Setup](systems/04_Project_Setup.md) → [17 Roadmap](17_Implementation_Roadmap.md).

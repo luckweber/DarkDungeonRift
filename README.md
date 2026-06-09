@@ -48,10 +48,10 @@ Toda a documentação está em [`docs/`](docs/00_Index.md). Comece pelo [índice
 
 | Área | Destaques |
 |---|---|
-| Design | [Visão](docs/design/01_Game_Vision.md) · [MVP](docs/design/02_MVP_Scope.md) · [Core loop](docs/design/03_Core_Loop_Roguelike.md) |
-| Sistemas | [GAS](docs/systems/05_GAS_Architecture.md) · [Câmera](docs/systems/06_Camera_TopDown.md) · [Input](docs/systems/07_Input.md) |
+| Design | [Visão](docs/design/01_Game_Vision.md) · [MVP](docs/design/02_MVP_Scope.md) · [Core loop](docs/design/03_Core_Loop_Roguelike.md) · [Ecos](docs/design/03b_Reward_System.md) · [Pool 18 Ecos](docs/design/40_Eco_Pool_Catalog.md) |
+| Sistemas | [GAS](docs/systems/05_GAS_Architecture.md) · [Data-driven](docs/systems/44_Data_Driven.md) · [Tags](docs/systems/41_Gameplay_Tags.md) · [Run Manager](docs/systems/42_Run_Room_Manager.md) · [Controles](docs/systems/39_Controls.md) |
 | Combate | [Overview](docs/combat/15_Combat_Overview.md) · [Combos aéreos](docs/combat/16_Aerial_Combos.md) · [Projéteis](docs/combat/37_Projectiles.md) |
-| Execução | [Roadmap](docs/17_Implementation_Roadmap.md) |
+| Execução | [Roadmap](docs/17_Implementation_Roadmap.md) · [Spike M⁻¹](docs/43_Spike_Minus1.md) |
 
 ## Assets de terceiros
 

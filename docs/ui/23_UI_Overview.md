@@ -27,7 +27,7 @@ A UI vive em **camadas** sobrepostas. Uma camada superior bloqueia input/visão 
 ┌─ Camada 5: LOADING / TRANSIÇÃO ─┐  ← cobre tudo (doc 26)
 ├─ Camada 4: MODAL / POPUP ───────┤  ← confirmações ("abandonar run?")
 ├─ Camada 3: MENU / TELA CHEIA ───┤  ← main menu, settings, pause (docs 24/27/29)
-├─ Camada 2: OVERLAY DE RUN ──────┤  ← seleção de boon, death screen (doc 29)
+├─ Camada 2: OVERLAY DE RUN ──────┤  ← Seleção de Eco, death screen (doc 29)
 ├─ Camada 1: HUD ─────────────────┤  ← combate (doc 28) — sempre embaixo
 └─ Camada 0: MUNDO (jogo) ────────┘
 ```
@@ -91,7 +91,7 @@ Benefício: **um lugar só** decide input mode, pause, foco e Z-order. Sem isso,
 |---|---|---|
 | **GAS Attributes** ([05](../systems/05_GAS_Architecture.md)) | delegate `GetGameplayAttributeValueChangeDelegate` | HP/Stamina no HUD (doc 28) |
 | **GAS Tags** | `RegisterGameplayTagEvent` | cooldown ativo, `State.Dead` |
-| **Run state** ([03](../design/03_Core_Loop_Roguelike.md)) | RunManager (delegates) | sala X/Y, Essência, boons ativos |
+| **Run state** ([03](../design/03_Core_Loop_Roguelike.md)) | RunManager (delegates) | sala X/Y, Essência, ECOS ATIVOS |
 | **Settings** | GameUserSettings / SaveGame ([27](27_Settings.md)) | volume, qualidade |
 
 > 🔗 **Single-player simplifica:** sem replicação, os delegates do GAS disparam local e o HUD atualiza direto. Sem `RepNotify`, sem predição de UI.
@@ -102,8 +102,8 @@ Benefício: **um lugar só** decide input mode, pause, foco e Z-order. Sem isso,
 
 | Tela | Prioridade | Doc |
 |---|---|---|
-| **HUD** (HP, abilities, boons) | 🟢 P0 | [28](28_HUD.md) |
-| **Seleção de Boon** (entre salas) | 🟢 P0 | [29](29_Run_Flow_Menus.md) |
+| **HUD** (HP, abilities, Ecos) | 🟢 P0 | [28](28_HUD.md) |
+| **Seleção de Eco** (entre salas) | 🟢 P0 | [29](29_Run_Flow_Menus.md) |
 | **Main Menu** (funcional) | 🟡 P1 | [24](24_MainMenu.md) |
 | **Pause + Death screen** | 🟡 P1 | [29](29_Run_Flow_Menus.md) |
 | **Save/Load** (só meta) | 🟡 P1 | [25](25_Save_Load_Slots.md) |
@@ -111,7 +111,7 @@ Benefício: **um lugar só** decide input mode, pause, foco e Z-order. Sem isso,
 | **Settings** (mínimo) | 🟡 P1 | [27](27_Settings.md) |
 | Tema/polish/animação | 🔵 P2 | — |
 
-> 🎯 **A UI mais importante do MVP não é um menu — é o HUD + a seleção de boon.** São as que o jogador usa *durante* o fun. Menus de borda (main/settings) podem ser feios e funcionais.
+> 🎯 **A UI mais importante do MVP não é um menu — é o HUD + a Seleção de Eco.** São as que o jogador usa *durante* o fun. Menus de borda (main/settings) podem ser feios e funcionais.
 
 ---
 
@@ -141,4 +141,4 @@ Benefício: **um lugar só** decide input mode, pause, foco e Z-order. Sem isso,
 
 ## 10. Próximo passo
 
-→ [24 — Main Menu](24_MainMenu.md) · [28 — HUD](28_HUD.md) (a mais importante) · [29 — Run-Flow Menus](29_Run_Flow_Menus.md) (seleção de boon).
+→ [24 — Main Menu](24_MainMenu.md) · [28 — HUD](28_HUD.md) (a mais importante) · [29 — Run-Flow Menus](29_Run_Flow_Menus.md) (Seleção de Eco).
