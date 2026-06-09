@@ -123,11 +123,13 @@ State.Movement.Sprinting
 State.Movement.Dashing
 State.Dead
 Ability.Attack.Light
+Ability.Attack.Heavy
 Ability.Attack.Launcher
+Ability.Attack.Air
 Ability.Attack.AirSlam
 Ability.Dash
 Cooldown.Dash
-GameplayCue.Hit.Impact
+GameplayCue.Hit.Light / .Heavy / .Air
 GameplayCue.Land.Hard
 ```
 

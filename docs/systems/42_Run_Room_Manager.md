@@ -87,10 +87,13 @@ struct FDDRRoomDefinition : public FTableRowBase
     TSoftObjectPtr<UWorld> Level;            // sublevel ou mapa
     TObjectPtr<UDDREncounterData> Encounter;   // DataAsset de ondas
     int32 Depth = 1;                         // 1-4 para escalada (33 §4)
-    bool bOffersEco = true;                  // false na sala pré-boss
-    bool bIsBossRoom = false;
+    EDDRRoomType RoomType = EDDRRoomType::Combat;  // tipo da sala (47) — FONTE ÚNICA. Boss = RoomType::Boss
+    bool bOffersEco = true;                  // Combate/Elite ofertam Eco; Tesouro/Loja não (47)
+    // bIsBossRoom REMOVIDO → use (RoomType == EDDRRoomType::Boss) p/ não ter 2 fontes da verdade
 };
 ```
+
+> 🔑 **`EDDRRoomType`** (Combate/Elite/Tesouro/Loja/Santuário/Descanso/Evento/Boss) é definido em **[47 — Tipos de Sala](../design/47_Room_Types_Routing.md)**. "É boss?" tem **uma só fonte**: `RoomType == Boss` (o antigo bool `bIsBossRoom` foi removido).
 
 ---
 

@@ -98,8 +98,8 @@ Sem juice, o combate sente "molhado". Estes são **baratos e essenciais**:
 |---|---|---|
 | **Hit-stop / freeze frame** | Congela 1-3 frames no impacto → peso | **Freeze global** — ver caixa abaixo. Não é só pausa de montage. |
 | **Screen shake** | Treme a câmera no acerto | GameplayCue (doc 06 §5) |
-| **Knockback / impulso** | Empurra o inimigo | `GE` + RootMotionSource / LaunchCharacter no alvo |
-| **Hit VFX + SFX** | Faísca + som no contato | `GameplayCue.Hit.Impact` |
+| **Knockback / impulso** | Empurra o inimigo | `GE` + **RootMotionSource** no alvo (não `LaunchCharacter` — trajetória previsível, [18 §5.3](18_Combat_System_Deep.md)) |
+| **Hit VFX + SFX** | Faísca + som no contato | `GameplayCue.Hit.Light/.Heavy/.Air` (catálogo canônico: [21 §10](../feel/21_Juice_FX.md)) |
 | **Hit flash** | Inimigo pisca branco | Material param no alvo |
 
 > 🥊 **Hit-stop é o truque #1 do hack'n'slash.** 2-3 frames de pausa no impacto transformam o feel. DMC/Bayonetta vivem disso. Implemente cedo (M1).

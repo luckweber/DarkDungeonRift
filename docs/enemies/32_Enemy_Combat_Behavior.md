@@ -73,7 +73,7 @@ Player acumula hits → Poise do inimigo cai → Poise<=0 → STAGGER (vulneráv
 
 Se **todos** os inimigos atacam ao mesmo tempo, o jogador é massacrado sem chance de ler nada. Truque AAA clássico (character-action, Hades):
 
-> 🎟️ **Token de ataque global:** só **N inimigos** (ex.: 1-2) podem estar no estado *Atacar* ao mesmo tempo. Os outros **circundam/posicionam** esperando o token. O encounter manager ([33](33_Spawning_Encounters.md)) ou um "combat director" distribui os tokens.
+> 🎟️ **Token de ataque global:** só **N inimigos** (ex.: 1-2) podem estar no estado *Atacar* ao mesmo tempo. Os outros **circundam/posicionam** esperando o token. **Dono do token: o Encounter Manager** ([33 §5](33_Spawning_Encounters.md)) — ele vê todos os inimigos da sala. (Um "combat director" dedicado só se a IA crescer, P2.)
 
 | Comportamento | Efeito |
 |---|---|

@@ -26,7 +26,8 @@ Menos do que parece. Para um ARPG topdown:
 O gait é **gameplay** → mora no CMC (autoridade), não na animação.
 
 ```cpp
-// UDDRCharacterMovementComponent
+// EDDRGait — definida UMA vez em DDRLocomotionTypes.h; o CMC (gameplay, abaixo)
+// e o AnimInstance (poses, doc 08 §2) leem a MESMA enum (não duplicar).
 UENUM(BlueprintType)
 enum class EDDRGait : uint8 { Walk, Run, Sprint };
 

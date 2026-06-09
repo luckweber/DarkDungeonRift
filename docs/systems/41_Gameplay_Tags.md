@@ -181,6 +181,24 @@ GameplayCue.Death.Enemy
 
 ---
 
+## 9b. Console vars (`ddr.*`) — catálogo
+
+Registro único dos **console vars de debug/tuning** (não são tags, mas são identificadores que apareciam espalhados):
+
+| cvar | Uso | Doc |
+|---|---|---|
+| `ddr.LocomotionDebug` | HUD de Speed/Gait/Direction/estado | [08 §5](../locomotion/08_Locomotion_Overview.md) |
+| `ddr.JumpDebug` | airtime / apex / landing | [13](../locomotion/13_Jump_Fall_Landing.md) |
+| `ddr.CombatDebug` | estado / janelas de cancelamento / buffer | [15 §6](../combat/15_Combat_Overview.md) |
+| `ddr.JuggleDebug` | altura / PopHeight / decay / hits do juggle | [16 §3](../combat/16_Aerial_Combos.md) |
+| `ddr.HitStopScale` | escala de hit-stop (tuning **e acessibilidade**) | [21 §3](../feel/21_Juice_FX.md), [27 §2](../ui/27_Settings.md) |
+| `ddr.ShakeScale` | escala de screen-shake (tuning + acessibilidade) | [21](../feel/21_Juice_FX.md), [27 §2](../ui/27_Settings.md) |
+| `ddr.ShowLocalizationKeys` | mostra chave i18n em vez do texto | [38 §11](38_Localization.md) |
+
+> 🔗 `ddr.HitStopScale` / `ddr.ShakeScale` são **expostos ao jogador** como opções de acessibilidade no [27 §2](../ui/27_Settings.md).
+
+---
+
 ## 10. Registro no projeto
 
 ### Opção A — `DefaultGameplayTags.ini` (recomendado MVP)

@@ -11,7 +11,7 @@
 ```
 [Launcher] → inimigo (e player) sobem
    ↓
-[Juggle] → ataques aéreos mantêm o alvo flutuando (gravidade do alvo reduzida)
+[Juggle] → ataques aéreos mantêm o alvo flutuando (RootMotionSource dirige a altura — §3)
    ↓
 [Air Combo] → 2-3 golpes aéreos encadeados
    ↓
@@ -26,7 +26,7 @@ Cada etapa é uma **GameplayAbility** (doc 05), gated por tags. O `State.Combat.
 
 O golpe que **inicia** o aéreo. Lança o **alvo** pra cima e (opcionalmente) o **player** junto.
 
-> ⚠️ **CONTRATO TÉCNICO (revisão de design — ver [Design Review](../design/Design_Review_2026-06.md), Davi · risco ALTA):** use **`RootMotionSource` ancorado**, **não** `LaunchCharacter`, para subir alvo e player. `LaunchCharacter` é impulso balístico não-determinístico: com gravidades diferentes (player ~1.75 do doc 13 §2 vs alvo ~0.3-0.5), os dois corpos **divergem em altura já na 2ª pancada** e o follow launch quebra. Pior: `LaunchCharacter` não prediz/replica bem (dívida de networking, §9). `RootMotionSource` (vertical force ou MoveToForce com altura-alvo) dá **posição vertical autoritativa e previsível** → os dois ficam co-altitude porque você *dirige* a altura, não a "joga".
+> ⚠️ **CONTRATO TÉCNICO (revisão de design — ver [Design Review](../design/Design_Review_2026-06.md), Davi · risco ALTA):** use **`RootMotionSource` ancorado**, **não** `LaunchCharacter`, para subir alvo e player. `LaunchCharacter` é impulso balístico não-determinístico: com gravidades/impulsos independentes, os dois corpos **divergem em altura já na 2ª pancada** e o follow launch quebra. Pior: `LaunchCharacter` não prediz/replica bem (dívida de networking, §9). `RootMotionSource` (vertical force ou MoveToForce com altura-alvo) dá **posição vertical autoritativa e previsível** → os dois ficam co-altitude porque você *dirige* a altura, não a "joga".
 
 ```
 GA_Launcher (Ability.Attack.Launcher):
@@ -63,6 +63,8 @@ O segredo do juggle é o alvo **não cair rápido**:
 - **Hitstop** em cada hit (doc 15 §5 — **freeze global**, aplica o pop *depois* do freeze) também segura o tempo.
 - **Juggle decay:** cada hit dá menos altura (anti-loop infinito) — o alvo eventualmente cai.
 
+> ⚙️ **A gravidade do alvo NÃO é o mecanismo.** Durante `State.Combat.Airborne`, a altura do alvo é **dirigida por RootMotionSource** (pop + hang + decay), não por gravidade balística — o `GravityScale` do alvo fica **~0** e a SM do alvo (§3.1) controla a queda no fim. É o contrato do §2 (você *dirige* a altura, não a *joga*). **Não** mexa em `GravityScale 0.3-0.5` — isso conflita com o RootMotionSource.
+
 ### Modelo numérico do juggle *(revisão de design — Kael; tune com debug)*
 
 "Re-flutua a cada hit" sem números vira pudim flutuante (paira pra sempre) ou cai rápido demais (frustrante). Comece com:
@@ -73,7 +75,7 @@ O segredo do juggle é o alvo **não cair rápido**:
 | **PopHeight por hit** | ~120-180 cm | Altura do re-float (dirigida por RootMotionSource) |
 | **decayFactor** | 0.85 por hit | PopHeight *= decay a cada hit → combo não é infinito |
 | **Altura mínima de combo** | ~80 cm | Abaixo disto o alvo **cai** (sai do juggle) |
-| **Cap de hits no ar** | 6-8 | Teto rígido anti-abuse (§9) |
+| **Cap de hits no ar** (`MaxJuggleHits`) | **7** (faixa de tuning 6-8) | Teto anti-abuse; atributo lido por `GA_AirAttack` ([05 §3.1](../systems/05_GAS_Architecture.md), [19](19_Abilities_Deep.md)). Eco *JugglePlus* → 8 |
 
 ```
 Hit aéreo no alvo (após o freeze do hit-stop soltar):
@@ -120,8 +122,8 @@ Fecha o combo com **peso**:
 ```
 GA_AirSlam (Ability.Attack.AirSlam):
   1. toca AM_Slam (golpe descendente)
-  2. força o PLAYER pra baixo rápido (LaunchCharacter down / RootMotion) 
-  3. arremessa o ALVO pro chão (LaunchCharacter down forte no alvo)
+  2. RootMotionSource desce o PLAYER rápido até o chão
+  3. RootMotionSource arremessa o ALVO pro chão (posição final = chão, por colisão)
   4. no impacto com o chão:
        - HARD LAND (doc 13 §6): GameplayCue.Land.Hard (poeira + shake forte)
        - dano em ÁREA (sphere overlap) nos inimigos próximos
@@ -194,7 +196,7 @@ Inimigo sendo combado precisa "se comportar":
 ## 10. Ordem de implementação (M2)
 
 ```
-1. GA_Launcher: sobe alvo + player (follow), gravidade baixa no alvo   ← primeiro
+1. GA_Launcher: sobe alvo + player (follow) via RootMotionSource (alvo GravityScale~0)   ← primeiro
 2. GA_AirAttack: 1 golpe aéreo que re-flutua o alvo
 3. Sombra no chão + escala (LEITURA — testar já aqui!)
 4. Encadeamento aéreo (seções + buffer, reusa doc 15)
@@ -209,7 +211,7 @@ Inimigo sendo combado precisa "se comportar":
 ## 11. Checklist
 
 - [ ] `GA_Launcher` sobe alvo **e** player (follow launch)
-- [ ] Gravidade reduzida no alvo durante juggle
+- [ ] Alvo dirigido por **RootMotionSource** (GravityScale~0 no Airborne), não gravidade balística
 - [ ] Tags `State.Combat.InAir` (player) / `Airborne` (alvo)
 - [ ] `GA_AirAttack` requer `InAir`, re-flutua o alvo a cada hit
 - [ ] Encadeamento aéreo reusa seções/buffer do doc 15
@@ -227,7 +229,7 @@ Inimigo sendo combado precisa "se comportar":
 | Sintoma | Causa | Fix |
 |---|---|---|
 | Inimigo sobe, player fica no chão | Sem follow launch | §2 — suba o player junto |
-| Alvo cai rápido demais p/ combar | Gravidade do alvo não reduzida | §3 — GravityScale 0.3-0.5 |
+| Alvo cai rápido demais p/ combar | PopHeight/hang baixos OU gravidade ativa no alvo | §3 — RootMotionSource pop + GravityScale~0 (não gravidade balística) |
 | Não entendo a altura (ilegível) | Sem sombra no chão | §6 — obrigatório |
 | Combo aéreo infinito | Sem decay | §3, §9 |
 | Air attack sai no chão | Faltou `ActivationRequiredTags: InAir` | §4 |

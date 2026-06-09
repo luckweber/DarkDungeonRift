@@ -74,6 +74,20 @@ ATTRIBUTE_ACCESSORS(UDDRAttributeSet, Health)
 
 > 🎯 **Dano não é atributo permanente.** Use um *meta attribute* `IncomingDamage` (transiente): o effect de dano escreve nele, e em `PostGameplayEffectExecute` você faz `Health -= IncomingDamage`. Isso permite mitigação/armor no meio.
 
+### 3.1 Atributos de combate & roguelike (registro canônico) {#3-1}
+
+Além dos vitais, declare os atributos que o **combate** e os **Ecos** ([40](../design/40_Eco_Pool_Catalog.md)) leem/modificam. **Este AttributeSet é a fonte da verdade** — os Ecos referenciam estes atributos, não os redefinem:
+
+| Atributo | Default | Lido / modificado por |
+|---|---|---|
+| **MaxJuggleHits** | **7** | cap do juggle em `GA_AirAttack` ([16 §3](../combat/16_Aerial_Combos.md)); Eco *JugglePlus* +1 |
+| **PopHeightMult** | 1.0 | multiplica o re-float aéreo (base ~150 cm é constante de combate, [16 §3](../combat/16_Aerial_Combos.md)); Eco *PopBoost* +0.15 |
+| **PoiseDamageMult** | 1.0 | dano de poise ([18 §5](../combat/18_Combat_System_Deep.md)); Eco *PoiseUp* |
+| **BonusHitStopFrames** | 0 | hit-stop ([21 §3](../feel/21_Juice_FX.md)); Eco *CritHitstop* |
+| **Gold** *(run-scoped)* | 0 | economia in-run / loja ([47](../design/47_Room_Types_Routing.md)) |
+
+> 🔑 **Contrato:** todo Eco que "muda um número do combate" mexe num **destes atributos** via `GE` ([40 §3](../design/40_Eco_Pool_Catalog.md)) — nunca num valor hardcoded. Adicionar um eixo de Eco = **+1 atributo aqui**.
+
 ---
 
 ## 4. Abilities — as ações do jogo
@@ -152,16 +166,16 @@ Dispare via `ASC->ExecuteGameplayCue(Tag, Params)` ou pelo próprio GameplayEffe
 ## 8. Fluxo de inicialização (ordem que importa)
 
 ```cpp
-// PossessedBy (server) e OnRep_PlayerState (client) — ou BeginPlay p/ NPC:
+// 🔒 Single-player (Modelo A): PLAYER em PossessedBy; NPC em BeginPlay.
 AbilitySystemComponent->InitAbilityActorInfo(this /*owner*/, this /*avatar*/);
-// → conceder abilities iniciais (server):
+// → conceder abilities iniciais:
 for (auto& AbilityClass : DefaultAbilities)
     ASC->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, InputID));
 // → aplicar effect de stats iniciais:
 ApplyInitialAttributes(); // GE com HP/Stamina/AttackPower base
 ```
 
-> ⚠️ **`InitAbilityActorInfo` no momento certo** é o erro nº 1 de quem começa GAS. No Modelo A (ASC no Character), faça em `PossessedBy` (server) e em `OnRep_PlayerState`/`BeginPlay` (client). Errar isso = abilities "não ativam" sem erro claro.
+> ⚠️ **`InitAbilityActorInfo` no momento certo** é o erro nº 1 de quem começa GAS. 🔒 **Single-player (Modelo A):** chame em **`PossessedBy`** (player, ao ser possuído pelo controller) e em **`BeginPlay`** (NPCs spawnados). Sem replicação, **não existe `OnRep_PlayerState`** — esse caminho só seria necessário num futuro co-op. Errar o momento = abilities "não ativam" sem erro claro.
 
 ---
 
@@ -169,8 +183,9 @@ ApplyInitialAttributes(); // GE com HP/Stamina/AttackPower base
 
 - [ ] `UDDRAbilitySystemComponent` + `UDDRAttributeSet` criados
 - [ ] Classe base implementa `IAbilitySystemInterface`
-- [ ] `InitAbilityActorInfo` chamado no lugar certo (server + client)
+- [ ] `InitAbilityActorInfo` chamado no lugar certo (`PossessedBy` player / `BeginPlay` NPC — §8)
 - [ ] Atributos MVP (Health/Stamina/AttackPower/MoveSpeed) com clamp
+- [ ] **Atributos de combate/Eco** declarados (§3.1: MaxJuggleHits=7, JugglePopHeight, PoiseDamageMult, BonusHitStopFrames)
 - [ ] Meta-attribute `IncomingDamage` + lógica em `PostGameplayEffectExecute`
 - [ ] Morte detectada (HP≤0 → tag `State.Dead`)
 - [ ] Abilities MVP concedidas na init (Attack/Dash; Launcher/Air vêm no M2)
@@ -187,7 +202,7 @@ ApplyInitialAttributes(); // GE com HP/Stamina/AttackPower base
 | Dano não aplica | Effect sem modifier no atributo certo, ou sem `PostGameplayEffectExecute` | Use meta-attribute `IncomingDamage` (§3) |
 | Tag não bloqueia ability | Tag em `ActivationOwnedTags` vs `ActivationBlockedTags` trocadas | Bloqueio vai em `ActivationBlockedTags` |
 | Cooldown não funciona | GE_Cooldown sem a tag, ou ability não referencia | Ability → `CooldownGameplayEffectClass` |
-| Atributo "salta" no client | Replicação/predição | Use `ReplicatedUsing` + `GAMEPLAYATTRIBUTE_REPNOTIFY` |
+| Ability não concede / atributo não inicia | `InitAbilityActorInfo` cedo demais ou pawn sem controller | §8 — `PossessedBy` (player) / `BeginPlay` (NPC). *(`ReplicatedUsing`/`REPNOTIFY` só se migrar p/ co-op.)* |
 
 ---
 

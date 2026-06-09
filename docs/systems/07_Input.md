@@ -21,6 +21,9 @@
 | **IA_Launcher** | Digital | Lançar (combo aéreo) | GAS: `Ability.Attack.Launcher` |
 | **IA_AirSlam** | Digital | Slam descendente | GAS: `Ability.Attack.AirSlam` |
 | **IA_Interact** | Digital | Pegar recompensa / porta | gameplay |
+| **IA_Pause** | Digital | Abre/fecha o pause | UI ([29 §2](../ui/29_Run_Flow_Menus.md)) |
+
+> 🕹️ **Actions de UI** (`IA_UIConfirm` / `IA_UICancel` / `IA_UINavigate`) + os 3 IMCs (`IMC_Gameplay` / `IMC_UI` / `IMC_GameplayOnly`) são definidos no **[39 §5](39_Controls.md)** (layout canônico). A lista acima é o subconjunto de **gameplay** — não duplique as de UI aqui.
 
 > 💡 **Move em topdown:** o vetor 2D do `IA_Move` precisa ser convertido pro **espaço do mundo relativo à câmera fixa** (não à rotação do personagem). Como a câmera tem yaw fixo, use a rotação do braço/câmera (só yaw) pra montar Forward/Right. Ver §3.
 
@@ -34,7 +37,8 @@ Content/DarkDungeonRift/Input/
 ├── IA_Move, IA_Look
 ├── IA_Attack, IA_Dash, IA_Jump, IA_Sprint
 ├── IA_Launcher, IA_AirSlam
-└── IA_Interact
+├── IA_Interact, IA_Pause
+└── (actions de UI + IMCs: ver 39 §5)
 ```
 
 Adicione o `IMC_Default` ao subsystem no `BeginPlay` (o template já faz isso — reaproveite).

@@ -47,6 +47,8 @@ class UDDRSaveGame : public USaveGame {
 
 > 🔢 **`SaveVersion` é obrigatório.** Quando você mudar a struct (e vai mudar), o load precisa migrar saves antigos sem crashar. Sem versão, todo update quebra os saves do jogador.
 
+> 🗂️ **Dois saves IRMÃOS:** este `UDDRSaveGame` (perfil/meta) **não** guarda configurações. Volume/vídeo/idioma/acessibilidade vivem num **`UDDRSettingsSave`** separado ([27 §3](27_Settings.md), [38](../systems/38_Localization.md)) — vídeo via `GameUserSettings`. Mantenha os dois separados (settings não devem morrer com o perfil).
+
 ---
 
 ## 3. API de Save/Load

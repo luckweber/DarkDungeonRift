@@ -17,7 +17,7 @@
 | **HUD** | nada/flutuante | **barra dedicada** ([28 §1](../ui/28_HUD.md)) |
 | **Arena** | compartilhada | **sala própria** (espaço pra esquivar) |
 
-> Reusa **tudo** do [doc 31/32](31_Enemy_Archetypes.md): é um `ADDREnemyCharacter` com `UDDREnemyData` de boss (stats altos, abilities próprias, BT/StateTree de boss). Não é uma classe nova — é dados + um BT mais rico.
+> Reusa **tudo** do [doc 31/32](31_Enemy_Archetypes.md): é um `ADDREnemyCharacter` com `UDDREnemyData` de boss (stats altos, abilities próprias, **Behavior Tree** de boss — BT no MVP igual ao resto da IA, [30 §2](30_AI_Overview.md); State Tree fica P2). Não é uma classe nova — é dados + um BT mais rico.
 
 ---
 

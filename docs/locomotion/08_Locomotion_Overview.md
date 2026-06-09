@@ -109,6 +109,8 @@ Os 11 recursos podem ser implementados de **dois jeitos**:
 
 ## 4. Estrutura do AnimGraph (bespoke)
 
+> 🔌 **Linked Anim Layers (por arma):** este AnimGraph é a **lógica/base** — `UDDRAnimInstance` implementa o `ALI_DDRLocomotion`. As **poses** (idle/walk/run/jump) vêm de uma **camada linkada por arma** (`ABP_WeaponLayer_*`), trocada no equip via `LinkAnimClassLayers` → ver **[50 §2](../combat/50_Weapons_Arsenal.md)**. Lógica única aqui; poses por arma lá. É exatamente o que resolve o "escala mal pra N armas" do §3.
+
 ```
 [State Machine: Locomotion]
    ├─ Idle ──(Distance Match opcional)

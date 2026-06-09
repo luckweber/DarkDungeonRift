@@ -53,6 +53,8 @@
 
 ## 3. Fichas por família
 
+> 🔗 **Os atributos que os Ecos modificam** (`MaxJuggleHits`, `PopHeightMult`, `PoiseDamageMult`, `BonusHitStopFrames`, `AttackPower`…) são declarados no **registro canônico [05 §3.1](../systems/05_GAS_Architecture.md)**. As fichas abaixo **referenciam** esses atributos — não os redefinem.
+
 ### ⚡ Tempestade — `Eco.Family.Tempest`
 
 | ID | Descrição (UI) | Implementação GAS | Sinergia com |

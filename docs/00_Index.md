@@ -40,8 +40,14 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 03 | [Core Loop Roguelike](design/03_Core_Loop_Roguelike.md) | Estrutura da run, salas, recompensas, meta-progressão |
 | 03b | [Sistema de Recompensa / Ecos](design/03b_Reward_System.md) 🆕 | Pool, famílias, sinergias, raridade — *"Eco transforma o combo"* |
 | 40 | [Catálogo de Ecos (conteúdo)](design/40_Eco_Pool_Catalog.md) 🆕 | **18 Ecos** MVP: nome, GAS, raridade, sinergias → `UDDREcoData` |
+| 45 | [Mundo & Lore](design/45_World_Lore.md) 🆕 | A **Fenda**, Ecos = ecos dos caídos, o Limiar, morte diegética, **combo aéreo diegético** |
+| 46 | [Profundidade & Replay](design/46_Depth_Replayability.md) 🆕 | **Auditoria da run** + mecânicas que viciam: tipos de sala, preview de porta, **Pacto/Heat**, drip narrativo |
+| 47 | [Tipos de Sala & Rota](design/47_Room_Types_Routing.md) 🆕 | Variedade de salas (elite/tesouro/loja/santuário) + **preview de porta** (rota com escolha) |
+| 48 | [Pacto / Heat](design/48_Pact_Heat.md) 🆕 | Dificuldade customizada (Calor → recompensa/desbloqueio) — **o rei da retenção** |
+| 49 | [Codex & Vozes do Limiar](design/49_Codex_Limiar.md) 🆕 | Drip narrativo: a Voz da Fenda, codex dos caídos, reações de NPC, eventos |
 | — | [**Revisão de Design 2026-06**](design/Design_Review_2026-06.md) | Mesa-redonda macro (4 especialistas) → veredito que atualizou o plano |
 | — | [**Revisão de Combate 2026-06**](design/Design_Review_Combat_2026-06.md) 🆕 | Roundtable combate/feel/juice → perfect-dodge (M1), parry P1, 1 esquiva, launcher no spike |
+| — | [**Revisão de Corpus 2026-06**](design/Design_Review_Corpus_2026-06.md) 🆕 | Auditoria dos 53 docs (4 revisores) → consistência aplicada: física do juggle, atributos GAS, cap=7, golpe Heavy, etc. |
 
 ### 🧱 Sistemas Base
 | # | Doc | Prioridade | Conteúdo |
@@ -70,6 +76,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 |---|---|---|---|
 | 15 | [Visão Geral do Combate](combat/15_Combat_Overview.md) | 🟢 P0 | Sistema de combo melee data-driven via GAS, hit detection, hit-stop |
 | 16 | [Combos Aéreos](combat/16_Aerial_Combos.md) | 🟢 P0 | Launcher, juggle, gravidade em ar, slam, finisher |
+| 50 | [Armas & Arsenal](combat/50_Weapons_Arsenal.md) 🆕 | **Arma = identidade:** habilidades + **locomoção (Linked Anim Layers)** + ataques próprios; 1 arma no MVP, arsenal pós-MVP |
 
 ### 🔬 Deep Dives — Combate · Habilidades · Feel · Juice 🆕
 > Aprofundamentos escritos pela *writers' room* (4 agentes-autores). Leia após os overviews (15/16). Jogo **single-player** (local-authoritative) → combate agressivo, slow-mo livre.

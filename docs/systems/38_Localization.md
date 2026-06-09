@@ -143,7 +143,7 @@ void UDDRLocalizationSubsystem::SetLanguage(const FString& CultureCode)
 | Local | Doc | Comportamento |
 |---|---|---|
 | **Settings → Jogabilidade → Idioma** | [27 §1](../ui/27_Settings.md) | dropdown; aplica ao vivo |
-| **Main Menu (rodapé)** | [24](24_MainMenu.md) | atalho rápido `[⚙ idioma]` |
+| **Main Menu (rodapé)** | [24](../ui/24_MainMenu.md) | atalho rápido `[⚙ idioma]` |
 | **Boot** | [27 §3](../ui/27_Settings.md) | lê `UDDRSettingsSave` e aplica antes da primeira tela |
 
 > 🔗 Ao mudar idioma, **todos os widgets visíveis** precisam atualizar. Inscreva `UDDRUIManager` ([23 §5](../ui/23_UI_Overview.md)) no delegate `OnLanguageChanged` → `RefreshAllScreens()`.

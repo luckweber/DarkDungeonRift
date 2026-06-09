@@ -41,7 +41,7 @@
 | **4 Attacks combo** | [15](combat/15_Combat_Overview.md)/[18](combat/18_Combat_System_Deep.md) `AM_Combo` · [19](combat/19_Abilities_Deep.md) `GA_Attack_Light` | 🟢 **P0** | O combo de chão. As 4 seções (Atk1-4) saem daqui. |
 | **1 Attack combo air** | [16](combat/16_Aerial_Combos.md) `GA_AirAttack` | 🟢 **P0** | Pilar — o combo no ar. |
 | **3 Attack Air to Floor** | [16 §5](combat/16_Aerial_Combos.md) `GA_AirSlam` | 🟢 **P0** | **O slam/finisher!** 3 variantes = ótimo p/ o clímax. |
-| **1–2 Dash Air Attack** | [16](combat/16_Aerial_Combos.md)/[19](combat/19_Abilities_Deep.md) | 🟡 P1 | Mobilidade aérea. *(Aparece 2× na lista — confirmar se é dup.)* |
+| **1 Dash Air Attack** | [16](combat/16_Aerial_Combos.md)/[19](combat/19_Abilities_Deep.md) | 🟡 P1 | Mobilidade aérea. *(O "2×" na lista original era duplicata → conta como **1**.)* |
 | **2 Run attacks** | [15](combat/15_Combat_Overview.md)/[19](combat/19_Abilities_Deep.md) | 🟡 P1 | Ataque correndo / lunge ("sprint cancela p/ atacar", [09 §3.2](locomotion/09_Gaits.md)). |
 | **2 Charge Attack** | [18](combat/18_Combat_System_Deep.md)/[19](combat/19_Abilities_Deep.md) | 🟡/🔵 | Pesado/carregado — ótimo, mas além do combo MVP. |
 | **1 Parry counter** | — (sistema de parry) | 🔵 P2 | **Over-scope** — parry não está no MVP (§5). |

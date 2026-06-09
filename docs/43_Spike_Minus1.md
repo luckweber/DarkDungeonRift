@@ -1,6 +1,6 @@
 # 43 — Spike M⁻¹ (validação aéreo) · 🟢 P0
 
-> **Protótipo descartável** que responde a pergunta de risco ALTA do projeto: *"follow launch + co-altitude funcionam em top-down?"* Faça **antes** do M0/M2 ([17 — Roadmap](17_Implementation_Roadmap.md), [16 §1](../combat/16_Aerial_Combos.md)).
+> **Protótipo descartável** que responde a pergunta de risco ALTA do projeto: *"follow launch + co-altitude funcionam em top-down?"* Faça **antes** do M0/M2 ([17 — Roadmap](17_Implementation_Roadmap.md), [16 §1](combat/16_Aerial_Combos.md)).
 
 > ⏱️ **Orçamento:** 2-4 dias. **Não** é feature shippable — é cubos, tags mínimas e um número na tela.
 
@@ -13,7 +13,7 @@
 | 1 | `RootMotionSource` mantém **player e alvo na mesma altitude** por ≥2s? | Altura Z dos dois diverge < 30 cm durante juggle |
 | 2 | Câmera top-down **enquadra** os dois no ar? | Ambos visíveis sem zoom manual em 1080p |
 | 3 | Leitura: jogador entende **quem está no ar**? | 3 playtesters internos acertam estado sem tutorial |
-| 4 | Pop + decay **termina** o juggle em 6-8 hits? | Alvo cai antes do hit 9 com valores do [16 §3](../combat/16_Aerial_Combos.md) |
+| 4 | Pop + decay **termina** o juggle em 6-8 hits? | Alvo cai antes do hit 9 com valores do [16 §3](combat/16_Aerial_Combos.md) |
 | 5 | Hit-stop + pop **não** desynca alturas? | Após freeze, co-altitude restaura em 1 frame |
 
 Se **qualquer** pergunta 1 ou 2 falhar → revisar câmera ou follow launch **antes** de animar personagem.
@@ -53,7 +53,7 @@ Se **qualquer** pergunta 1 ou 2 falhar → revisar câmera ou follow launch **an
 
 ### Dia 2 — RootMotionSource
 
-Implementar no `GA_Launcher` ([16 §2](../combat/16_Aerial_Combos.md)):
+Implementar no `GA_Launcher` ([16 §2](combat/16_Aerial_Combos.md)):
 
 ```
 1. Trace curto à frente → acha BP_Spike_Target
@@ -80,7 +80,7 @@ Implementar no `GA_Launcher` ([16 §2](../combat/16_Aerial_Combos.md)):
 5. hitCount++; se hitCount >= MaxJuggleHits → remove Airborne, deixa cair
 ```
 
-Parâmetros iniciais ([16 §3](../combat/16_Aerial_Combos.md)):
+Parâmetros iniciais ([16 §3](combat/16_Aerial_Combos.md)):
 
 | Var | Valor |
 |---|---|
@@ -136,7 +136,7 @@ Abilities leem a row `Default` no `BeginPlay`. Prova o pipeline [44](systems/44_
 |---|---|
 | **GO** | Seguir roadmap M0→M2 com confiança no contrato RM |
 | **Câmera falha** | Spike extra: zoom dinâmico em `InAir` ([06](systems/06_Camera_TopDown.md)) |
-| **Co-altitude falha** | Revisar RM ancorado vs. kinematic controller; consultar [16 §9](../combat/16_Aerial_Combos.md) |
+| **Co-altitude falha** | Revisar RM ancorado vs. kinematic controller; consultar [16 §9](combat/16_Aerial_Combos.md) |
 | **Leitura falha** | Adicionar silhueta/outline no ar ([21](feel/21_Juice_FX.md)) — ainda no spike |
 
 ---
@@ -157,6 +157,6 @@ Abilities leem a row `Default` no `BeginPlay`. Prova o pipeline [44](systems/44_
 
 | Se GO | Se PIVOT |
 |---|---|
-| [04 — Setup](systems/04_Project_Setup.md) → M0 | Atualizar [16](../combat/16_Aerial_Combos.md) + re-spike |
+| [04 — Setup](systems/04_Project_Setup.md) → M0 | Atualizar [16](combat/16_Aerial_Combos.md) + re-spike |
 | [05 — GAS](systems/05_GAS_Architecture.md) | — |
 | [17 — Roadmap M0](17_Implementation_Roadmap.md) | — |

@@ -40,7 +40,7 @@
 | `DT_RunLayout` | `FDDRRoomDefinition` | arenas da run | [42](42_Run_Room_Manager.md) |
 | `DA_RunConfig_MVP` | `UDDRRunConfigData` | salas/run, boss, essência | [42](42_Run_Room_Manager.md) |
 | `DA_Encounter_*` | `UDDREncounterData` | ondas por arena | [33](../enemies/33_Spawning_Encounters.md) |
-| `DA_Enemy_*` | `UDDREnemyData` | stats, BT, mesh, attacks | [31](../enemies/31_Enemy_Data.md) |
+| `DA_Enemy_*` | `UDDREnemyData` | stats, BT, mesh, attacks | [31](../enemies/31_Enemy_Archetypes.md) |
 | `DT_ProjectileData` | `FDDRProjectileData` | Atirador M3 | [37](../combat/37_Projectiles.md) |
 | `DA_MetaUpgrades` | `UDDRMetaUpgradeData` | hub | [03b §7](../design/03b_Reward_System.md) |
 

@@ -246,6 +246,7 @@ O canal **tátil** é metade do impacto e o mais esquecido. UE5.4: `Force Feedba
 | `NS_Slam_Shockwave` | impacto do slam | **onda radial no chão** (lê AoE) + crack + dust burst | 🟢 P0 (do pilar) |
 | `NS_Land_Dust` | hard land ([13 §6](../locomotion/13_Jump_Fall_Landing.md)) | poeira radial no pouso | 🟡 P1 |
 | `NS_Death_Dissolve` | morte de inimigo | dissolve/burst (combina com hit final) | 🟡 P1 |
+| `NS_WallSplat` | knockback forte bate em parede ([18 §5.3](../combat/18_Combat_System_Deep.md)) | impacto + "estrelas"/poeira na parede (reação extra) | 🔵 P2 |
 | `NS_Telegraph_*` | telegrafe de inimigo (§9 leitura) | decal/forma de aviso no chão | 🟢 P0 (Pilar 4) |
 
 > 🎯 **Topdown lê o CHÃO.** Priorize FX **achatados/no plano do chão** (rings, decals, shockwaves) sobre verticais altos — a câmera de cima vê o chão melhor que a altura. O `NS_Slam_Shockwave` no chão comunica a área de dano do slam ([16 §5](../combat/16_Aerial_Combos.md)) de forma legível. Exceção deliberada: `NS_Launch_Trail` é vertical **de propósito** (comunica altura, §11).

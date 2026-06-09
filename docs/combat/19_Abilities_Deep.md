@@ -125,6 +125,26 @@ ActivateAbility:
 
 ---
 
+### 🔨 GA_Attack_Heavy — golpe pesado (ramo do combo) · 🟡 P1
+
+> *Fecha o contrato:* o grafo de combo ([18 §4.1](18_Combat_System_Deep.md), ramo H1→H2) e a escala de juice ([21 §7](../feel/21_Juice_FX.md), coluna Heavy) **já contam com o Heavy** — aqui está a ability.
+
+| Campo | Valor |
+|---|---|
+| **Input** | `IA_Heavy` (Started) → InputID `Heavy` |
+| **AbilityTag** | `Ability.Attack` + `Ability.Attack.Heavy` |
+| **Owned** | `State.Combat.Attacking` |
+| **Cancel** | `Ability.Attack.Light` (light→heavy na janela de combo) |
+| **Custo / Cooldown** | nenhum (ritmo via recovery, não cooldown) |
+| **Montage** | `AM_Combo_Heavy` (golpes lentos/pesados, frame data próprio — [18 §1](18_Combat_System_Deep.md)) |
+| **Instancing** | `InstancedPerActor` |
+
+Mesma máquina do Light (seções + buffer + `Combat.Hit`), mas **mais lento, mais dano/poise**. Dá ao combo de chão o 2º eixo (light × heavy). **Por arma**, o ramo heavy muda ([50](50_Weapons_Arsenal.md)).
+
+> 🎚️ **MVP mínimo:** dá pra shipar **light-only** no M1; Heavy entra quando o combate de chão ganha profundidade (P1). Mas como 18/21 já o assumem, esta ficha evita o "ramo sem ability".
+
+---
+
 ### 🚀 GA_Launcher — inicia o aéreo
 
 | Campo | Valor |
@@ -266,6 +286,8 @@ ActivateAbility:
 | **`SetByCaller`** (tag→float) | magnitudes por-ativação (dano, PopHeight, distância do dash) | o GE de dano/efeito tem modifier `SetByCaller`; a ability seta o valor lendo um **atributo** (que o Eco buffa) |
 | **Nível da ability** (`AbilityLevel`) | escalonar a ability inteira por tier | `GE`/curvas indexadas por nível; conceder a ability em nível maior = versão mais forte |
 | **Atributo lido pela ability** | parâmetros "donos da ability" (cap de juggle, nº de hits) | Eco aplica `GE_RunUpgrade_*` Infinite no atributo (ex.: `MaxJuggleHits`); a ability lê em runtime |
+
+> 🔗 **Defaults canônicos** (`MaxJuggleHits`=**7**, `PopHeightMult`=1.0, `PoiseDamageMult`=1.0, `BonusHitStopFrames`=0) vivem no registro **[05 §3.1](../systems/05_GAS_Architecture.md)**. A ability **lê**; o Eco **modifica**. Aqui não se redefine valor.
 
 ```cpp
 // Exemplo: PopHeight do re-float NÃO é constante — vem de atributo (Eco-mutável):
