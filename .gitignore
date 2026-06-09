@@ -1,0 +1,65 @@
+# Unreal Engine — build & cache
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+
+# Visual Studio
+.vs/
+*.VC.db
+*.VC.VC.opendb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.opendb
+*.opensdf
+*.sdf
+*.pdb
+*.idb
+*.ilk
+*.exp
+
+# Marketplace / template content (re-import locally)
+Content/StarterContent/
+Content/ThirdPerson/
+Content/__ExternalActors__/ThirdPerson/
+Content/__ExternalObjects__/ThirdPerson/
+Content/ElfArden/
+Content/Stylized_Dungeon/
+Content/StylizedCharacter/
+Content/StylizedCreaturesBundle/
+Content/StylizedEnemyNPC/
+Content/StylizedFantasy_VFX/
+Content/StylizedFantasy_VFX_02/
+Content/Fantastic_Dungeon_Pack/
+Content/Assets/
+Content/Vefects/
+Content/Bestiary_Bundle/
+Content/Protector/
+Content/ST_Characters_JC/
+Content/Sword_and_Shield/
+Content/SlashFX/
+Content/SwordTrailVFX/
+Content/Ancient_Game/
+Content/BigFanBundle/
+
+# Claude/Cursor worktrees must not live under Source/ (duplicate Build.cs breaks UBT)
+Source/.claude/
+.claude/
+.cursor/
+
+# Visual Studio Code (optional local settings)
+.vscode/
+
+# JetBrains Rider
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local agent context (not shared)
+.agents/
