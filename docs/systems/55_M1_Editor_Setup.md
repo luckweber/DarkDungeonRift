@@ -149,7 +149,7 @@ O dash agora é **`GA_Dash`** (RootMotionSource + i-frames + cooldown).
 
 > O placeholder `TryDash()` no CMC **não é mais chamado** pelo player. Pode ignorar no M1.
 
-Montage opcional: assigne `AM_Dash` num BP filho de `GA_Dash` (P1 polish).
+✅ **Montage direcional suportada:** o `GA_Dash` agora toca **`AM_Dodge` com 8 seções** (F/FR/R/BR/B/BL/L/FL) escolhidas pelo ângulo facing→direção, **mantendo o facing** (dash-cancel de combate). Passo a passo completo (montage, Clear, BP_GA_Dash, root motion dos clips): **[59 — Dodge Direcional](../combat/59_Directional_Dodge.md)**.
 
 ---
 

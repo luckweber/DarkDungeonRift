@@ -252,7 +252,7 @@ ActivateAbility:
 | **Cancel** | **`Ability.Attack`** ← dash-cancel **sempre** (escape + fluidez, âncora nº 1) |
 | **Custo** | Stamina (se ativa — §5) ou nenhum |
 | **Cooldown** | `GE_Cooldown_Dash` (**~0.5–0.8 s** — curto de propósito: o dash é o verbo de sobrevivência, deve sentir "sempre lá"; ver [20 §4.1](../feel/20_Game_Feel.md)) |
-| **Montage** | `AM_Dash` (opcional) ou só RootMotion |
+| **Montage** | `AM_Dodge` **direcional 8-way** (seções por ângulo, facing travado) — **auto-detect**: clips COM root motion → o **clip dirige a cápsula** (×`RootMotionTranslationScale`); in-place → ConstantForce 550/0.22. Setup: [59](59_Directional_Dodge.md) |
 | **Instancing** | `InstancedPerActor` |
 
 **Fluxo de Ability Tasks:**

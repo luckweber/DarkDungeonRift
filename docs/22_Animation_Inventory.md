@@ -25,7 +25,7 @@
 | **Walk** | 92 | 🟡 P1 — gait *raro* em topdown (run é a base) |
 | **Run** | 80 | 🟢 P0 (gait base) + over-scope (equip) |
 | **Jump** | 22 | 🟢 P0 — base do combo aéreo |
-| **Dodge** | 16 | 🟢 P0 — o verbo de esquiva (= dash) |
+| **Dodge** | **48** (6 variantes × **8 direções** — corrigido: a lista original dizia "4 ways/16") | 🟢 P0 — o verbo de esquiva (= dash); impl. em [59](combat/59_Directional_Dodge.md) |
 | **Roll** | 16 | 🟡 P1 — esquiva alternativa (reconciliar, §7) |
 | **Hit** | 49 | 🟢 P0 — reações (e o knockdown do juggle) |
 | **Total** | **~334** | |
@@ -65,7 +65,7 @@
 | Grupo | Consome em | Prio | Nota |
 |---|---|:---:|---|
 | **Jump 4-way** | [13](locomotion/13_Jump_Fall_Landing.md) | 🟢 **P0** | Pulo (base do aéreo). 4-way é generoso; MVP precisa de pouco. ⚠️ ver gaps (landing, §4). |
-| **Dodge 4-way** | [19](combat/19_Abilities_Deep.md) `GA_Dash` | 🟢 **P0** | A esquiva com i-frames = o "dash" dos docs. |
+| **Dodge 8-way × 6 variantes** | [19](combat/19_Abilities_Deep.md) `GA_Dash` + [59](combat/59_Directional_Dodge.md) | 🟢 **P0** | Esquiva com i-frames. **M1 usa `02_Dodge_Combat`** (8 seções na `AM_Dodge`); `03/04_Air` → M2; `01` e `05/06_to_Run` → P2. |
 | **Roll 4-way** | [19](combat/19_Abilities_Deep.md) | 🟡 P1 | Esquiva alternativa — **reconciliar dash/dodge/roll** (§7). |
 
 ### 💥 Hit (49) — reações (gold pro combate E pro pilar)
@@ -161,7 +161,7 @@ Walk (92) + Run (80) = **172 clips direcionais**. Dois alertas honestos:
 
 - [ ] Decidir o **launcher** (4º golpe do combo vira uppercut, ou clip dedicado) — gap crítico §4
 - [ ] Confirmar **landing** dentro dos 22 de Jump (existe hard-land p/ o slam?)
-- [ ] Mapear **Dodge → GA_Dash**; decidir papel do Roll
+- [x] Mapear **Dodge → GA_Dash** ✅ direcional 8-way implementado ([59](combat/59_Directional_Dodge.md)); Roll segue cortado
 - [ ] M0: começar com **Run subset/blendspace**, não 8-way completo (§6)
 - [ ] Marcar Parry/Charge/Buff/Execution/Block/Equip como **pós-MVP** (não construir sistemas agora)
 - [ ] Idle/Run/Hit prontos p/ M0-M1; pilar aéreo prov. coberto p/ M2 (menos o launcher)
