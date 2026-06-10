@@ -12,6 +12,7 @@ UDDRAttributeSet::UDDRAttributeSet()
 	InitStamina(100.f);
 	InitMaxStamina(100.f);
 	InitAttackPower(100.f);
+	InitIncomingDamage(0.f);
 }
 
 void UDDRAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -32,7 +33,25 @@ void UDDRAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbac
 {
 	Super::PostGameplayEffectExecute(Data);
 
-	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
+	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
+	{
+		const float LocalDamage = GetIncomingDamage();
+		SetIncomingDamage(0.f);
+
+		if (LocalDamage > 0.f)
+		{
+			SetHealth(FMath::Clamp(GetHealth() - LocalDamage, 0.f, GetMaxHealth()));
+		}
+
+		if (GetHealth() <= 0.f)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->AddLooseGameplayTag(DDRTags::State_Dead);
+			}
+		}
+	}
+	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
 	}

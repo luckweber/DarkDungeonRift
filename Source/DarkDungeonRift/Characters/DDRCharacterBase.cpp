@@ -5,6 +5,7 @@
 #include "DDRAbilitySystemComponent.h"
 #include "DDRAttributeSet.h"
 #include "DDRCharacterMovementComponent.h"
+#include "DDRCombatComponent.h"
 
 ADDRCharacterBase::ADDRCharacterBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UDDRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -15,6 +16,8 @@ ADDRCharacterBase::ADDRCharacterBase(const FObjectInitializer& ObjectInitializer
 
 	AttributeSet = CreateDefaultSubobject<UDDRAttributeSet>(TEXT("AttributeSet"));
 	AbilitySystemComponent->AddAttributeSetSubobject(AttributeSet.Get());
+
+	CombatComponent = CreateDefaultSubobject<UDDRCombatComponent>(TEXT("CombatComponent"));
 }
 
 UAbilitySystemComponent* ADDRCharacterBase::GetAbilitySystemComponent() const
@@ -47,10 +50,34 @@ void ADDRCharacterBase::OnRep_PlayerState()
 
 void ADDRCharacterBase::InitializeAbilitySystem()
 {
-	if (!AbilitySystemComponent)
+	if (!AbilitySystemComponent || bAbilitySystemInitialized)
 	{
 		return;
 	}
 
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	GrantStartupAbilities();
+	bAbilitySystemInitialized = true;
+}
+
+void ADDRCharacterBase::GrantStartupAbilities()
+{
+	if (!AbilitySystemComponent || StartupAbilities.Num() == 0)
+	{
+		return;
+	}
+
+	for (const FDDRCStartupAbility& Grant : StartupAbilities)
+	{
+		if (!Grant.Ability)
+		{
+			continue;
+		}
+
+		const int32 InputID = Grant.InputID == EDDRAbilityInputID::None
+			? INDEX_NONE
+			: static_cast<int32>(Grant.InputID);
+
+		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Grant.Ability, 1, InputID, this));
+	}
 }

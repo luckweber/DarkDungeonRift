@@ -62,6 +62,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 42 | [Run & Room Manager](systems/42_Run_Room_Manager.md) 🆕 | 🟢 P0 | `DDRRunManager`, fluxo sala→onda→Eco, `DT_RunLayout` |
 | 44 | [Arquitetura Data-Driven](systems/44_Data_Driven.md) 🆕 | 🟢 P0 | **DataTables vs DataAssets**, catálogo de dados, pastas, workflow designer |
 | 54 | [M0 — Setup no Editor](systems/54_M0_Editor_Setup.md) 🆕 | 🟢 P0 | **Passo a passo** no editor após compilar M0: Input, BP_DDRPlayer, mapa teste |
+| 55 | [M1 — Setup no Editor](systems/55_M1_Editor_Setup.md) 🆕 | 🟢 P0 | **Passo a passo** M1: `IA_Attack`, `AM_Combo` + notifies, `GA_Dash` GAS, dummy |
 
 ### 🏃 Locomoção (os 11 recursos)
 | # | Doc | Recursos cobertos | Prioridade topdown |
@@ -79,7 +80,8 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 15 | [Visão Geral do Combate](combat/15_Combat_Overview.md) | 🟢 P0 | Sistema de combo melee data-driven via GAS, hit detection, hit-stop |
 | 16 | [Combos Aéreos](combat/16_Aerial_Combos.md) | 🟢 P0 | Launcher, juggle, gravidade em ar, slam, finisher |
 | 50 | [Armas & Arsenal](combat/50_Weapons_Arsenal.md) 🆕 | **Arma = identidade:** habilidades + **locomoção (Linked Anim Layers)** + ataques próprios; 1 arma no MVP, arsenal pós-MVP |
-| 51 | [Combate Defensivo](combat/51_Defensive_Combat.md) 🆕 | Perfect-dodge (M1), parry ofensivo (P1), dodge-offset — consolida Review de Combate |
+| 56 | [Combate Defensivo](combat/56_Defensive_Combat.md) 🆕 | Perfect-dodge (M1), parry ofensivo (P1), dodge-offset — consolida Review de Combate |
+| 57 | [M1: Combo no Editor](combat/57_M1_Combo_Editor_Setup.md) 🆕 | **Setup real** da `AM_Combo` + `BP_GA_AttackLight`: seções **SEM link** (fix do auto-advance), janela de combo, input buffer 0.25s |
 
 ### 🔬 Deep Dives — Combate · Habilidades · Feel · Juice 🆕
 > Aprofundamentos escritos pela *writers' room* (4 agentes-autores). Leia após os overviews (15/16). Jogo **single-player** (local-authoritative) → combate agressivo, slow-mo livre.

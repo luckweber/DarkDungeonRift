@@ -123,6 +123,8 @@ ActivateAbility:
 
 > 🔒 **Single-player:** `WaitGameplayEvent` recebe evento **local** do notify — sem rede, sem ordem de chegada. O ComboIndex vive na instância (`InstancedPerActor`); zero sync.
 
+> 🛠️ **Setup REAL no editor (M1):** passo a passo da montage + graph BP em **[57 — M1: Combo no Editor](57_M1_Combo_Editor_Setup.md)**. ⚠️ Inclui o fix do bug clássico: **Montage Sections devem ficar SEM link** (botão *Clear*) — seções linkadas auto-avançam e ignoram a janela de combo. O avanço é da ability (`MontageJumpToSection`), nunca da montage.
+
 ---
 
 ### 🔨 GA_Attack_Heavy — golpe pesado (ramo do combo) · 🟡 P1
@@ -278,7 +280,7 @@ ActivateAbility:
 | **Cargas múltiplas** | ❌ fora do MVP | Hades usa `MaxDashCount`/charges; aqui é **1 dash + cooldown** (~0.5–0.8s). Cargas extras = Eco/meta **pós-MVP** |
 | **M0 placeholder** | CMC `TryDash()` | Velocidade + `MOVE_Flying` no [CMC](../../Source/DarkDungeonRift/Movement/DDRCharacterMovementComponent.cpp) — **descartar** ao migrar pro `GA_Dash` ([54 §3.6](../systems/54_M0_Editor_Setup.md)) |
 
-> 📎 **Referência externa (tutorials Hades-style):** sweep de cápsula e interpolação BP são válidos como *ideias*; a **spec canônica** deste projeto é GAS + tags + `RootMotionSource` + perfect-dodge ([51](51_Defensive_Combat.md)). Não duplique lógica de dash no CMC depois do M1.
+> 📎 **Referência externa (tutorials Hades-style):** sweep de cápsula e interpolação BP são válidos como *ideias*; a **spec canônica** deste projeto é GAS + tags + `RootMotionSource` + perfect-dodge ([56](56_Defensive_Combat.md)). Não duplique lógica de dash no CMC depois do M1.
 
 > ⚔️ **Dash-cancel é o cancelamento-âncora nº 1** ([15 §6](15_Combat_Overview.md)). `CancelAbilitiesWithTag: Ability.Attack` faz o dash **sempre** interromper o combo (chão ou ar) — responsividade e escape. É a regra de cancelamento mais importante do MVP; sem ela o combate sente "preso".
 
@@ -286,7 +288,7 @@ ActivateAbility:
 
 > 🎛️ **Números de feel do dash são canônicos em [20 §8](../feel/20_Game_Feel.md):** distância **500–650 cm**, duração **0.20–0.25 s**, i-frames **0.20–0.30 s**, cooldown **~0.5–0.8 s**. A ability os consome via `SetByCaller`/atributo (§4) — fonte única, lida por feel **e** ability (um Eco que "buffa o dash" mexe no atributo).
 
-> 🥷 **Perfect-dodge — M1 (Review de Combate, Rha+Vi):** detalhe completo em **[51 — Combate Defensivo](51_Defensive_Combat.md)**. Resumo: um `if` no pipeline de dano ([18 §3](18_Combat_System_Deep.md)) — "hit cruzou sub-janela perfect? → witch-time + cue". Zero sistema novo, reusa o dash do MVP. A cue `GameplayCue.Dodge.Perfect` **já existe** em [21](../feel/21_Juice_FX.md). ⚠️ **Roll está CORTADO do MVP** — uma esquiva só (Dodge→Dash); Roll só volta pós-MVP com assinatura distinta (longo, comprometido, **sem** i-frame frontal). Origem: [Review de Combate](../design/Design_Review_Combat_2026-06.md).
+> 🥷 **Perfect-dodge — M1 (Review de Combate, Rha+Vi):** detalhe completo em **[56 — Combate Defensivo](56_Defensive_Combat.md)**. Resumo: um `if` no pipeline de dano ([18 §3](18_Combat_System_Deep.md)) — "hit cruzou sub-janela perfect? → witch-time + cue". Zero sistema novo, reusa o dash do MVP. A cue `GameplayCue.Dodge.Perfect` **já existe** em [21](../feel/21_Juice_FX.md). ⚠️ **Roll está CORTADO do MVP** — uma esquiva só (Dodge→Dash); Roll só volta pós-MVP com assinatura distinta (longo, comprometido, **sem** i-frame frontal). Origem: [Review de Combate](../design/Design_Review_Combat_2026-06.md).
 
 ---
 
@@ -449,4 +451,4 @@ Para mostrar que o roster **escala** sem reescrever a base — duas ultimates qu
 
 ## 10. Próximo passo
 
-→ A **máquina de combo, frame data, hit detection e fórmula de dano** que estas abilities acionam: [18 — Combat System Deep](18_Combat_System_Deep.md). **Defesa** (perfect-dodge, parry): [51 — Combate Defensivo](51_Defensive_Combat.md). O **juice** do impacto/slam: [21 — Juice & FX](../feel/21_Juice_FX.md). O pool de Ecos que concede/transforma estas abilities: [03b — Sistema de Recompensa](../design/03b_Reward_System.md).
+→ A **máquina de combo, frame data, hit detection e fórmula de dano** que estas abilities acionam: [18 — Combat System Deep](18_Combat_System_Deep.md). **Defesa** (perfect-dodge, parry): [56 — Combate Defensivo](56_Defensive_Combat.md). O **juice** do impacto/slam: [21 — Juice & FX](../feel/21_Juice_FX.md). O pool de Ecos que concede/transforma estas abilities: [03b — Sistema de Recompensa](../design/03b_Reward_System.md).

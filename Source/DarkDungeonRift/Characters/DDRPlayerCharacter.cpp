@@ -4,13 +4,17 @@
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "DDRAbilityInput.h"
+#include "DDRAbilitySystemComponent.h"
+#include "DDRCharacterMovementComponent.h"
+#include "DDRLog.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GA_AttackLight.h"
+#include "GA_Dash.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
-#include "DDRCharacterMovementComponent.h"
-#include "DDRLog.h"
 
 ADDRPlayerCharacter::ADDRPlayerCharacter()
 {
@@ -45,6 +49,9 @@ ADDRPlayerCharacter::ADDRPlayerCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+
+	StartupAbilities.Add({ UGA_AttackLight::StaticClass(), EDDRAbilityInputID::Attack });
+	StartupAbilities.Add({ UGA_Dash::StaticClass(), EDDRAbilityInputID::Dash });
 }
 
 void ADDRPlayerCharacter::BeginPlay()
@@ -91,9 +98,14 @@ void ADDRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 			EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &ADDRPlayerCharacter::StopSprint);
 		}
 
+		if (AttackAction)
+		{
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::OnAttackPressed);
+		}
+
 		if (DashAction)
 		{
-			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::Dash);
+			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::OnDashPressed);
 		}
 	}
 	else
@@ -135,15 +147,18 @@ void ADDRPlayerCharacter::StopSprint()
 	}
 }
 
-void ADDRPlayerCharacter::Dash()
+void ADDRPlayerCharacter::OnAttackPressed()
 {
-	if (UDDRCharacterMovementComponent* DDRMove = GetDDRMovement())
+	if (AbilitySystemComponent)
 	{
-		FVector WorldDirection = GetLastMovementInputVector();
-		if (WorldDirection.IsNearlyZero())
-		{
-			WorldDirection = GetActorForwardVector();
-		}
-		DDRMove->TryDash(WorldDirection);
+		AbilitySystemComponent->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::Attack));
+	}
+}
+
+void ADDRPlayerCharacter::OnDashPressed()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::Dash));
 	}
 }

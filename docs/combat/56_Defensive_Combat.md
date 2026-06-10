@@ -1,4 +1,4 @@
-# 51 — Combate Defensivo (Perfect-Dodge & Parry) · 🟢 P0 (dash) / 🟡 P1 (parry)
+# 56 — Combate Defensivo (Perfect-Dodge & Parry) · 🟢 P0 (dash) / 🟡 P1 (parry)
 
 > **A camada defensiva do hack'n'slash:** esquiva com i-frames, perfect-dodge (counterplay barato) e parry ofensivo (parry→stagger→launch). Consolida o que estava espalhado em [19](19_Abilities_Deep.md), [20](../feel/20_Game_Feel.md), [21](../feel/21_Juice_FX.md) e a [Review de Combate](../design/Design_Review_Combat_2026-06.md). Pré-req: [18 §3/§5.6](18_Combat_System_Deep.md) · [07 Input](../systems/07_Input.md) · [39 Controles](../systems/39_Controls.md).
 

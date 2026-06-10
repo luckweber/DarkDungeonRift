@@ -144,7 +144,7 @@ O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash(
 |---|---|
 | `TryDash()` no CMC | **`GA_Dash`** ([19 §3](../combat/19_Abilities_Deep.md)) |
 | Cooldown float no CMC | `GE_Cooldown_Dash` + tag `Cooldown.Dash` |
-| Sem i-frames | `State.Movement.Dashing` + perfect-dodge ([51](../combat/51_Defensive_Combat.md)) |
+| Sem i-frames | `State.Movement.Dashing` + perfect-dodge ([56](../combat/56_Defensive_Combat.md)) |
 | Sem sweep de parede | Capsule trace opcional (P1) para clamp de distância |
 
 > 🗑️ **Não invista** em polish do dash do CMC (montage, VFX, anti-wall). No M1, **remova** a lógica de dash do CMC e deixe só o `GA_Dash` — evita duas fontes da verdade.
@@ -224,12 +224,7 @@ O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash(
 
 ## 8. Próximo passo (M1)
 
-→ [05 — GAS](05_GAS_Architecture.md): `GA_Attack_Light`, hit detection, hit-stop · [15 Combate](../combat/15_Combat_Overview.md) · [19 Abilities](../combat/19_Abilities_Deep.md).
-
-Assets de editor no M1:
-- `IA_Attack`, montages `AM_Combo_*`
-- `BP_TrainingDummy` com ASC
-- Gameplay Effects `GE_Damage`
+→ **[55 — M1 Editor Setup](55_M1_Editor_Setup.md)** (passo a passo: `IA_Attack`, `AM_Combo` + notifies, dummy) · [05 GAS](05_GAS_Architecture.md) · [15 Combate](../combat/15_Combat_Overview.md).
 
 ---
 

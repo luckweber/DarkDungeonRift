@@ -141,6 +141,8 @@ Eco.Void.SlowWorld
 | Tag | Disparado por | Consumido por |
 |---|---|---|
 | `Event.Combat.Hit` | `ANS_Hitbox` | pipeline dano + combo ([15](../combat/15_Combat_Overview.md)) |
+| `Event.Combat.ComboWindow.Begin` | `ANS_ComboWindow` (NotifyBegin) | `GA_Attack_*` — abre janela; consome buffer ([57](../combat/57_M1_Combo_Editor_Setup.md)) |
+| `Event.Combat.ComboWindow.End` | `ANS_ComboWindow` (NotifyEnd) | `GA_Attack_*` — fecha janela; limpa buffer |
 | `Event.Combat.Launch` | notify launcher | `GA_Launcher` |
 | `Event.Combat.SlamDown` | notify slam | `GA_AirSlam` |
 | `Event.Combat.SlamLand` | impacto chão | AoE + hard land |

@@ -44,6 +44,7 @@ Content/SlashFX/
 Content/SwordTrailVFX/
 Content/Ancient_Game/
 Content/BigFanBundle/
+Content/Sword_Animations/
 
 # Claude/Cursor worktrees must not live under Source/ (duplicate Build.cs breaks UBT)
 Source/.claude/

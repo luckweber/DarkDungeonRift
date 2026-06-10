@@ -2,6 +2,4 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-
-DECLARE_LOG_CATEGORY_EXTERN(LogDDR, Log, All);
+#include "DarkDungeonRift.h"

@@ -198,7 +198,7 @@ Content/
 |---|---|---|
 | Inimigos nascem no colo | Spawn point perto do start | §2 — distância mín. 800cm |
 | IA não move | NavMesh faltando/buraco | §6 checklist NavMesh |
-| Porta não abre | EncounterManager não conta mortes | [33 §10](33_Spawning_Encounters.md) |
+| Porta não abre | EncounterManager não conta mortes | [33 §10](../enemies/33_Spawning_Encounters.md) |
 | Runs iguais | Sem embaralhar pool | §4 embaralhamento |
 | Telegrafe ilegível | Decal escuro / chão busy | §1 — chão plano + contraste |
 | Boss apertado | Arena pequena | Boss ≥28×28m §3 |
