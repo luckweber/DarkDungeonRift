@@ -176,4 +176,4 @@ GameplayCue.Land.Hard
 
 ## 8. Próximo passo
 
-→ [05 — Arquitetura GAS](05_GAS_Architecture.md): montar o esqueleto de combate/stats.
+→ **[54 — M0 Editor Setup](54_M0_Editor_Setup.md)** (Input, BP_DDRPlayer, mapa teste — passo a passo no editor) · [05 — Arquitetura GAS](05_GAS_Architecture.md): montar abilities no M1.

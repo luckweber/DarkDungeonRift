@@ -4,16 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "DarkDungeonRiftGameMode.generated.h"
+#include "DDRGameMode.generated.h"
 
-UCLASS(minimalapi)
-class ADarkDungeonRiftGameMode : public AGameModeBase
+UCLASS()
+class DARKDUNGEONRIFT_API ADDRGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
 public:
-	ADarkDungeonRiftGameMode();
+	ADDRGameMode();
 };
-
-
-

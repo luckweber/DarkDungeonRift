@@ -49,7 +49,7 @@ OnIncomingDamage(HitInfo):
 | Witch-time | 0.3× global, ~0.5s | `GA_Dash` / Eco SlowWorld |
 | Hit-stop pré-slow | 8-10 frames | [21 §3](../feel/21_Juice_FX.md) |
 
-> 🥷 **ROI máximo:** reusa `GA_Dash`, cue já existe em [21](../feel/21_Juice_FX.md), Eco `SlowWorld` estende duração ([40](../design/40_Eco_Pool_Catalog.md)). Entra no **M1** junto com hit-stop.
+> 🥷 **ROI máximo:** reusa `GA_Dash`, cue já existe em [21](../feel/21_Juice_FX.md), Eco `SlowWorld` estende duração ([40](../design/40_Eco_Pool_Catalog.md)). Entra no **M1** junto com hit-stop. Implementação C++ (direção, anti-parede, o que *não* fazer): [19 §3 — GA_Dash](19_Abilities_Deep.md).
 
 ### Tags
 

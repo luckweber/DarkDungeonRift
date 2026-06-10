@@ -267,6 +267,19 @@ ActivateAbility:
   5. OnRootMotionFinished / Timer → EndAbility (GE de i-frame expira sozinho)
 ```
 
+**Implementação C++ (notas úteis):**
+
+| Tópico | Decisão DDR | Detalhe |
+|---|---|---|
+| **Direção** | último input ou forward | `GetCharacterMovement()->GetLastInputVector()`; se ~zero → `GetActorForwardVector()` ([07 §3](../systems/07_Input.md)) |
+| **Movimento no tempo** | `RootMotionSource` (canônico) | Distância/duração via atributo ou `SetByCaller` — **não** `SetActorLocation` + `VInterpTo`/`Timeline` (briga com CMC e cancelamentos) |
+| **Parâmetros** | `UPROPERTY(EditAnywhere, Category="Dash")` | Distância, duração, cooldown tunáveis no editor/asset — mesma filosofia de data-driven do §4 |
+| **Anti-parede** | 🟡 P1 opcional | Antes de aplicar RM: `UKismetSystemLibrary::CapsuleTraceMultiForObjects` na direção → **clamp** da distância se bater ([52 §1](../world/52_Arena_Level_Design.md)). Evita atravessar parede em arenas fechadas |
+| **Cargas múltiplas** | ❌ fora do MVP | Hades usa `MaxDashCount`/charges; aqui é **1 dash + cooldown** (~0.5–0.8s). Cargas extras = Eco/meta **pós-MVP** |
+| **M0 placeholder** | CMC `TryDash()` | Velocidade + `MOVE_Flying` no [CMC](../../Source/DarkDungeonRift/Movement/DDRCharacterMovementComponent.cpp) — **descartar** ao migrar pro `GA_Dash` ([54 §3.6](../systems/54_M0_Editor_Setup.md)) |
+
+> 📎 **Referência externa (tutorials Hades-style):** sweep de cápsula e interpolação BP são válidos como *ideias*; a **spec canônica** deste projeto é GAS + tags + `RootMotionSource` + perfect-dodge ([51](51_Defensive_Combat.md)). Não duplique lógica de dash no CMC depois do M1.
+
 > ⚔️ **Dash-cancel é o cancelamento-âncora nº 1** ([15 §6](15_Combat_Overview.md)). `CancelAbilitiesWithTag: Ability.Attack` faz o dash **sempre** interromper o combo (chão ou ar) — responsividade e escape. É a regra de cancelamento mais importante do MVP; sem ela o combate sente "preso".
 
 > 🛡️ **i-frames = tag, não código de dano.** `GA_Dash` só **concede** `State.Movement.Dashing` (via GE Duration). Quem *lê* e ignora o dano é o pipeline do [18](18_Combat_System_Deep.md). Isto mantém a ability burra e data-driven — um Eco pode estender a duração do i-frame mexendo no GE, sem tocar a ability.

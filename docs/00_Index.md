@@ -61,6 +61,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 41 | [Gameplay Tags (catálogo)](systems/41_Gameplay_Tags.md) 🆕 | 🟢 P0 | Referência única: `Ability.*`, `State.*`, `Eco.*`, `Event.*`, slots GAS |
 | 42 | [Run & Room Manager](systems/42_Run_Room_Manager.md) 🆕 | 🟢 P0 | `DDRRunManager`, fluxo sala→onda→Eco, `DT_RunLayout` |
 | 44 | [Arquitetura Data-Driven](systems/44_Data_Driven.md) 🆕 | 🟢 P0 | **DataTables vs DataAssets**, catálogo de dados, pastas, workflow designer |
+| 54 | [M0 — Setup no Editor](systems/54_M0_Editor_Setup.md) 🆕 | 🟢 P0 | **Passo a passo** no editor após compilar M0: Input, BP_DDRPlayer, mapa teste |
 
 ### 🏃 Locomoção (os 11 recursos)
 | # | Doc | Recursos cobertos | Prioridade topdown |
