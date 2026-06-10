@@ -53,21 +53,22 @@ O recurso #3 é o mais importante porque sustenta todos os outros. Princípios:
 
 ### 2.2 Estado em um lugar só
 
-O `AnimInstance` calcula **uma vez por frame** (em `NativeThreadSafeUpdateAnimation`) um struct de estado e o AnimGraph só **lê**:
+✅ **Como ficou no código (M0):** o **CMC** calcula o snapshot **uma vez por frame** (`UDDRCharacterMovementComponent::UpdateLocomotionState`, no Tick) e expõe `GetLocomotionState()` (BlueprintPure). O AnimInstance/ABP só **lê** — hoje o `ABP_DDRPlayer` (Blueprint, [54 §3.3](../systems/54_M0_Editor_Setup.md)) puxa direto do CMC. Isso é até *mais* fiel à regra de ouro do §2.1: a fonte do estado é o dono do movimento.
 
 ```cpp
-// DDRLocomotionTypes.h — o "contrato" de estado
+// DDRLocomotionTypes.h — o "contrato" de estado (REAL, como no código)
 USTRUCT(BlueprintType)
 struct FDDRLocomotionState
 {
-    float Speed;            // tamanho da velocidade horizontal
+    float Speed;            // tamanho da velocidade horizontal (Size2D)
     FVector Velocity;
     FVector Acceleration;
     float Direction;        // -180..180 relativo ao forward (p/ 8-way / blendspace)
-    bool bIsMoving;
+    bool bIsMoving;         // Speed > 10
     bool bIsFalling;
     EDDRGait Gait;          // Walk / Run / Sprint
-    bool bWantsToStop;      // accel ~0 mas velocidade > 0 → distance match stop
+    bool bWantsToStop;      // bIsMoving && accel ~0 → gancho do distance match stop (doc 10)
+    bool bIsDashing;        // dash em andamento
 };
 ```
 
@@ -83,9 +84,9 @@ enum class EDDRMovementMode : uint8 { Grounded, InAir, Combat };
 
 > Adicionar um gait novo (ex.: "Exhausted") = 1 enum + 1 entrada de dados, **não** reescrever o AnimGraph. Isso é o "extendable".
 
-### 2.4 Thread-safe update
+### 2.4 Thread-safe update (P1 — quando houver `UDDRAnimInstance` C++)
 
-Use `NativeThreadSafeUpdateAnimation` (roda no worker thread) para o cálculo de estado. Mantém o frame barato com muitos inimigos (importante num jogo de hordas).
+Hoje o estado vem do CMC e o ABP é Blueprint puro (§2.2) — suficiente pro MVP. **Quando** criar um `UDDRAnimInstance` C++ (P1, ex.: pra distance matching/curvas do doc 10), copie o snapshot em `NativeThreadSafeUpdateAnimation` (worker thread): a cópia local mantém o frame barato com muitos inimigos (importante num jogo de hordas).
 
 ---
 
@@ -108,6 +109,8 @@ Os 11 recursos podem ser implementados de **dois jeitos**:
 ---
 
 ## 4. Estrutura do AnimGraph (bespoke)
+
+> 🛠️ **Como montar ESTE graph no editor, clique a clique:** [58 — AnimGraph Passo a Passo](58_AnimGraph_Step_by_Step.md) (M0/M1 real: vars, blendspace, transições, Slot).
 
 > 🔌 **Linked Anim Layers (por arma):** este AnimGraph é a **lógica/base** — `UDDRAnimInstance` implementa o `ALI_DDRLocomotion`. As **poses** (idle/walk/run/jump) vêm de uma **camada linkada por arma** (`ABP_WeaponLayer_*`), trocada no equip via `LinkAnimClassLayers` → ver **[50 §2](../combat/50_Weapons_Arsenal.md)**. Lógica única aqui; poses por arma lá. É exatamente o que resolve o "escala mal pra N armas" do §3.
 
@@ -137,7 +140,8 @@ Os 11 recursos podem ser implementados de **dois jeitos**:
 Adote console vars de debug **agora** (prática AAA, barata):
 
 ```
-ddr.LocomotionDebug 1   // HUD: Speed, Gait, Direction, bIsFalling, state atual
+ddr.LocomotionDebug 1   // REAL (M0): texto cyan sobre o player — Gait, Speed, Sprint, Dash, CD
+                        // (expanda com Direction/bIsFalling/estado quando precisar)
 ddr.JumpDebug 1         // airtime, apex, landing prediction
 ```
 
@@ -184,7 +188,8 @@ bAttacking = ASC && ASC->HasMatchingGameplayTag(Tag_State_Combat_Attacking);
 - [ ] `UDDRAnimInstance` só **lê** estado, não comanda gameplay
 - [ ] `FDDRLocomotionState` centraliza o estado (calculado 1×/frame)
 - [ ] Gaits/modos como **enums**, não booleans soltos
-- [ ] Cálculo em `NativeThreadSafeUpdateAnimation` (thread-safe)
+- [x] Snapshot calculado no CMC (`UpdateLocomotionState`) e lido pelo ABP — ✅ no código M0
+- [ ] (P1) `UDDRAnimInstance` C++ com cópia em `NativeThreadSafeUpdateAnimation`
 - [ ] AnimGraph com SM Locomotion + SM Air + Slot DefaultSlot p/ combate
 - [ ] Console debug (`ddr.LocomotionDebug`) desde o início
 - [ ] AnimInstance lê tags do ASC (ponte com GAS)

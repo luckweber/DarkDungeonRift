@@ -6,6 +6,7 @@
 #include "DDRAttributeSet.h"
 #include "DDRCharacterMovementComponent.h"
 #include "DDRCombatComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 ADDRCharacterBase::ADDRCharacterBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UDDRCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -18,6 +19,22 @@ ADDRCharacterBase::ADDRCharacterBase(const FObjectInitializer& ObjectInitializer
 	AbilitySystemComponent->AddAttributeSetSubobject(AttributeSet.Get());
 
 	CombatComponent = CreateDefaultSubobject<UDDRCombatComponent>(TEXT("CombatComponent"));
+
+	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(GetMesh(), WeaponSocketName);
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMesh->SetGenerateOverlapEvents(false);
+}
+
+void ADDRCharacterBase::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// O SetupAttachment do construtor usa o default C++; re-anexa se o BP trocou o socket.
+	if (WeaponMesh && GetMesh() && WeaponMesh->GetAttachSocketName() != WeaponSocketName)
+	{
+		WeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, WeaponSocketName);
+	}
 }
 
 UAbilitySystemComponent* ADDRCharacterBase::GetAbilitySystemComponent() const

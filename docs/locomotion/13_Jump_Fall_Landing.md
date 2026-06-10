@@ -21,19 +21,21 @@ Este doc cobre a **base física e de animação do ar**, que ambos usam. O comba
 
 ```cpp
 // UDDRCharacterMovementComponent / Character
-JumpZVelocity = 600.f;        // força inicial do pulo
-GravityScale  = 1.75f;        // gravidade "de jogo" (>1 = cai mais rápido, sente melhor)
-AirControl    = 0.4f;         // quanto dá pra dirigir no ar (0-1)
-// queda mais pesada que subida (game feel clássico):
-// aplique GravityScale maior na descida (ex.: ×1.25) ou via custom gravity
+JumpZVelocity = 700.f;        // ✅ valor REAL do código (M0)
+AirControl    = 0.35f;        // ✅ valor REAL do código (M0)
+GravityScale  = 1.75f;        // ✅ no código (M1) — gravidade "de jogo"
+// ✅ Queda mais pesada que subida: GetGravityZ() multiplica por
+// FallingGravityMultiplier (1.25, editável "DDR|Jump") quando Velocity.Z < 0.
 ```
 
 | Parâmetro | Valor inicial | Efeito |
 |---|---|---|
-| `JumpZVelocity` | 600-750 | Altura do pulo |
-| `GravityScale` | 1.5-2.0 | Peso da queda. **>1 sente muito melhor** que gravidade real |
-| `AirControl` | 0.3-0.5 | Manobra no ar |
-| Gravidade na descida | ×1.2-1.5 | Apex flutuante + queda rápida = "feel AAA" |
+| `JumpZVelocity` | **700** ✅ no código (faixa 600-750) | Altura do pulo |
+| `GravityScale` | **1.75** ✅ no código (1.5-2.0) | Peso da queda. >1 sente muito melhor que gravidade real |
+| `AirControl` | **0.35** ✅ no código (faixa 0.3-0.5) | Manobra no ar |
+| Gravidade na descida | **×1.25** ✅ no código (`FallingGravityMultiplier`, 1.2-1.5) | Apex flutuante + queda rápida = "feel AAA" |
+
+> ⚖️ **Nota de tuning:** com a gravidade subindo de 1.0 → 1.75, a **altura do pulo caiu** (~250cm → ~143cm com JumpZ 700) — é o arco "snappy" do design. Se quiser pulo mais alto, **suba `JumpZVelocity`** (ex.: 800-900 ≈ 187-236cm), não desça a gravidade.
 
 ---
 
@@ -47,7 +49,7 @@ Mesmo em topdown, um pulo "bom" vem destes truques (todos no CMC):
 | **Jump buffer** | Aceita pulo apertado ~0.1s antes de pousar | 🟡 P1 |
 | **Apex hang** | Gravidade reduzida no topo do arco | 🟡 P1 |
 | **Variable jump height** | Soltar cedo = pulo mais baixo (apex-cut) | 🟡 P1 |
-| **Gravidade assimétrica** | Sobe leve, cai pesado | 🟢 P0 (1 linha, grande efeito) |
+| **Gravidade assimétrica** | Sobe leve, cai pesado | ✅ **no código** (`GetGravityZ` ×1.25 na descida) |
 
 > 🪜 Estes mesmos truques são o que faz o **juggle aéreo** sentir bom depois. Construa-os no CMC agora.
 
@@ -135,8 +137,8 @@ BrakingDecelerationWalking aplicado; opcional "landing retain" (0.4) por X frame
 
 ## 8. Checklist
 
-- [ ] CMC: `JumpZVelocity`, `GravityScale`>1, `AirControl` tunados
-- [ ] Gravidade assimétrica (cai mais pesado) — P0
+- [x] CMC: `JumpZVelocity` (700) e `AirControl` (0.35) ✅ no código M0
+- [x] `GravityScale` 1.75 + **gravidade assimétrica** (`FallingGravityMultiplier` 1.25 via `GetGravityZ`) ✅ no código M1
 - [ ] Coyote/buffer/apex-hang/variable-height — P1
 - [ ] State machine de Air (JumpStart→Rising→Fall→Land)
 - [ ] Momentum de sprint se propaga ao pulo (gait-jump "de graça")

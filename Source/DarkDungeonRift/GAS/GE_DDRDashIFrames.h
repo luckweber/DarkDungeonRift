@@ -13,4 +13,7 @@ class DARKDUNGEONRIFT_API UGE_DDRDashIFrames : public UGameplayEffect
 
 public:
 	UGE_DDRDashIFrames();
+
+protected:
+	virtual void PostInitProperties() override;
 };

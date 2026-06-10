@@ -130,6 +130,28 @@ ActivateAbility:
 | **GE_RunUpgrade_Damage** | Infinite | "+15% dano" — buff permanente **da run** |
 | **GE_Dead** | Infinite | Tag `State.Dead`, zera input |
 
+### ⚠️ Conceder tags num GE (padrão UE 5.3+ — não use a API deprecada)
+
+`InheritableOwnedTagsContainer` está **deprecado** (warning C4996; quebra em engine futura). Todo GE C++ que **concede tag ao alvo** (`GE_Cooldown_*`, `GE_DashIFrames`, `GE_Dead`…) usa o **GE Component**:
+
+```cpp
+#include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
+
+// no PostInitProperties do GE (NÃO no construtor — FindOrAddComponent chama NewObject e crasha o CDO ao abrir o editor):
+void UGE_DDRCooldownDash::PostInitProperties()
+{
+    Super::PostInitProperties();
+    if (!HasAnyFlags(RF_ClassDefaultObject)) { return; }
+
+    FInheritedTagContainer TagContainer;
+    TagContainer.Added.AddTag(DDRTags::Cooldown_Dash);
+    UTargetTagsGameplayEffectComponent& TargetTags = FindOrAddComponent<UTargetTagsGameplayEffectComponent>();
+    TargetTags.SetAndApplyTargetTagChanges(TagContainer);
+}
+```
+
+> ✅ Aplicado em `GE_DDRCooldownDash` e `GE_DDRDashIFrames`. Em GE **assets** (Blueprint), o equivalente é adicionar o componente **"Grant Tags to Target Actor"** no painel Components do GE.
+
 > 🧩 **Upgrades de run = GameplayEffects Infinite + Abilities concedidas.** Pegou "+15% dano"? Aplique um `GE_RunUpgrade_Damage` Infinite no ASC. Pegou "dash causa dano"? Conceda/troque a `GA_Dash`. O [core loop](../design/03_Core_Loop_Roguelike.md) inteiro se expressa em GAS — por isso ele é P0.
 
 ---

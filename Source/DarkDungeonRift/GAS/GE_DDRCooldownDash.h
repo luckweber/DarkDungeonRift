@@ -13,4 +13,7 @@ class DARKDUNGEONRIFT_API UGE_DDRCooldownDash : public UGameplayEffect
 
 public:
 	UGE_DDRCooldownDash();
+
+protected:
+	virtual void PostInitProperties() override;
 };

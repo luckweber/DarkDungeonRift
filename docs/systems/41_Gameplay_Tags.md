@@ -191,7 +191,7 @@ Registro único dos **console vars de debug/tuning** (não são tags, mas são i
 |---|---|---|
 | `ddr.LocomotionDebug` | HUD de Speed/Gait/Direction/estado | [08 §5](../locomotion/08_Locomotion_Overview.md) |
 | `ddr.JumpDebug` | airtime / apex / landing | [13](../locomotion/13_Jump_Fall_Landing.md) |
-| `ddr.CombatDebug` | estado / janelas de cancelamento / buffer | [15 §6](../combat/15_Combat_Overview.md) |
+| `ddr.CombatDebug` | **1 = log + draw**: volume do sweep da lâmina (verde/vermelho), impactos, janelas de combo | [15 §6](../combat/15_Combat_Overview.md), [55 §3.4](55_M1_Editor_Setup.md) |
 | `ddr.JuggleDebug` | altura / PopHeight / decay / hits do juggle | [16 §3](../combat/16_Aerial_Combos.md) |
 | `ddr.HitStopScale` | escala de hit-stop (tuning **e acessibilidade**) | [21 §3](../feel/21_Juice_FX.md), [27 §2](../ui/27_Settings.md) |
 | `ddr.ShakeScale` | escala de screen-shake (tuning + acessibilidade) | [21](../feel/21_Juice_FX.md), [27 §2](../ui/27_Settings.md) |

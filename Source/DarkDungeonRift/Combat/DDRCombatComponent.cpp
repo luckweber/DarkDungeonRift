@@ -4,10 +4,13 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "DDRAttributeSet.h"
+#include "DDRCharacterBase.h"
 #include "DDRGameplayTags.h"
 #include "DDRHitStopSubsystem.h"
 #include "DDRLog.h"
+#include "DrawDebugHelpers.h"
 #include "GE_DDRDamage.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
@@ -15,7 +18,7 @@
 static TAutoConsoleVariable<int32> CVarCombatDebug(
 	TEXT("ddr.CombatDebug"),
 	0,
-	TEXT("1 = log combat hits, combo windows, and damage."),
+	TEXT("1 = log + debug draw (blade sweep volume, impact points, combo windows)."),
 	ECVF_Default);
 
 UDDRCombatComponent::UDDRCombatComponent()
@@ -46,16 +49,40 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		return;
 	}
 
-	const FVector Start = OwnerActor->GetActorLocation() + FVector(0.f, 0.f, 50.f);
-	const FVector Forward = OwnerActor->GetActorForwardVector();
-	const FVector End = Start + Forward * (Params.SweepForwardOffset + Params.SweepReach);
+	// Sweep da LAMINA (doc 18 par.2): entre os sockets weapon_start/weapon_end da arma.
+	// Fallback (sem arma ou sem sockets): sweep frontal do ator — comportamento pre-M1.
+	FVector Start;
+	FVector End;
+	bool bBladeSweep = false;
+
+	if (const ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(OwnerActor))
+	{
+		if (UStaticMeshComponent* Weapon = OwnerChar->GetWeaponMesh())
+		{
+			if (Weapon->GetStaticMesh()
+				&& Weapon->DoesSocketExist(WeaponTraceSocketStart)
+				&& Weapon->DoesSocketExist(WeaponTraceSocketEnd))
+			{
+				Start = Weapon->GetSocketLocation(WeaponTraceSocketStart);
+				End = Weapon->GetSocketLocation(WeaponTraceSocketEnd);
+				bBladeSweep = true;
+			}
+		}
+	}
+
+	if (!bBladeSweep)
+	{
+		Start = OwnerActor->GetActorLocation() + FVector(0.f, 0.f, 50.f);
+		const FVector Forward = OwnerActor->GetActorForwardVector();
+		End = Start + Forward * (Params.SweepForwardOffset + Params.SweepReach);
+	}
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(DDRMeleeSweep), false, OwnerActor);
 	FCollisionObjectQueryParams ObjectParams;
 	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
 
 	TArray<FHitResult> Hits;
-	const bool bHit = GetWorld()->SweepMultiByObjectType(
+	GetWorld()->SweepMultiByObjectType(
 		Hits,
 		Start,
 		End,
@@ -64,11 +91,7 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		FCollisionShape::MakeSphere(Params.SweepRadius),
 		QueryParams);
 
-	if (!bHit)
-	{
-		return;
-	}
-
+	int32 NewHits = 0;
 	for (const FHitResult& Hit : Hits)
 	{
 		AActor* HitActor = Hit.GetActor();
@@ -83,15 +106,30 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		}
 
 		HitActorsThisSwing.Add(HitActor);
+		++NewHits;
 		ApplyDamageToTarget(HitActor, Params);
 		SendHitEvent(HitActor);
 
 		if (CVarCombatDebug.GetValueOnGameThread() > 0)
 		{
-			UE_LOG(LogDDR, Log, TEXT("Combat hit %s section=%d damage=%.1f"),
-				*GetNameSafe(HitActor), Params.ComboSectionIndex, Params.BaseDamage);
+			UE_LOG(LogDDR, Log, TEXT("Combat hit %s section=%d damage=%.1f blade=%d"),
+				*GetNameSafe(HitActor), Params.ComboSectionIndex, Params.BaseDamage, bBladeSweep ? 1 : 0);
+
+#if ENABLE_DRAW_DEBUG
+			DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 8, FColor::Yellow, false, 0.8f);
+#endif
 		}
 	}
+
+#if ENABLE_DRAW_DEBUG
+	if (CVarCombatDebug.GetValueOnGameThread() > 0)
+	{
+		const FColor SweepColor = NewHits > 0 ? FColor::Red : FColor::Green;
+		DrawDebugLine(GetWorld(), Start, End, SweepColor, false, 0.5f, 0, 1.5f);
+		DrawDebugSphere(GetWorld(), Start, Params.SweepRadius, 12, SweepColor, false, 0.5f);
+		DrawDebugSphere(GetWorld(), End, Params.SweepRadius, 12, SweepColor, false, 0.5f);
+	}
+#endif
 }
 
 void UDDRCombatComponent::OpenComboWindow()

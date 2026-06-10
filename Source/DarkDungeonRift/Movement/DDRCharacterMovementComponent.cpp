@@ -2,6 +2,9 @@
 
 #include "DDRCharacterMovementComponent.h"
 
+#include "AbilitySystemComponent.h"
+#include "DDRCharacterBase.h"
+#include "DDRGameplayTags.h"
 #include "DDRLocomotionTypes.h"
 
 #include "DrawDebugHelpers.h"
@@ -24,37 +27,26 @@ UDDRCharacterMovementComponent::UDDRCharacterMovementComponent()
 	AirControl = 0.35f;
 	BrakingDecelerationWalking = 2000.f;
 	BrakingDecelerationFalling = 1500.f;
-	GravityScale = 1.f;
+	// Gravidade "de jogo" (doc 13 §2): >1 = queda com peso; a descida ainda
+	// multiplica por FallingGravityMultiplier (GetGravityZ).
+	GravityScale = 1.75f;
 }
 
 void UDDRCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	if (DashCooldownRemaining > 0.f)
-	{
-		DashCooldownRemaining = FMath::Max(0.f, DashCooldownRemaining - DeltaTime);
-	}
-
-	if (bIsDashing)
-	{
-		TickDash(DeltaTime);
-	}
-	else
-	{
-		UpdateGaitFromInput();
-	}
-
+	UpdateGaitFromInput();
 	UpdateLocomotionState();
 
 	if (CVarDDRLocomotionDebug.GetValueOnGameThread() > 0 && GetOwner())
 	{
 		const FVector Location = GetOwner()->GetActorLocation() + FVector(0.f, 0.f, 120.f);
 		const FString DebugText = FString::Printf(
-			TEXT("Gait=%s Speed=%.0f Sprint=%d Dash=%d CD=%.2f"),
+			TEXT("Gait=%s Speed=%.0f Sprint=%d Dash=%d Fall=%d"),
 			*UEnum::GetValueAsString(CurrentGait),
 			Velocity.Size2D(),
 			bWantsSprint ? 1 : 0,
-			bIsDashing ? 1 : 0,
-			DashCooldownRemaining);
+			LocomotionState.bIsDashing ? 1 : 0,
+			LocomotionState.bIsFalling ? 1 : 0);
 		DrawDebugString(GetWorld(), Location, DebugText, nullptr, FColor::Cyan, 0.f, true);
 	}
 
@@ -63,11 +55,6 @@ void UDDRCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick T
 
 float UDDRCharacterMovementComponent::GetMaxSpeed() const
 {
-	if (bIsDashing)
-	{
-		return DashDistance / FMath::Max(DashDuration, KINDA_SMALL_NUMBER);
-	}
-
 	switch (CurrentGait)
 	{
 	case EDDRGait::Walk: return WalkSpeed;
@@ -75,6 +62,19 @@ float UDDRCharacterMovementComponent::GetMaxSpeed() const
 	case EDDRGait::Sprint: return SprintSpeed;
 	default: return RunSpeed;
 	}
+}
+
+float UDDRCharacterMovementComponent::GetGravityZ() const
+{
+	const float Gravity = Super::GetGravityZ(); // já inclui GravityScale
+
+	// Gravidade assimétrica (doc 13 §3): sobe "leve", cai com peso.
+	if (IsFalling() && Velocity.Z < 0.f)
+	{
+		return Gravity * FallingGravityMultiplier;
+	}
+
+	return Gravity;
 }
 
 void UDDRCharacterMovementComponent::SetGait(EDDRGait NewGait)
@@ -86,29 +86,6 @@ void UDDRCharacterMovementComponent::SetGait(EDDRGait NewGait)
 void UDDRCharacterMovementComponent::SetWantsSprint(bool bNewWantsSprint)
 {
 	bWantsSprint = bNewWantsSprint;
-}
-
-bool UDDRCharacterMovementComponent::TryDash(const FVector& WorldDirection)
-{
-	if (bIsDashing || DashCooldownRemaining > 0.f)
-	{
-		return false;
-	}
-
-	const FVector Direction = GetDashDirection(WorldDirection);
-	if (Direction.IsNearlyZero())
-	{
-		return false;
-	}
-
-	bIsDashing = true;
-	DashTimeRemaining = DashDuration;
-	DashDirection = Direction;
-	DashCooldownRemaining = DashCooldown;
-	Velocity = DashDirection * GetMaxSpeed();
-	SetMovementMode(MOVE_Flying);
-
-	return true;
 }
 
 void UDDRCharacterMovementComponent::UpdateGaitFromInput()
@@ -129,8 +106,17 @@ void UDDRCharacterMovementComponent::UpdateLocomotionState()
 	LocomotionState.bIsMoving = LocomotionState.Speed > 10.f;
 	LocomotionState.bIsFalling = IsFalling();
 	LocomotionState.Gait = CurrentGait;
-	LocomotionState.bIsDashing = bIsDashing;
 	LocomotionState.bWantsToStop = LocomotionState.bIsMoving && Acceleration.IsNearlyZero();
+
+	// Dash é GAS (GA_Dash): o estado vem da tag concedida pelo GE_DDRDashIFrames.
+	LocomotionState.bIsDashing = false;
+	if (const ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(GetOwner()))
+	{
+		if (const UAbilitySystemComponent* ASC = OwnerChar->GetAbilitySystemComponent())
+		{
+			LocomotionState.bIsDashing = ASC->HasMatchingGameplayTag(DDRTags::State_Movement_Dashing);
+		}
+	}
 
 	if (const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
 	{
@@ -145,38 +131,3 @@ void UDDRCharacterMovementComponent::UpdateLocomotionState()
 	}
 }
 
-void UDDRCharacterMovementComponent::TickDash(float DeltaTime)
-{
-	DashTimeRemaining -= DeltaTime;
-	Velocity = DashDirection * GetMaxSpeed();
-
-	if (DashTimeRemaining <= 0.f)
-	{
-		EndDash();
-	}
-}
-
-void UDDRCharacterMovementComponent::EndDash()
-{
-	bIsDashing = false;
-	DashTimeRemaining = 0.f;
-	Velocity = DashDirection * RunSpeed * 0.5f;
-	SetMovementMode(MOVE_Walking);
-	SetGait(EDDRGait::Run);
-}
-
-FVector UDDRCharacterMovementComponent::GetDashDirection(const FVector& InputDirection) const
-{
-	FVector Direction = InputDirection;
-	Direction.Z = 0.f;
-
-	if (Direction.IsNearlyZero())
-	{
-		if (const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
-		{
-			Direction = OwnerCharacter->GetActorForwardVector();
-		}
-	}
-
-	return Direction.GetSafeNormal2D();
-}

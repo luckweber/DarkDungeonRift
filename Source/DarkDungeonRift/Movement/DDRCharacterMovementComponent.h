@@ -17,6 +17,7 @@ public:
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual float GetMaxSpeed() const override;
+	virtual float GetGravityZ() const override;
 
 	UFUNCTION(BlueprintCallable, Category = "DDR|Gait")
 	void SetGait(EDDRGait NewGait);
@@ -27,11 +28,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DDR|Gait")
 	void SetWantsSprint(bool bNewWantsSprint);
 
+	// Dash vive no GAS (GA_Dash) — o estado aqui vem da tag State.Movement.Dashing.
 	UFUNCTION(BlueprintCallable, Category = "DDR|Movement")
-	bool TryDash(const FVector& WorldDirection);
-
-	UFUNCTION(BlueprintCallable, Category = "DDR|Movement")
-	bool IsDashing() const { return bIsDashing; }
+	bool IsDashing() const { return LocomotionState.bIsDashing; }
 
 	UFUNCTION(BlueprintPure, Category = "DDR|Locomotion")
 	const FDDRLocomotionState& GetLocomotionState() const { return LocomotionState; }
@@ -45,39 +44,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "DDR|Gait")
 	float SprintSpeed = 750.f;
 
-	UPROPERTY(EditAnywhere, Category = "DDR|Dash")
-	float DashDistance = 550.f;
-
-	UPROPERTY(EditAnywhere, Category = "DDR|Dash")
-	float DashDuration = 0.22f;
-
-	UPROPERTY(EditAnywhere, Category = "DDR|Dash")
-	float DashCooldown = 0.6f;
+	// Queda mais pesada que a subida (gravidade assimétrica, doc 13 §3). 1.0 = simétrico.
+	UPROPERTY(EditAnywhere, Category = "DDR|Jump", meta = (ClampMin = "1.0"))
+	float FallingGravityMultiplier = 1.25f;
 
 protected:
 	void UpdateGaitFromInput();
 	void UpdateLocomotionState();
-	void TickDash(float DeltaTime);
-	void EndDash();
-	FVector GetDashDirection(const FVector& InputDirection) const;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Gait")
 	EDDRGait CurrentGait = EDDRGait::Run;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Gait")
 	bool bWantsSprint = false;
-
-	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Movement")
-	bool bIsDashing = false;
-
-	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Movement")
-	float DashTimeRemaining = 0.f;
-
-	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Movement")
-	float DashCooldownRemaining = 0.f;
-
-	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Movement")
-	FVector DashDirection = FVector::ZeroVector;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Locomotion")
 	FDDRLocomotionState LocomotionState;

@@ -2,6 +2,7 @@
 
 #include "DDRHitStopSubsystem.h"
 
+#include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
 
 void UDDRHitStopSubsystem::RequestHitStop(int32 Frames)
@@ -17,16 +18,33 @@ void UDDRHitStopSubsystem::RequestHitStop(int32 Frames)
 		return;
 	}
 
-	bHitStopActive = true;
-	UGameplayStatics::SetGlobalTimeDilation(World, 0.01f);
-
 	const float Duration = static_cast<float>(Frames) / 60.f;
-	World->GetTimerManager().SetTimer(
-		HitStopTimerHandle,
-		this,
-		&UDDRHitStopSubsystem::EndHitStop,
-		Duration,
-		false);
+	FreezeEndRealTimeSeconds = FPlatformTime::Seconds() + Duration;
+	bHitStopActive = true;
+	UGameplayStatics::SetGlobalTimeDilation(World, 0.f);
+}
+
+void UDDRHitStopSubsystem::Tick(float DeltaTime)
+{
+	if (bHitStopActive && FPlatformTime::Seconds() >= FreezeEndRealTimeSeconds)
+	{
+		EndHitStop();
+	}
+}
+
+TStatId UDDRHitStopSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UDDRHitStopSubsystem, STATGROUP_Tickables);
+}
+
+bool UDDRHitStopSubsystem::IsTickable() const
+{
+	return bHitStopActive;
+}
+
+UWorld* UDDRHitStopSubsystem::GetTickableGameObjectWorld() const
+{
+	return GetWorld();
 }
 
 void UDDRHitStopSubsystem::EndHitStop()
@@ -37,4 +55,5 @@ void UDDRHitStopSubsystem::EndHitStop()
 	}
 
 	bHitStopActive = false;
+	FreezeEndRealTimeSeconds = 0.0;
 }

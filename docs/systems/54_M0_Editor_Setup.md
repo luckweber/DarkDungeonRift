@@ -110,6 +110,8 @@ Se algum slot ficar vazio, o log `LogDDR` avisa no **Output Log**.
 4. Assign em `BP_DDRPlayer` → Mesh → Anim Class = `ABP_DDRPlayer`
 
 > Locomoção polida (distance match, air SM) = [08](../locomotion/08_Locomotion_Overview.md) · [13](../locomotion/13_Jump_Fall_Landing.md). No M0, **responder** importa mais que anim perfeita.
+>
+> 🛠️ **Passo a passo COMPLETO do AnimGraph** (vars←CMC, Blend Space, State Machine, transições exatas e o **Slot que o combo do M1 exige**): **[58 — AnimGraph Step by Step](../locomotion/58_AnimGraph_Step_by_Step.md)**.
 
 ### 3.4 Input (Class Defaults)
 
@@ -136,9 +138,9 @@ Valores default do C++ ([06 §2](06_Camera_TopDown.md)):
 
 Não ligue **Use Pawn Control Rotation** no boom. Com **orient-to-movement**, o boom precisa de **Absolute Rotation = true**; senão o WASD usa um yaw que gira com o personagem e ele fica rodando no spot ([06 §3](06_Camera_TopDown.md)).
 
-### 3.6 ⚠️ Dash no M0 = placeholder (CMC, não GAS)
+### 3.6 ✅ Dash = `GA_Dash` (GAS) — placeholder do CMC REMOVIDO
 
-O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash()`** — velocidade fixa + modo `Flying` por ~0.22s. Serve só pra validar **input, direção e feel** numa arena vazia.
+> **Histórico:** no M0 existia um `TryDash()` placeholder no CMC (velocidade fixa + `MOVE_Flying`). Como planejado, ele foi **removido no M1** — o dash agora é **só** `GA_Dash` (RootMotion + i-frames + cooldown, [19 §3](../combat/19_Abilities_Deep.md)) e o `bIsDashing` do snapshot vem da **tag `State.Movement.Dashing`**. Uma fonte da verdade. Se algum BP antigo chamar `TryDash`, ele não existe mais — troque por `AbilityLocalInputPressed(Dash)`.
 
 | M0 (agora) | M1 (alvo) |
 |---|---|
@@ -200,7 +202,7 @@ O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash(
 | Shift (hold) | sprint (~750 u/s) |
 | Ctrl | dash (~550 u/s, ~0.22s, cooldown ~0.6s) |
 | Space | pulo |
-| Console `ddr.LocomotionDebug 1` | texto cyan acima do player (Gait, Speed, Dash CD) |
+| Console `ddr.LocomotionDebug 1` | texto cyan acima do player (Gait, Speed, Sprint, Dash, Fall) |
 
 **✅ M0 pronto quando:** mover, sprintar, dashar e pular numa arena vazia **sente responsivo** ([17 §2](../17_Implementation_Roadmap.md)).
 
@@ -216,7 +218,7 @@ O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash(
 | Move "torto" vs tela | Move usa controller yaw | C++ usa yaw do **CameraBoom** — recompile |
 | **Gira em círculo sem sair do lugar** | Boom gira com pawn; `Move()` + orient-to-movement em loop | `SetUsingAbsoluteRotation(true)` no boom ([06 §3](06_Camera_TopDown.md)); não override no BP |
 | Dash não faz nada | Cooldown / sem direção | anda antes ou dash usa forward |
-| Dash atravessa parede | CMC M0 não faz sweep | esperado no M0; P1 = capsule trace ([19 §3](../combat/19_Abilities_Deep.md)) |
+| Dash atravessa parede | (resolvido no M1) | `GA_Dash` usa RootMotion com colisão — paredes bloqueiam ✅ |
 | Warning `DefaultMappingContext not assigned` | BP sem IMC | §3.4 |
 | Template ThirdPerson BP quebrado | redirect antigo | Use `BP_DDRPlayer`, não `BP_ThirdPersonCharacter` |
 
@@ -235,7 +237,7 @@ O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash(
 | Câmera topdown | `ADDRPlayerCharacter` | tune arm length (opcional) |
 | Move relativo câmera | `Move()` | `IA_Move` + IMC |
 | Sprint / gaits | `UDDRCharacterMovementComponent` | `IA_Sprint` |
-| Dash (M0 placeholder) | `TryDash()` no CMC | `IA_Dash` → **`GA_Dash` no M1** ([19 §3](../combat/19_Abilities_Deep.md)) |
+| Dash | **`GA_Dash`** (GAS; placeholder do CMC removido no M1) | `IA_Dash` ([19 §3](../combat/19_Abilities_Deep.md)) |
 | GAS skeleton | `ADDRCharacterBase` + AttributeSet | GE/GA assets no M1 |
 | Tags | `Config/DefaultGameplayTags.ini` + `DDRTags::*` | Gameplay Tag Editor (sync) |
 | Debug | `ddr.LocomotionDebug` | console ` |

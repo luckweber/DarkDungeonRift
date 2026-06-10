@@ -47,6 +47,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat")
 	float DamageAttackPowerScale = 0.01f;
 
+	// Sockets na STATIC MESH da arma usados pro sweep da lamina (doc 18 par.2).
+	// Sem arma ou sem os sockets -> fallback: sweep frontal do ator.
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Weapon")
+	FName WeaponTraceSocketStart = TEXT("weapon_start");
+
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Weapon")
+	FName WeaponTraceSocketEnd = TEXT("weapon_end");
+
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Combat")
 	bool bComboWindowOpen = false;
 

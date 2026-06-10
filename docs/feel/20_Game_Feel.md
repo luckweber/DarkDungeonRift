@@ -72,7 +72,7 @@ Os três knobs que definem onde você cai na curva (todos no `UDDRCharacterMovem
 | Knob | Baixo = | Alto = | Valor inicial (DDR) |
 |---|---|---|---|
 | `MaxAcceleration` | arranque lento, "pesado" | arranque instantâneo, "responsivo" | **2048** (faixa 1500–2500) |
-| `BrakingDecelerationWalking` | desliza ao parar | crava ao parar | **2048** |
+| `BrakingDecelerationWalking` | desliza ao parar | crava ao parar | **2000** ✅ código |
 | `RotationRate` (Yaw) | vira devagar, "barco" | vira no talo | **720 °/s** ([06 §3](../systems/06_Camera_TopDown.md)) |
 
 > 🎚️ **Sentido de cada um:**
@@ -92,7 +92,7 @@ O MVP usa **orient-to-movement** ([06 §3, Modelo A](../systems/06_Camera_TopDow
 ### 3.3 Feel de começar e parar
 
 - **Começar:** com `MaxAcceleration` 2048, o personagem atinge ~80% da `RunSpeed` (500) em ~2 frames. É o "sem patinar pra começar" da visão. **Não** baixe accel "pra ficar realista" — patinar no start é a reclamação nº1 de feel.
-- **Parar:** `BrakingDecelerationWalking` 2048 crava rápido. As transições *animadas* de parada (distance-match stop, [10](../locomotion/10_Start_Stop_DistanceMatch.md)) são P1 e **estéticas** — o feel da parada vem do braking físico, não da anim. Em topdown, a anim de stop é quase invisível; o que importa é o personagem **estar onde você soltou o stick**.
+- **Parar:** `BrakingDecelerationWalking` 2000 crava rápido. As transições *animadas* de parada (distance-match stop, [10](../locomotion/10_Start_Stop_DistanceMatch.md)) são P1 e **estéticas** — o feel da parada vem do braking físico, não da anim. Em topdown, a anim de stop é quase invisível; o que importa é o personagem **estar onde você soltou o stick**.
 
 > 🪂 **Anti-slide no pouso** ([13 §7](../locomotion/13_Jump_Fall_Landing.md)): pousar correndo não pode "patinar". O padrão do DungeonForged — *retain 0.4 + landing brake ~4096* — preserva um tico de momentum (não trava seco, sente natural) mas mata o slide. Tune pro seu feel.
 
@@ -126,7 +126,7 @@ O [doc 13](../locomotion/13_Jump_Fall_Landing.md) lista os truques de pulo como 
 
 | Truque ([13 §3](../locomotion/13_Jump_Fall_Landing.md)) | O que a MÃO sente | Por quê |
 |---|---|---|
-| **Gravidade assimétrica** (sobe leve, cai pesado; `GravityScale` 1.75, descida ×1.2–1.5) | o pulo tem **autoridade**: você manda nele, ele não flutua | gravidade real (1.0) sente "lunar" e sem controle. >1 na descida = "o chão te chama" |
+| **Gravidade assimétrica** (sobe leve, cai pesado; `GravityScale` 1.75, descida ×1.2–1.5) | o pulo tem **autoridade**: você manda nele, ele não flutua | gravidade real (1.0) sente "lunar" e sem controle. >1 na descida = "o chão te chama". ✅ **no código** (1.75 + descida ×1.25 via `GetGravityZ`) |
 | **Apex hang** (gravidade reduzida no topo) | um **micro-momento de flutuação** no auge — a janela de decisão | dá tempo de mirar o próximo input no pico. É o "hang" que o ar precisa |
 | **Variable jump height** (soltar cedo = pulo baixo) | o pulo **obedece a intenção**: tap = pulinho, hold = pulão | sem isso, todo pulo é igual e sente "burro" |
 | **Coyote time** (~0.1s pós-borda) | perdão: "eu *tinha* apertado a tempo" | corrige a injustiça de 1-frame na borda |
@@ -235,17 +235,17 @@ A câmera topdown ([06](../systems/06_Camera_TopDown.md)) é **fixa** (pitch -55
 | **Movimento** (CMC) | `RunSpeed` (base) | **500** | velocidade default (Run, não Walk) |
 | | `SprintSpeed` | **750** | burst de reposicionamento |
 | | `MaxAcceleration` | **2048** (1500–2500) | arranque (alto = sem patinar) |
-| | `BrakingDecelerationWalking` | **2048** | crava ao parar (sem deslizar) |
+| | `BrakingDecelerationWalking` | **2000** ✅ código | crava ao parar (sem deslizar) |
 | | `RotationRate` (Yaw) | **720 °/s** | vira pra onde anda (alto = snap) |
-| **Vertical / ar** (CMC) | `JumpZVelocity` | **600** (600–750) | altura do pulo |
-| | `GravityScale` | **1.75** (1.5–2.0) | peso da queda (>1 = melhor) |
-| | Gravidade na descida | **×1.2–1.5** | apex flutuante + queda pesada |
-| | `AirControl` | **0.4** (0.3–0.5) | manobra no ar |
+| **Vertical / ar** (CMC) | `JumpZVelocity` | **700** ✅ código (600–750) | altura do pulo |
+| | `GravityScale` | **1.75** ✅ código (1.5–2.0) | peso da queda (>1 = melhor) |
+| | Gravidade na descida | **×1.25** ✅ código (`FallingGravityMultiplier`) | apex flutuante + queda pesada |
+| | `AirControl` | **0.35** ✅ código (0.3–0.5) | manobra no ar |
 | | Landing retain / brake | **0.4 / ~4096** | anti-slide no pouso |
-| **Verbos** | Dash distância | **500–650 cm** | reposiciona sem perder precisão |
-| | Dash duração | **0.20–0.25 s** | snappy, não "voo" |
-| | Dash i-frames | **0.20–0.30 s** (frente-carreg.) | "confio no botão" |
-| | Dash cooldown | **~0.5–0.8 s** ([19](../combat/19_Abilities_Deep.md)) | impede spam, sente "sempre lá" |
+| **Verbos** | Dash distância | **550** ✅ código (500–650 cm) | reposiciona sem perder precisão |
+| | Dash duração | **0.22 s** ✅ código (0.20–0.25) | snappy, não "voo" |
+| | Dash i-frames | **0.25 s** ✅ código (`GE_DDRDashIFrames`) | "confio no botão" |
+| | Dash cooldown | **0.6 s** ✅ código (`GE_DDRCooldownDash`, [19](../combat/19_Abilities_Deep.md)) | impede spam, sente "sempre lá" |
 | | Coyote time | **~0.10 s** | perdão de borda |
 | | Jump buffer | **~0.10 s** | pulo encadeado "sai sozinho" |
 | **Buffer / resp.** | Latência-alvo (verbos) | **≤ 50 ms** | "instantâneo" |

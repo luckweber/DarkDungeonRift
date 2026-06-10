@@ -4,6 +4,8 @@
 
 > 🧭 **Topdown:** isto é **P1, não P0**. Foot skating é muito menos perceptível de cima e à distância. Implemente **depois** do combate jogável (M1+). Aqui priorizamos *responsividade* — um stop bonito que atrasa o controle é pior que um stop simples e responsivo.
 
+> 📍 **Status no código (M0/M1):** nada de start/stop/distance-match implementado ainda (correto — é P1). **Mas o gancho já existe:** o CMC calcula **`bWantsToStop`** (`bIsMoving && Accel≈0`) no `FDDRLocomotionState` ([08 §2.2](08_Locomotion_Overview.md)) — quando este doc for implementado, o estado Stop da SM só consome esse flag. Braking real atual: **2000** (lado responsivo do trade-off do §3 ✅).
+
 ---
 
 ## 1. O problema que resolvem

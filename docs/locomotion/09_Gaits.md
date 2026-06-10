@@ -58,12 +58,18 @@ void SetGait(EDDRGait NewGait)
 
 ### 3.1 Ativação
 
-Sprint é hold (segurar) ou toggle. Liga no [input](../systems/07_Input.md):
+Sprint é hold (segurar) ou toggle. Liga no [input](../systems/07_Input.md). ✅ **Como ficou no código (M0)** — o input só declara a *intenção*; o **CMC decide** o gait por tick:
 
 ```
-IA_Sprint (Started)   → SetGait(Sprint)
-IA_Sprint (Completed) → SetGait(Run)
+IA_Sprint (Started)   → CMC->SetWantsSprint(true)
+IA_Sprint (Completed) → CMC->SetWantsSprint(false)
+
+// no CMC, por tick (UpdateGaitFromInput):
+Sprint só se bWantsSprint E há input de movimento; senão Run.
+(parado segurando Shift NÃO sprinta — evita gait errado em idle)
 ```
+
+> Mais robusto que setar o gait direto no input: o CMC é a autoridade ([08 §2.1](08_Locomotion_Overview.md)) e o sprint "cai" pra Run sozinho quando o movimento para. *Nota: `Walk` existe no enum/speed (200) mas **nenhum input o seleciona** no MVP — por design (§1, Run é a base).*
 
 ### 3.2 Custo de stamina (opcional no MVP)
 
@@ -132,7 +138,7 @@ Para o personagem não "saltar" de 500→750 instantâneo, interpole a velocidad
 | CMC | `MaxWalkSpeed` muda na hora; a **aceleração** (`MaxAcceleration`) controla quão rápido chega lá |
 | Anim | O eixo Speed do blendspace interpola (`Speed` já suaviza via aceleração física) |
 
-Tune `MaxAcceleration` (ex.: 1500-2500) e `BrakingDecelerationWalking` pro feel certo. Aceleração alta = responsivo; baixa = "pesado".
+Tune `MaxAcceleration` e `BrakingDecelerationWalking` pro feel certo. Aceleração alta = responsivo; baixa = "pesado". ✅ **Valores reais (M0):** `MaxAcceleration` = **2048** (default da engine — o C++ não seta), `BrakingDecelerationWalking` = **2000**, `BrakingDecelerationFalling` = 1500.
 
 ---
 

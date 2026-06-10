@@ -22,6 +22,7 @@
 - [ ] `BP_DDRPlayer`: `Attack Action` assignado (§3)
 - [ ] `AM_Combo` com seções Atk1–Atk4 + notifies (§4)
 - [ ] `GA_Attack_Light` → `Combo Montage` no BP ou CDO (§3)
+- [ ] **Espada:** socket `weapon_r` no skeleton + SM no `WeaponMesh` + sockets `weapon_start`/`end` na SM (§3.4)
 - [ ] `BP_TrainingDummy` na arena (§5)
 - [ ] PIE: combo 3 golpes + hit-stop + dash-cancel (§6)
 
@@ -114,6 +115,25 @@ Opção A — **BP filho de GA_AttackLight:**
 
 Opção B — editar CDO de `GA_AttackLight` no editor (menos recomendado).
 
+### 3.4 Espada no player (`WeaponMesh`) — novo no C++
+
+> As anims do combo são **com espada** — o C++ agora entrega um **`WeaponMesh`** (StaticMeshComponent) em `ADDRCharacterBase`, anexado ao socket **`weapon_r`** do skeleton (nome editável: `WeaponSocketName`), **sem colisão** (o hit é o sweep, nunca a mesh — [15 §4](../combat/15_Combat_Overview.md)). E o sweep agora é **na lâmina**: usa os sockets `weapon_start`/`weapon_end` da Static Mesh da arma ([18 §2](../combat/18_Combat_System_Deep.md)); sem eles, **fallback** pro sweep frontal antigo (nada quebra).
+
+**Passos no editor:**
+
+1. **Socket no skeleton:** abra o skeleton do player (`SK_Mannequin`) → Skeleton Tree → bone **`hand_r`** → botão direito → **Add Socket** → renomeie **`weapon_r`**. Botão direito no socket → **Add Preview Asset** (a SM da espada) → ajuste posição/rotação até a empunhadura casar com a mão (use uma pose de ataque no preview).
+2. **Sockets na espada:** abra a **Static Mesh** da espada → `Window → Socket Manager` → **Create Socket** ×2:
+   | Socket | Onde |
+   |---|---|
+   | `weapon_start` | base da lâmina (junto à guarda) |
+   | `weapon_end` | ponta da lâmina |
+3. **`BP_DDRPlayer`:** selecione o componente herdado **`WeaponMesh`** → **Static Mesh = sua espada** (SM do set Sword & Shield).
+4. Com a lâmina, **reduza `Sweep Radius` p/ ~30** nos `ANS_DDRHitbox` (45 era pro sweep frontal gordo; a lâmina + 45 fica exagerado).
+
+> ⚠️ Se a arma do pack for **Skeletal Mesh** (não Static), converta: abra-a → `Make Static Mesh`, ou use a versão SM do pack. O componente é `UStaticMeshComponent`.
+
+> 🐞 **`ddr.CombatDebug 1` agora DESENHA** (antes só logava — corrigido): **linha + 2 esferas** do volume do sweep (**verde** = sem hit, **vermelho** = hit) + **esfera amarela** no ponto de impacto. Se os sockets da arma existem, você vê o sweep **na lâmina**; senão, o frontal (fallback).
+
 ---
 
 ## 4. Dash GAS (substitui CMC M0)
@@ -157,7 +177,8 @@ O dummy tem ASC, 5000 HP, tag `Faction.Enemy` — recebe dano do sweep.
 |---|---|
 | LMB | inicia combo (`State.Combat.Attacking`) |
 | LMB na janela de combo | encadeia Atk2, Atk3… |
-| Acerto no dummy | hit-stop global (~2 frames), log se `ddr.CombatDebug 1` |
+| Acerto no dummy | hit-stop global (~2 frames), log **+ draw** se `ddr.CombatDebug 1` |
+| `ddr.CombatDebug 1` | **desenha o sweep**: linha + 2 esferas (verde=sem hit, vermelho=hit) + esfera amarela no impacto; na lâmina se os sockets existem (§3.4) |
 | Dash durante ataque | **cancela** combo imediatamente, desloca com i-frames |
 | Dash spam | bloqueado por `Cooldown.Dash` ~0.6s |
 
@@ -174,14 +195,20 @@ ddr.LocomotionDebug 1
 
 | Sintoma | Causa | Fix |
 |---|---|---|
+| **Editor crasha ao abrir** (stack em `GE_DDRCooldownDash` / `FindOrAddComponent`) | `FindOrAddComponent` no **construtor** do GE (NewObject no CDO) | Recompile — tags vão em `PostInitProperties` ([05 §5](05_GAS_Architecture.md)) |
 | **Crash ao apertar ataque** (breakpoint em `AddDynamic`) | Callbacks de ability task sem `UFUNCTION()` no C++ | Recompile M1 — `OnMontageEnded`, `OnMontageCancelled`, `OnHitEvent` precisam de `UFUNCTION()` |
 | Attack não faz nada | `IA_Attack` não assignado / não no IMC | §1–2 |
 | Ability não ativa | ASC não init | recompile; confira PIE com `BP_DDRGameMode` |
 | Sem dano no dummy | Dummy sem ASC / fora do sweep | §5; aumente `Sweep Reach` no notify |
 | Combo não encadeia | Falta `ANS_DDRComboWindow` | §3.2 |
 | Hit sem peso | Hit-stop desligado | verifique `Hit Stop Frames` > 0 no notify |
+| **Hit-stop muito lento** (quase trava o jogo) | bug: timer seguia `GlobalTimeDilation` | recompile M1; tune `Hit Stop Frames` no notify `ANS_DDRHitbox` (default **2**, tente 1–3) |
 | Dash não cancela combo | `GA_Dash` sem tag `Ability.Attack` em Cancel | recompile C++ M1 |
 | Warning GameplayCue | Cue BP não criada ainda | opcional M1 — crie `GC_Hit_Light` depois ([21](../feel/21_Juice_FX.md)) |
+| **Espada não aparece** | SM não setada no `WeaponMesh` / socket `weapon_r` não existe no skeleton | §3.4 passos 1 e 3 |
+| Espada na posição errada | transform do socket não ajustado | §3.4 passo 1 — Add Preview Asset + ajustar |
+| **`ddr.CombatDebug 1` não desenha** | build antiga (o cvar só logava) | recompile o C++ — agora **1 = log + draw** |
+| Sweep não sai da lâmina (sai do peito) | sockets `weapon_start`/`end` ausentes na SM | §3.4 passo 2 (sem eles o fallback frontal é o esperado) |
 
 ---
 
@@ -203,3 +230,6 @@ ddr.LocomotionDebug 1
 | Hit-stop | `UDDRHitStopSubsystem` | `Hit Stop Frames` no notify |
 | Dash | `UGA_Dash` | `IA_Dash` (já do M0) |
 | Alvo | `ADDRTrainingDummy` | `BP_TrainingDummy` no mapa |
+| **Espada** | `WeaponMesh` em `ADDRCharacterBase` (socket `weapon_r`) | socket no SK + SM no BP + sockets `weapon_start`/`end` na SM (§3.4) |
+| **Sweep da lâmina** | `UDDRCombatComponent` (`WeaponTraceSocketStart/End`, fallback frontal) | automático com os sockets da SM |
+| Debug visual | cvar `ddr.CombatDebug` (**1 = log + draw**) | console no PIE |
