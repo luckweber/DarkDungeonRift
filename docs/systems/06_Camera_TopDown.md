@@ -37,6 +37,7 @@ CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 CameraBoom->SetupAttachment(RootComponent);
 CameraBoom->TargetArmLength = 950.f;
 CameraBoom->SetRelativeRotation(FRotator(-55.f, -45.f, 0.f)); // pitch, yaw, roll
+CameraBoom->SetUsingAbsoluteRotation(true);   // ⚠️ obrigatório com orient-to-movement (§3)
 CameraBoom->bUsePawnControlRotation = false;
 CameraBoom->bInheritPitch = false;
 CameraBoom->bInheritYaw   = false;
@@ -69,6 +70,8 @@ bUseControllerRotationYaw = false;
 ```
 
 > 🎯 **Por que isto elimina o "Turn In Place" no MVP:** com orient-to-movement + câmera topdown, o personagem **gira andando**, raramente fica parado girando o corpo. Turn In Place foi **removido do escopo** (sem assets, payoff ~nulo). Decisão consciente, documentada.
+
+> ⚠️ **`SetUsingAbsoluteRotation(true)` no CameraBoom é obrigatório** quando usar Modelo A + `Move()` relativo à câmera ([07 §3](07_Input.md)). Sem isso, o boom gira junto com o personagem (`bOrientRotationToMovement`), o yaw usado no WASD muda a cada frame e o personagem **gira em círculo no lugar** sem sair do spot. `bInheritYaw=false` sozinho não basta — use rotação absoluta.
 
 > Se for Modelo B, você roda o personagem por código (LookAt no cursor projetado no plano do chão) — e aí ataques direcionais ficam ótimos, mas é mais trabalho. Avalie no M1.
 
@@ -107,6 +110,7 @@ Em topdown, um inimigo a 300cm de altura e um no chão **ocupam quase o mesmo pi
 ## 6. Checklist
 
 - [ ] SpringArm com pitch ~-55°, yaw fixo, `bUsePawnControlRotation=false`
+- [ ] **`SetUsingAbsoluteRotation(true)`** no CameraBoom (evita spin no lugar com orient-to-movement)
 - [ ] `bInheritPitch/Yaw/Roll = false`
 - [ ] `TargetArmLength` ~950 (tunável)
 - [ ] Camera lag ligado
@@ -122,6 +126,7 @@ Em topdown, um inimigo a 300cm de altura e um no chão **ocupam quase o mesmo pi
 | Sintoma | Causa | Fix |
 |---|---|---|
 | Câmera gira com o personagem | `bInheritYaw=true` ou `bUsePawnControlRotation=true` | Desligue ambos (§2) |
+| **Personagem gira em círculo no lugar** | Boom gira com o pawn + `Move()` usa yaw do boom + `bOrientRotationToMovement` | `CameraBoom->SetUsingAbsoluteRotation(true)` (§2–3). No BP: não desligue **Absolute Rotation** |
 | Câmera "treme"/pula perto de parede | `bDoCollisionTest=true` | Desligue p/ topdown |
 | Combo aéreo ilegível | Sem sombra no chão | Adicione decal/blob shadow (§4) |
 | Movimento sente "duro" | Sem camera lag, ou RotationRate baixo | Lag ON + RotationRate 720 (§3) |

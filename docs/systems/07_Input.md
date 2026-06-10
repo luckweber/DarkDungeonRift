@@ -66,6 +66,8 @@ void ADDRPlayerCharacter::Move(const FInputActionValue& Value)
 
 > ⚠️ Se usar o **controller rotation** (template padrão) em vez do yaw da câmera, o "pra cima" do analógico não casa com a tela quando o yaw da câmera é -45° (isométrico). Sempre derive do **yaw fixo da câmera**.
 
+> ⚠️ O yaw da câmera só fica estável se o `CameraBoom` tiver **`SetUsingAbsoluteRotation(true)`** ([06 §2–3](06_Camera_TopDown.md)). Com `bOrientRotationToMovement`, sem isso o personagem **gira em círculo no lugar**.
+
 ---
 
 ## 4. Ligar input → GAS (o padrão correto)

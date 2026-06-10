@@ -131,9 +131,10 @@ Valores default do C++ ([06 §2](06_Camera_TopDown.md)):
 |---|---|---|
 | CameraBoom → Target Arm Length | 950 | 800–1100 |
 | CameraBoom → Rotation | (-55, -45, 0) | pitch/yaw isométrico |
+| CameraBoom → **Absolute Rotation** | **ON** (C++) | **não desligue no BP** — evita spin no lugar |
 | Camera Lag | ON (speed 10) | feel |
 
-Não ligue **Use Pawn Control Rotation** no boom.
+Não ligue **Use Pawn Control Rotation** no boom. Com **orient-to-movement**, o boom precisa de **Absolute Rotation = true**; senão o WASD usa um yaw que gira com o personagem e ele fica rodando no spot ([06 §3](06_Camera_TopDown.md)).
 
 ### 3.6 ⚠️ Dash no M0 = placeholder (CMC, não GAS)
 
@@ -213,6 +214,7 @@ O dash que você testa no M0 vive em **`UDDRCharacterMovementComponent::TryDash(
 | Personagem não aparece | GameMode pawn errado | §5 → `BP_DDRPlayer` |
 | Input morto | IMC não assignado | §3.4 slots vazios |
 | Move "torto" vs tela | Move usa controller yaw | C++ usa yaw do **CameraBoom** — recompile |
+| **Gira em círculo sem sair do lugar** | Boom gira com pawn; `Move()` + orient-to-movement em loop | `SetUsingAbsoluteRotation(true)` no boom ([06 §3](06_Camera_TopDown.md)); não override no BP |
 | Dash não faz nada | Cooldown / sem direção | anda antes ou dash usa forward |
 | Dash atravessa parede | CMC M0 não faz sweep | esperado no M0; P1 = capsule trace ([19 §3](../combat/19_Abilities_Deep.md)) |
 | Warning `DefaultMappingContext not assigned` | BP sem IMC | §3.4 |

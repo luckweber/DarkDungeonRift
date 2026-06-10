@@ -33,6 +33,7 @@ ADDRPlayerCharacter::ADDRPlayerCharacter()
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 950.f;
 	CameraBoom->SetRelativeRotation(FRotator(-55.f, -45.f, 0.f));
+	CameraBoom->SetUsingAbsoluteRotation(true);
 	CameraBoom->bUsePawnControlRotation = false;
 	CameraBoom->bInheritPitch = false;
 	CameraBoom->bInheritYaw = false;
