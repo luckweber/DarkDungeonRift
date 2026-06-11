@@ -32,8 +32,30 @@ UDDRCharacterMovementComponent::UDDRCharacterMovementComponent()
 	GravityScale = 1.75f;
 }
 
+void UDDRCharacterMovementComponent::SetLocomotionInputBlocked(const bool bBlocked)
+{
+	bBlockLocomotionInput = bBlocked;
+	if (bBlocked)
+	{
+		Acceleration = FVector::ZeroVector;
+		FVector Vel = Velocity;
+		Vel.X = 0.f;
+		Vel.Y = 0.f;
+		Velocity = Vel;
+	}
+}
+
 void UDDRCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
+	if (bBlockLocomotionInput)
+	{
+		Acceleration = FVector::ZeroVector;
+		FVector Vel = Velocity;
+		Vel.X = 0.f;
+		Vel.Y = 0.f;
+		Velocity = Vel;
+	}
+
 	UpdateGaitFromInput();
 	UpdateLocomotionState();
 
@@ -90,6 +112,11 @@ void UDDRCharacterMovementComponent::SetWantsSprint(bool bNewWantsSprint)
 
 void UDDRCharacterMovementComponent::UpdateGaitFromInput()
 {
+	if (bBlockLocomotionInput)
+	{
+		return;
+	}
+
 	const bool bHasMovementInput = !Acceleration.IsNearlyZero() && Acceleration.Size2D() > 1.f;
 	const EDDRGait DesiredGait = (bWantsSprint && bHasMovementInput) ? EDDRGait::Sprint : EDDRGait::Run;
 	if (DesiredGait != CurrentGait)

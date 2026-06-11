@@ -54,6 +54,8 @@ GA_Launcher (Ability.Attack.Launcher):
 
 > 🎮 **Follow launch** (player sobe junto) é o que faz o combo aéreo funcionar em ação. Sem isso, o inimigo sobe e o player fica no chão olhando. **Mas** ele tem custo de leitura em topdown — ver §6 (é a pergunta que o spike M⁻¹ precisa responder).
 
+> 🔒 **No hold aéreo o stick NÃO move o corpo** (`MaxFlySpeed=0` enquanto `bInAirCombat`/pin do slam — o `MOVE_Flying` aceitaria WASD e dava pra "andar no ar"). Deslocamento no ar vem dos **golpes** (root motion + carry do alvo) e do **air-dash** — input deliberado, não strafe livre.
+
 > 🛡️ **Quem pode ser lançado? (gate de poise — ver [18 §5](18_Combat_System_Deep.md)):** **trash** (lixo) tem poise baixo/zero → **lança fácil**, preservando a fantasia "lanço qualquer um" (o pilar não pode ter atrito no caso comum). **Elites/bosses** exigem **quebrar a guarda/poise** antes de o launcher pegar (senão tomam hyperarmor). Profundidade no inimigo grande, fluidez no pequeno.
 
 > 🧪 **Derisk obrigatório (consenso da mesa):** prove a co-altitude num **spike de cubos** (um cubo lança outro, os dois ficam ancorados no ar ~2s com `RootMotionSource`) **antes** do M2. Ver [Roadmap → M⁻¹](../17_Implementation_Roadmap.md).
@@ -105,6 +107,8 @@ Hit aéreo no alvo (ANS_DDRHitbox bAirPop, após hit-stop):
 
 Desacoplado do `bIsFalling`. Quando `Airborne` sai (pós-slam), o alvo volta ao fluxo normal de locomoção/IA.
 
+> ✅ **Implementação M2:** o estágio **SlamDown→impacto→Stun é RAGDOLL físico** (`bRagdollOnSlammed` na base, [60 §4 item 10](../systems/60_M2_Editor_Setup.md)) — sem anim de queda: o corpo vira física no contato e levanta após `RagdollRecoverSeconds`. A SM acima vale pros estágios *aéreos* (Knockback/Float); o getup animado dos inimigos M3 é P1 ([51](../enemies/51_Enemy_Catalog_MVP.md)).
+
 ---
 
 ## 4. Ataques aéreos (GA_AirAttack)
@@ -145,10 +149,14 @@ GA_AirSlam (Ability.Attack.AirSlam) — como implementado:
        → sweep contínuo enquanto pinado no End (não só a duração do notify)
        → na seção End o C++ IGNORA bResumeFallAfterSlamPin (mantém no ar
          até a montage acabar; evita cair no meio do finisher)
-  6. fim da montage → ReleaseSlamAirPinForLanding + GameplayCue.Slam no pouso
+       → derrube do alvo = RAGDOLL físico (bRagdollOnSlammed na base): corpo limp
+         despenca, cápsula segue o pelvis, levanta após RagdollRecoverSeconds;
+         caído = inatingível (janela de knockdown)
+  6. fim da montage → solta o pin em QUEDA NATURAL (PostSlamFallVelocity, 0 = gravidade)
+       → AnimBP assume: Fall Loop da locomoção → pouso com anim de land (SEM teleporte)
 ```
 
-> 💥 O slam é o **clímax** — hit-stop e derrube vêm do **hitbox** na anim End (com player **congelado no ar** na co-altitude do juggle). O pouso dispara o cue; **sem** sweep automático no `LandedDelegate`. Tag `State.Combat.SlamFall` → `Jump_Combat_*` no AnimBP ([58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md)).
+> 💥 O slam é o **clímax** — hit-stop e derrube vêm do **hitbox** na anim End (com player **congelado no ar** na co-altitude do juggle). **Pós-End: queda natural** (gravidade) caindo no **Fall Loop da locomoção** até o land — sem teleporte e sem sweep automático no `LandedDelegate`. Tag `State.Combat.SlamFall` → `Jump_Combat_*` no AnimBP ([58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md)).
 
 ---
 

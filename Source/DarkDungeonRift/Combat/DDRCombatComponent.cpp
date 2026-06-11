@@ -17,6 +17,7 @@
 #include "EngineUtils.h"
 #include "GA_AirSlam.h"
 #include "GE_DDRDamage.h"
+#include "DDRCharacterMovementComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -63,6 +64,11 @@ void UDDRCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	{
 		MaintainSlamAirPin();
 	}
+
+	if (bAirInputLocked)
+	{
+		MaintainAirInputLock();
+	}
 }
 
 void UDDRCombatComponent::ApplyLauncherAirTuning(
@@ -99,6 +105,87 @@ float UDDRCombatComponent::GetTimeSinceDashEnded() const
 	return World->GetTimeSeconds() - LastDashEndTimeSeconds;
 }
 
+void UDDRCombatComponent::LockAirHorizontalInput()
+{
+	if (bAirInputLocked)
+	{
+		return;
+	}
+
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	bAirInputLocked = true;
+	SavedMaxFlySpeed = MoveComp->MaxFlySpeed > KINDA_SMALL_NUMBER ? MoveComp->MaxFlySpeed : 600.f;
+	MoveComp->MaxFlySpeed = 0.f;
+
+	if (!bOrientLockedForAir)
+	{
+		bSavedOrientToMovement = MoveComp->bOrientRotationToMovement;
+		MoveComp->bOrientRotationToMovement = false;
+		bOrientLockedForAir = true;
+	}
+
+	if (UDDRCharacterMovementComponent* DDRMove = Cast<UDDRCharacterMovementComponent>(MoveComp))
+	{
+		DDRMove->SetLocomotionInputBlocked(true);
+	}
+
+	MoveComp->StopMovementImmediately();
+
+	UE_LOG(LogDDR, Log, TEXT("[AIR] input horizontal TRAVADO (hold aereo/pin) t=%.2f"),
+		GetWorld()->GetTimeSeconds());
+}
+
+void UDDRCombatComponent::UnlockAirHorizontalInput()
+{
+	if (!bAirInputLocked)
+	{
+		return;
+	}
+
+	bAirInputLocked = false;
+
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (MoveComp)
+	{
+		MoveComp->MaxFlySpeed = SavedMaxFlySpeed > KINDA_SMALL_NUMBER ? SavedMaxFlySpeed : 600.f;
+
+		if (bOrientLockedForAir)
+		{
+			MoveComp->bOrientRotationToMovement = bSavedOrientToMovement;
+			bOrientLockedForAir = false;
+		}
+
+		if (UDDRCharacterMovementComponent* DDRMove = Cast<UDDRCharacterMovementComponent>(MoveComp))
+		{
+			DDRMove->SetLocomotionInputBlocked(false);
+		}
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[AIR] input horizontal LIBERADO t=%.2f"), GetWorld()->GetTimeSeconds());
+}
+
+void UDDRCombatComponent::MaintainAirInputLock()
+{
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (!OwnerChar || !MoveComp)
+	{
+		return;
+	}
+
+	FVector Vel = MoveComp->Velocity;
+	Vel.X = 0.f;
+	Vel.Y = 0.f;
+	MoveComp->Velocity = Vel;
+}
+
 void UDDRCombatComponent::RegisterSlamAbility(UGA_AirSlam* SlamAbility)
 {
 	ActiveSlamAbility = SlamAbility;
@@ -112,6 +199,11 @@ void UDDRCombatComponent::UnregisterSlamAbility()
 	bSlamEndJumpedThisSwing = false;
 	bSlamPinSweepParamsSet = false;
 	ActiveJuggleTarget.Reset();
+	// Safety net: se o slam morreu com o pin/hold ainda travando input, libera.
+	if (!bInAirCombat)
+	{
+		UnlockAirHorizontalInput();
+	}
 }
 
 void UDDRCombatComponent::BeginSlamAirPin()
@@ -137,6 +229,10 @@ void UDDRCombatComponent::BeginSlamAirPin()
 		MoveComp->StopMovementImmediately();
 	}
 
+	// Pin tambem e Flying — trava o WASD (cobre o slam que cortou o launcher,
+	// onde EnterAirCombat nunca rodou).
+	LockAirHorizontalInput();
+
 	UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir ON z=%.0f t=%.2f"), SlamPinZ, GetWorld()->GetTimeSeconds());
 }
 
@@ -159,6 +255,7 @@ void UDDRCombatComponent::EndSlamAirPin(const FDDRMeleeSweepParams& Params)
 	}
 
 	bSlamAirPinActive = false;
+	UnlockAirHorizontalInput();
 
 	const float FallVel = Params.bResumeFallAfterSlamPin ? Params.SlamFollowFallVelocity : 0.f;
 	if (UGA_AirSlam* Slam = ActiveSlamAbility.Get())
@@ -194,7 +291,7 @@ void UDDRCombatComponent::EndSlamAirPin(const FDDRMeleeSweepParams& Params)
 	}
 }
 
-void UDDRCombatComponent::ReleaseSlamAirPinForLanding()
+void UDDRCombatComponent::ReleaseSlamAirPinForLanding(const float PostFallVelocityZ)
 {
 	if (!bSlamAirPinActive)
 	{
@@ -203,6 +300,7 @@ void UDDRCombatComponent::ReleaseSlamAirPinForLanding()
 
 	bSlamAirPinActive = false;
 	bSlamPinSweepParamsSet = false;
+	UnlockAirHorizontalInput();
 
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
 	if (!OwnerChar)
@@ -216,25 +314,16 @@ void UDDRCombatComponent::ReleaseSlamAirPinForLanding()
 		return;
 	}
 
-	FHitResult Floor;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(DDRSlamPinLand), false, OwnerChar);
-	const FVector TraceStart = OwnerChar->GetActorLocation();
-	if (GetWorld()->LineTraceSingleByChannel(
-		Floor, TraceStart, TraceStart - FVector(0.f, 0.f, 4000.f), ECC_Visibility, Params))
-	{
-		const float HalfHeight = OwnerChar->GetCapsuleComponent()
-			? OwnerChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
-			: 88.f;
-		FVector LandLoc = OwnerChar->GetActorLocation();
-		LandLoc.Z = Floor.ImpactPoint.Z + HalfHeight;
-		OwnerChar->SetActorLocation(LandLoc, false, nullptr, ETeleportType::TeleportPhysics);
-	}
+	// QUEDA NATURAL (AAA): nada de SetActorLocation pro chao ("teleporte") — solta em
+	// Falling com velZ inicial (0 = gravidade pura, ~0.7s de 300cm) e o AnimBP assume:
+	// IsFalling -> Fall Loop da locomocao -> pouso com anim de land (doc 13 / 58 §1.3).
+	MoveComp->SetMovementMode(MOVE_Falling);
+	FVector Vel = FVector::ZeroVector;
+	Vel.Z = FMath::Min(PostFallVelocityZ, 0.f);
+	MoveComp->Velocity = Vel;
 
-	MoveComp->Velocity = FVector::ZeroVector;
-	MoveComp->SetMovementMode(MOVE_Walking);
-
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir RELEASE pouso z=%.0f t=%.2f"),
-		OwnerChar->GetActorLocation().Z, GetWorld()->GetTimeSeconds());
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir RELEASE -> queda natural velZ=%.0f de z=%.0f t=%.2f (Fall Loop ate o pouso)"),
+		Vel.Z, OwnerChar->GetActorLocation().Z, GetWorld()->GetTimeSeconds());
 }
 
 void UDDRCombatComponent::SnapSlamEndToJuggleTarget()
@@ -317,6 +406,7 @@ void UDDRCombatComponent::ApplySlamPlayerFollow(const FDDRMeleeSweepParams& Para
 			if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
 			{
 				bSlamAirPinActive = false;
+				UnlockAirHorizontalInput();
 				MoveComp->SetMovementMode(MOVE_Falling);
 				FVector Vel = MoveComp->Velocity;
 				Vel.Z = Params.SlamFollowFallVelocity;
@@ -452,9 +542,10 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		AActor* HitActor = Hit.GetActor();
 		if (!HitActor || !CanHitActor(HitActor))
 		{
-			if (Params.bAoEAtOwner)
+			// Gated: o sweep continuo do pin no End chamaria isto todo frame (ragdoll caido).
+			if (Params.bAoEAtOwner && CVarCombatDebug.GetValueOnGameThread() > 0)
 			{
-				UE_LOG(LogDDR, Log, TEXT("[SLAM] AoE ignorou %s (self/morto/invalido)"), *GetNameSafe(HitActor));
+				UE_LOG(LogDDR, Log, TEXT("[SLAM] AoE ignorou %s (self/morto/ragdoll)"), *GetNameSafe(HitActor));
 			}
 			continue;
 		}
@@ -580,6 +671,7 @@ void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
 		TargetChar->StartAirborne(LaunchRiseHeight, TargetAirborneHoldSeconds);
 		ActiveJuggleTarget = TargetActor;
 		bLaunchedTargetThisSwing = true;
+		LockAirHorizontalInput();
 
 		// Gate de abilities: assim que alguem foi lancado, LMB vira AirAttack (nao espera
 		// o fim da montage do launcher — senao AttackLight dispara no meio do uppercut).
@@ -658,6 +750,9 @@ void UDDRCombatComponent::EnterAirCombat()
 	MoveComp->Velocity = FVector::ZeroVector;
 	MoveComp->StopMovementImmediately();
 
+	// Flying aceita WASD — sem o lock dava pra "andar no ar" durante o juggle.
+	LockAirHorizontalInput();
+
 	if (UAbilitySystemComponent* ASC = GetOwnerASC())
 	{
 		// Idempotente — LaunchTarget ja pode ter posto a tag no hit (count fica 1, nunca 2).
@@ -732,6 +827,8 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 		// futuro adicionar de novo; o gate do juggle e binario, nao empilhavel.
 		ASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 0);
 	}
+
+	UnlockAirHorizontalInput();
 
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
 	if (UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr)
@@ -1007,6 +1104,15 @@ bool UDDRCombatComponent::CanHitActor(AActor* OtherActor) const
 	if (!OtherActor || OtherActor == GetOwner())
 	{
 		return false;
+	}
+
+	// Caido (ragdoll) = janela de respiro do knockdown — sem juggle/hit ate levantar.
+	if (const ADDRCharacterBase* CharBase = Cast<ADDRCharacterBase>(OtherActor))
+	{
+		if (CharBase->IsRagdolled())
+		{
+			return false;
+		}
 	}
 
 	if (UAbilitySystemComponent* TargetASC = OtherActor->FindComponentByClass<UAbilitySystemComponent>())

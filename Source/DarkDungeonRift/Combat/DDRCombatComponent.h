@@ -87,14 +87,22 @@ public:
 
 	void BeginSlamAirPin();
 	void EndSlamAirPin(const FDDRMeleeSweepParams& Params);
-	void ReleaseSlamAirPinForLanding();
+	/** Solta o pin pós-End em QUEDA NATURAL (Falling + velZ inicial; gravidade faz o resto
+	 *  e o AnimBP cai no Fall Loop da locomoção). NUNCA teleporta pro chão. */
+	void ReleaseSlamAirPinForLanding(float PostFallVelocityZ = 0.f);
 	void SnapSlamEndToJuggleTarget();
 	void SetSlamPinSweepParams(const FDDRMeleeSweepParams& Params);
 	bool IsSlamAirPinActive() const { return bSlamAirPinActive; }
 
+	// MOVE_Flying (hold aereo/pin) aceita WASD — bloqueia input + orient + MaxFlySpeed.
+	void LockAirHorizontalInput();
+	void UnlockAirHorizontalInput();
+	bool IsAirHorizontalInputLocked() const { return bAirInputLocked; }
+
 private:
 	void ApplySlamPlayerFollow(const FDDRMeleeSweepParams& Params, AActor* HitActor);
 	void MaintainSlamAirPin();
+	void MaintainAirInputLock();
 	bool IsTargetInAttackArc(const AActor* Target) const;
 	bool CanHitActor(AActor* OtherActor) const;
 	void ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params);
@@ -212,6 +220,10 @@ private:
 
 	bool bSlamAirPinActive = false;
 	float SlamPinZ = 0.f;
+	float SavedMaxFlySpeed = 600.f;
+	bool bAirInputLocked = false;
+	bool bOrientLockedForAir = false;
+	bool bSavedOrientToMovement = true;
 	bool bSlamEndJumpedThisSwing = false;
 	bool bSlamPinSweepParamsSet = false;
 	FDDRMeleeSweepParams SlamPinSweepParams;

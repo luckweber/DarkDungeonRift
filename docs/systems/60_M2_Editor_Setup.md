@@ -39,6 +39,8 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 2. **`EnableRootMotion = ✅ TRUE`** na sequence — é o RM que sobe o player (Root Lock: *Ref Pose* default ok).
 
 > ⚙️ **Por que o código põe o player em `MOVE_Flying` durante a montage:** em **`MOVE_Walking` o CMC DESCARTA o Z do root motion** (gruda o personagem no chão) — sintoma clássico: *"pulinho curto e trava, como root lock"*. O `GA_Launcher` troca pra Flying ao ativar e restaura `Falling` no fim **se não entrou no ar** (whiff/cancel caem de volta com a gravidade). Você não configura nada — só recompile.
+>
+> 🎮 **Flying aceita WASD:** o launcher trava o input horizontal **já na ativação** (`LockAirHorizontalInput` + `bOrientRotationToMovement=false`) — antes só travava no `EnterAirCombat` (fim da montage), e dava pra "andar no ar" durante o uppercut.
 3. Adicione **`ANS_DDRHitbox`** no swing com: `Base Damage 15` · `Hit Stop Frames 3` · **`bLaunchTargets = ✅ TRUE`** ← é isso que lança o alvo.
 
 > 🎯 **Regra do código:** o player só **entra no ar** se o swing **lançou alguém** (whiff = termina no chão, sem voar à toa). O alvo sobe **dirigido** (`LaunchRiseHeight`, default 300 cm) e segura ~1.1s (renovado por hit). `Attack_Up_01_Seq` (uppercut que NÃO sobe) fica como launcher alternativo P1.
@@ -110,6 +112,8 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 6. **Alvo seguro + homing:** hold estendido + homing XY (`Slam Target Hold Seconds` ~2s no Combat Component).
 7. **`bSlamClaimedTargetOnActivate`:** ❌ OFF
 8. **AnimBP queda:** `bIsCombatFalling` → `Jump_Combat_Loop` / `Jump_Combat_End` ([58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md))
+9. **Queda pós-End (AAA):** a `End` termina **pinada no ar** → o código solta em **queda natural** (`Post Slam Fall Velocity` no `BP_GA_AirSlam`; 0 = só gravidade) e o AnimBP assume: **Fall/Jump Loop da locomoção** até o pouso com anim de land. *(Build antiga dava `SetActorLocation` no chão = teleporte feio.)*
+10. **Queda do ALVO = RAGDOLL (AAA):** no derrube (`bSlamDownTargets` no contato da lâmina), o alvo vira **física real** — corpo limp despenca, amassa no chão e **levanta sozinho** (`Ragdoll Recover Seconds` = 1.5s na base; 0 = fica caído). A cápsula **segue o pelvis** (sombra blob acompanha o corpo) e o alvo caído fica **inatingível** até levantar (janela de respiro do knockdown). Requisito: **Physics Asset** na skeletal mesh do alvo — sem PA, fallback pra queda de cápsula + warning `[RAGDOLL]` no log (pra assignar: abra a Skeletal Mesh → Asset Details → **Physics Asset**; ou clique-direito na mesh no Content Browser → **Create → Physics Asset → Create and Assign**). Anti-tunneling: a velocity inicial é **capada** (`Ragdoll Max Initial Speed` 1200 — o -4500 do slam atravessava chão fino) e os corpos caem com **CCD** ligado. Knobs na base do personagem: `bRagdollOnSlammed` · `Ragdoll Recover Seconds` · `Ragdoll Follow Bone` (pelvis) · `Ragdoll Max Initial Speed`. *(Inimigos M3: trocar o recover instantâneo por anim de **getup** — clips "Hit air large to floor + getup", [51](../enemies/51_Enemy_Catalog_MVP.md), P1.)*
 
 > 🎮 **"Segurar R pra loopar?" NÃO.** O `Loop` existe pra **distância de queda variável** (anchor mais alto, desnível de arena) — quem decide quantas voltas ele dá é o **tempo de queda**, não o input. Slam é **comprometido** ([15 §6](../combat/15_Combat_Overview.md)): apertou R, desce até o impacto. Pairar segurando botão conflitaria com o auto-drop do juggle e tiraria o peso do finisher.
 
@@ -340,6 +344,12 @@ Toda a cadeia de combate loga com prefixo + timestamp — é a régua pra tunar 
 | **Inimigo sobe muito acima do player** (no combo) | `AirPop` stackava +150cm/hit | tune **`BP_GA_AirAttack`** → Juggle Target Height (~60; **aceita negativo** = alvo abaixo do player) + Air Pop Nudge (~0.15) |
 | **Soft-lock no inimigo no céu** (você no chão) | sem filtro de ΔZ | `SoftLockMaxVerticalGap` (~220) no Combat Component (fallback global) |
 | **Player teleporta para baixo** após launcher | `AirAnchorZ` puxava pro Z do inimigo | recompile — ancora no **pulo do player**; inimigo alinha depois (§2) |
+| **Player teleporta pro chão no FIM do slam** (End acaba e ele "pisca" no piso) | release antigo do pin: `SetActorLocation` no piso + `MOVE_Walking` | recompile — soltura em **queda natural** (`Post Slam Fall Velocity`, 0 = gravidade) caindo no Fall Loop da locomoção (§4 item 9) |
+| **Dummy "teleporta"/pisca na queda do slam** | queda era velocity -4500 com pose congelada (300cm em ~4 frames) | recompile — knockdown virou **ragdoll físico** (§4 item 10) |
+| Dummy cai DURO (sem ragdoll) + warning `[RAGDOLL] sem Physics Asset` | skeletal mesh do dummy sem PA | Skeletal Mesh → Asset Details → **Physics Asset** (use `PA_Mannequin`); sem PA compatível: clique-direito na mesh → **Create → Physics Asset → Create and Assign** |
+| **Dummy ATRAVESSA o chão** no ragdoll | corpos a -4500 (45 m/s) tunelavam piso fino (sem CCD) | recompile — velocity capada (`Ragdoll Max Initial Speed` 1200) + **CCD** na queda; recover acha o topo do piso mesmo se afundar |
+| **Dava pra ANDAR no ar** durante o juggle/pin | `MOVE_Flying` (hold aéreo) aceita WASD — player planava como drone | recompile — input horizontal **travado** no hold/pin (`MaxFlySpeed=0`); RM dos golpes, carry e air-dash continuam movendo (log `[AIR] input TRAVADO/LIBERADO`) |
+| Dummy não levanta depois do slam | `Ragdoll Recover Seconds` = 0 | suba pra ~1.5s no `BP_TrainingDummy` |
 | Launcher: inimigo sobe pouco / player muito alto | `LaunchRiseHeight` ≠ ΔZ do clip RM | tune **Launch Rise Height** no `BP_GA_Launcher` (§2) |
 | Player **cai** no air combo | RM com componente Z nos clips | recompile (`AirAnchorZ`) · ou RM OFF só em clips in-place |
 | Mesh **desliza** / posição bugada | RM **OFF** em clip com translação | §3 — `EnableRootMotion=TRUE`; C++ fixa o Z |

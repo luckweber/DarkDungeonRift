@@ -7,6 +7,7 @@
 #include "DDRAbilityInput.h"
 #include "DDRAbilitySystemComponent.h"
 #include "DDRCharacterMovementComponent.h"
+#include "DDRCombatComponent.h"
 #include "DDRLog.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -136,6 +137,14 @@ void ADDRPlayerCharacter::Move(const FInputActionValue& Value)
 	if (Input.IsNearlyZero() || !Controller || !CameraBoom)
 	{
 		return;
+	}
+
+	if (const UDDRCombatComponent* Combat = FindComponentByClass<UDDRCombatComponent>())
+	{
+		if (Combat->IsAirHorizontalInputLocked())
+		{
+			return;
+		}
 	}
 
 	const float CamYaw = CameraBoom->GetComponentRotation().Yaw;

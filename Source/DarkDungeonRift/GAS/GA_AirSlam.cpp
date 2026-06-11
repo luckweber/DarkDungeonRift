@@ -471,7 +471,7 @@ void UGA_AirSlam::EndAbility(
 	{
 		if (Combat->IsSlamAirPinActive())
 		{
-			Combat->ReleaseSlamAirPinForLanding();
+			Combat->ReleaseSlamAirPinForLanding(PostSlamFallVelocity);
 		}
 		Combat->UnregisterSlamAbility();
 	}

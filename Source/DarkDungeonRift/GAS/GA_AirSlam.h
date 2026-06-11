@@ -89,6 +89,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (DisplayName = "Suggested Hit Stop Frames (doc only)"))
 	int32 SlamHitStopFrames = 6;
 
+	/** Queda PÓS-slam (End terminou pinado no ar): velocity Z inicial da soltura.
+	 *  0 = gravidade pura — o player cai no Fall Loop da locomoção e pousa com a anim
+	 *  de land (AAA). Valores tipo -200 deixam a queda mais seca. NUNCA teleporta. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel", meta = (ClampMax = "0"))
+	float PostSlamFallVelocity = 0.f;
+
 	/** LEGADO: derruba o alvo no frame 0 sem hitbox — deixe OFF (use ANS_DDRHitbox). */
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel")
 	bool bSlamClaimedTargetOnActivate = false;

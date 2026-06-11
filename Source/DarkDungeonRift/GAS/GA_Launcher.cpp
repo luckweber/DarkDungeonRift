@@ -91,12 +91,17 @@ void UGA_Launcher::ActivateAbility(
 	// FIX "root lock": em MOVE_Walking o CMC descarta o Z do root motion (o player dava
 	// um pulinho e travava no chao). Flying durante a montage deixa o clip Floor_To_Air
 	// subir a capsula de verdade. Restaurado no EndAbility se nao entrar no ar.
-	if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+	if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
 	{
 		if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
 		{
 			MoveComp->SetMovementMode(MOVE_Flying);
 			bSetFlyingForLaunch = true;
+
+			if (UDDRCombatComponent* CombatForLock = GetDDRCombatComponent())
+			{
+				CombatForLock->LockAirHorizontalInput();
+			}
 		}
 	}
 
@@ -145,7 +150,12 @@ void UGA_Launcher::EndAbility(
 		const bool bHeldInAir = Combat && Combat->IsInAirCombat();
 		if (!bHeldInAir)
 		{
-			if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+			if (UDDRCombatComponent* CombatForUnlock = GetDDRCombatComponent())
+			{
+				CombatForUnlock->UnlockAirHorizontalInput();
+			}
+
+			if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
 			{
 				if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
 				{

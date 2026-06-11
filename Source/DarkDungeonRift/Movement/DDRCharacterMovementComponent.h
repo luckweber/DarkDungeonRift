@@ -35,6 +35,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "DDR|Locomotion")
 	const FDDRLocomotionState& GetLocomotionState() const { return LocomotionState; }
 
+	/** Trava WASD (launcher/juggle/pin) — zera aceleração para o AnimBP não tocar Run no ar. */
+	void SetLocomotionInputBlocked(bool bBlocked);
+	bool IsLocomotionInputBlocked() const { return bBlockLocomotionInput; }
+
 	UPROPERTY(EditAnywhere, Category = "DDR|Gait")
 	float WalkSpeed = 200.f;
 
@@ -60,4 +64,6 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Locomotion")
 	FDDRLocomotionState LocomotionState;
+
+	bool bBlockLocomotionInput = false;
 };

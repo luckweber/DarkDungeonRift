@@ -273,8 +273,11 @@ ActivateAbility:
        snap co-altitude → BeginSlamAirPin → JumpToSection("End")
   6. ANS_DDRHitbox no End: bSlamDownTargets + bAoEAtOwner + PinInAir
        → sweep cada frame enquanto pinado; EndSlamAirPin NÃO resume queda
-  7. Montage fim → ReleaseSlamAirPinForLanding → EndAbility
-  8. LandedDelegate: cue Slam (sem sweep); ignorado enquanto pin ativo
+       → derrube = RAGDOLL físico no alvo (bRagdollOnSlammed; recover 1.5s;
+         caído = CanHitActor false — janela de knockdown)
+  7. Montage fim → solta pin em QUEDA NATURAL (PostSlamFallVelocity, 0 = gravidade)
+       → EndAbility; AnimBP assume: Fall Loop da locomoção → land (SEM teleporte)
+  8. LandedDelegate: ignorado enquanto pin ativo (pós-soltura o pouso é da locomoção)
 ```
 
 **Setup editor:** [60 §4](../systems/60_M2_Editor_Setup.md) — `bSlamClaimedTargetOnActivate` **OFF**; hitbox na seção `End` (e `Start` se quiser grab no ar).

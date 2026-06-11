@@ -68,6 +68,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
 	void SetAirborneFollow(AActor* Attacker, float ForwardOffset, bool bEnable);
 
+	// ===== Ragdoll knockdown (queda AAA do slam) =====
+	/** Vira ragdoll físico (exige Physics Asset na mesh). Retorna false sem PA (fallback cápsula). */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Ragdoll")
+	bool StartRagdoll(const FVector& InitialVelocity);
+
+	/** Levanta: cápsula vai pro corpo, mesh re-anexa, volta ao fluxo normal. */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Ragdoll")
+	void RecoverFromRagdoll();
+
+	UFUNCTION(BlueprintCallable, Category = "DDR|Ragdoll")
+	bool IsRagdolled() const { return bRagdolled; }
+
 	virtual void Tick(float DeltaSeconds) override;
 
 protected:
@@ -110,11 +122,41 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Airborne")
 	float SlammedFallVelocity = -4500.f;
 
+	// ===== Ragdoll (knockdown do slam) =====
+	/** Slam derruba com RAGDOLL (física real, AAA) em vez de queda de cápsula com pose
+	 *  congelada ("teleporte"). Exige Physics Asset na skeletal mesh (SK_Mannequin tem). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll")
+	bool bRagdollOnSlammed = true;
+
+	/** Tempo caído até levantar (0 = nunca — fica no chão). Inimigos M3: trocar por anim getup (P1). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll", meta = (ClampMin = "0"))
+	float RagdollRecoverSeconds = 1.5f;
+
+	/** Osso que a cápsula segue durante o ragdoll (sombra blob/soft-lock acompanham o corpo). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll")
+	FName RagdollFollowBone = TEXT("pelvis");
+
+	/** Cap da velocity inicial dos corpos (cm/s). O -4500 do slam TUNELAVA o chão fino;
+	 *  física não precisa de velocidade pra parecer pesada. CCD também é ligado na queda. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll", meta = (ClampMin = "100"))
+	float RagdollMaxInitialSpeed = 1200.f;
+
+	/** Pelvis não desce abaixo disto do impacto no chão (evita tunelar durante ragdoll). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll", meta = (ClampMin = "10"))
+	float RagdollPelvisGroundClearance = 55.f;
+
 	bool bAbilitySystemInitialized = false;
 
 private:
+	float GetSlamFallSpeed() const;
+	bool TraceFloorBelow(const FVector& QueryLoc, FHitResult& OutHit) const;
+	void FinishGuidedSlamFall();
+	void TickGuidedSlamFall(float DeltaSeconds);
+	void TickRagdollFollow();
+
 	void RestartAirborneHoldTimer(float HoldSeconds);
 	void OnAirborneHoldExpired();
+	void OnRagdollRecoverExpired();
 
 	bool bAirborneActive = false;
 	float AirborneTargetZ = 0.f;
@@ -124,4 +166,13 @@ private:
 	bool bAirborneFollowEnabled = false;
 	float AirborneFollowForwardOffset = 90.f;
 	TWeakObjectPtr<AActor> AirborneFollowAttacker;
+
+	bool bRagdolled = false;
+	bool bGuidedSlamFall = false;
+	FTimerHandle RagdollRecoverTimerHandle;
+	// Capturados no BeginPlay pra restaurar EXATAMENTE no recover (BP pode ter ajustado).
+	FTransform DefaultMeshRelativeTransform;
+	FName DefaultMeshCollisionProfile = TEXT("CharacterMesh");
+	// Fallback do recover se o corpo tunelar pro void (sem chão no trace).
+	FVector RagdollStartActorLocation = FVector::ZeroVector;
 };
