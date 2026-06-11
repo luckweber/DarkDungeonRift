@@ -44,6 +44,10 @@ public:
 	// Lançou alguém no último sweep com bLaunchTargets? (launcher só sobe se acertou)
 	bool DidLaunchTargetThisSwing() const { return bLaunchedTargetThisSwing; }
 
+	/** Ativa arrasto horizontal do alvo juggleado (set 06). Chamado pelo ANS_DDRHitbox. */
+	void SetAirCarryActive(bool bActive, float ForwardOffset);
+	void SyncJuggleTargetFollow();
+
 	// ===== Soft-lock topdown (doc 18 §6) =====
 	// Escolhe o alvo "óbvio": cone na direção da INTENÇÃO (input de movimento > facing),
 	// desempate por distância; fallback = mais próximo no raio. bPreferAirborne prioriza
@@ -64,6 +68,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "DDR|Combat")
 	float GetHealthPercent() const;
+
+	/** Copia tuning do GA_Launcher ao ativar (fallback = valores no Combat Component). */
+	void ApplyLauncherAirTuning(float InLaunchRiseHeight, float InJuggleTargetHeightAbovePlayer);
+
+	/** Copia tuning do GA_AirAttack ao ativar (fallback = valores no Combat Component). */
+	void ApplyAirAttackJuggleTuning(float InJuggleTargetHeightAbovePlayer, float InAirPopVerticalNudgeScale);
 
 private:
 	bool CanHitActor(AActor* OtherActor) const;
@@ -86,8 +96,9 @@ private:
 	FName WeaponTraceSocketEnd = TEXT("weapon_end");
 
 	// ===== Juggle (doc 16 §3 — modelo numérico) =====
+	/** Fallback global — abilities sobrescrevem ao ativar (GA_Launcher / GA_AirAttack). */
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air")
-	float LaunchRiseHeight = 300.f;          // pop inicial do launcher (AltitudeAlvo)
+	float LaunchRiseHeight = 300.f;
 
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air")
 	float AirPopHeightBase = 150.f;          // re-float por hit
@@ -104,6 +115,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air")
 	float PlayerAirHoldSeconds = 1.4f;       // auto-drop do PLAYER se ocioso no ar
 
+	/** Fallback global — GA_Launcher (entrada) e GA_AirAttack (pop) sobrescrevem ao ativar. */
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air")
+	float JuggleTargetHeightAbovePlayer = 60.f;
+
+	/** Fallback global — GA_AirAttack sobrescreve ao ativar. */
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air", meta = (ClampMin = "0", ClampMax = "1"))
+	float AirPopVerticalNudgeScale = 0.15f;
+
 	// ===== Soft-lock (doc 18 §6) =====
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|SoftLock")
 	bool bSoftLockEnabled = true;
@@ -113,6 +132,10 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|SoftLock", meta = (ClampMin = "5", ClampMax = "180"))
 	float SoftLockHalfAngleDegrees = 75.f;   // cone na direção da intenção
+
+	/** Ignora alvos com |ΔZ| maior que isto — evita lock no inimigo no céu enquanto você está no chão. */
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat|SoftLock")
+	float SoftLockMaxVerticalGap = 220.f;
 
 	// ===== Motion warp (doc 18 §6.3) =====
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|MotionWarp")
@@ -153,9 +176,18 @@ private:
 	uint8 SavedMovementMode = 0;
 	FTimerHandle AirHoldTimerHandle;
 
+	/** Altitude do juggle (Z fixo enquanto bInAirCombat — permite RM horizontal nos clips sem cair). */
+	float AirAnchorZ = 0.f;
+	bool bHasAirAnchor = false;
+
 	void LaunchTarget(AActor* TargetActor);
 	void AirPopTarget(AActor* TargetActor);
 	void OnPlayerAirHoldExpired();
+	void MaintainAirAltitude();
+
+	bool bAirCarryActive = false;
+	float AirCarryForwardOffset = 90.f;
+	TWeakObjectPtr<AActor> ActiveJuggleTarget;
 
 	TSet<TWeakObjectPtr<AActor>> HitActorsThisSwing;
 };

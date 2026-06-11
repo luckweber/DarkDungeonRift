@@ -43,6 +43,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher")
 	TObjectPtr<UAnimMontage> LauncherMontage;
 
+	/** Altura inicial do alvo no hit (cm). Tune para combinar com o ΔZ do RM do clip. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher|Air", meta = (ClampMin = "0"))
+	float LaunchRiseHeight = 300.f;
+
+	/** Co-altitude ao entrar no ar (fim da montage): alvo fica este valor acima do player. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher|Air", meta = (ClampMin = "0"))
+	float JuggleTargetHeightAbovePlayer = 60.f;
+
 private:
 	// MOVE_Walking DESCARTA o Z do root motion (gruda no chao) — o launcher precisa de
 	// Flying durante a montage pro clip Floor_To_Air subir o player de verdade.

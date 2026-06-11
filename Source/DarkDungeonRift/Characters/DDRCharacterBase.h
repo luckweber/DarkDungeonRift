@@ -44,6 +44,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
 	void ApplyAirPop(float PopHeight, float HoldSeconds);
 
+	/** Define altura-alvo absoluta do juggle (co-altitude com o atacante). */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
+	void SetAirborneTargetZ(float NewTargetZ, float HoldSeconds);
+
+	/** Ajusta Z-alvo sem incrementar hit count (launcher / snap inicial). */
+	void OverrideAirborneTargetZ(float NewTargetZ);
+
 	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
 	void EndAirborne(bool bSlammed);
 
@@ -52,6 +59,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
 	int32 GetAirborneHitCount() const { return AirborneHitCount; }
+
+	/** Segue o atacante no plano horizontal enquanto Airborne (juggle que avança, set 06). */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
+	void SetAirborneFollow(AActor* Attacker, float ForwardOffset, bool bEnable);
 
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -104,4 +115,8 @@ private:
 	float AirborneTargetZ = 0.f;
 	int32 AirborneHitCount = 0;
 	FTimerHandle AirborneHoldTimerHandle;
+
+	bool bAirborneFollowEnabled = false;
+	float AirborneFollowForwardOffset = 90.f;
+	TWeakObjectPtr<AActor> AirborneFollowAttacker;
 };

@@ -4,6 +4,7 @@
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "AbilitySystemComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DDRCombatComponent.h"
@@ -25,6 +26,41 @@ UGA_AttackLight::UGA_AttackLight()
 	ActivationBlockedTags.AddTag(DDRTags::State_Combat_InAir);
 
 	bRetriggerInstancedAbility = false;
+}
+
+bool UGA_AttackLight::CanActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags,
+	FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
+	{
+		return false;
+	}
+
+	// Combo de chao so no chao — no ar o GA_AirAttack responde ao mesmo botao (doc 19).
+	if (const UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr)
+	{
+		if (ASC->HasMatchingGameplayTag(DDRTags::State_Combat_InAir))
+		{
+			return false;
+		}
+	}
+
+	if (const AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr)
+	{
+		if (const UDDRCombatComponent* Combat = Avatar->FindComponentByClass<UDDRCombatComponent>())
+		{
+			if (Combat->IsInAirCombat())
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 void UGA_AttackLight::ActivateAbility(
@@ -129,16 +165,27 @@ void UGA_AttackLight::InputPressed(
 {
 	Super::InputPressed(Handle, ActorInfo, ActivationInfo);
 
-	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+	UDDRCombatComponent* Combat = nullptr;
+	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
 	{
-		if (Combat->IsComboWindowOpen())
-		{
-			TryAdvanceCombo();
-			return;
-		}
-
-		Combat->BufferAttackInput(InputBufferSeconds);
+		Combat = ActorInfo->AvatarActor->FindComponentByClass<UDDRCombatComponent>();
 	}
+	if (!Combat)
+	{
+		Combat = GetDDRCombatComponent();
+	}
+	if (!Combat)
+	{
+		return;
+	}
+
+	if (Combat->IsComboWindowOpen())
+	{
+		TryAdvanceCombo();
+		return;
+	}
+
+	Combat->BufferAttackInput(InputBufferSeconds);
 }
 
 void UGA_AttackLight::OnMontageEnded()

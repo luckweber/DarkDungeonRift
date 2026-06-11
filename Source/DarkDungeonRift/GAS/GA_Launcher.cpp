@@ -54,6 +54,7 @@ void UGA_Launcher::ActivateAbility(
 	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 	{
 		Combat->ResetHitTracking();
+		Combat->ApplyLauncherAirTuning(LaunchRiseHeight, JuggleTargetHeightAbovePlayer);
 		Combat->FaceAndSetupMotionWarp(EDDRMotionWarpProfile::Launcher, /*bPreferAirborne=*/false);
 	}
 

@@ -25,6 +25,11 @@ public:
 		float FrameDeltaTime,
 		const FAnimNotifyEventReference& EventReference) override;
 
+	virtual void NotifyEnd(
+		USkeletalMeshComponent* MeshComp,
+		UAnimSequenceBase* Animation,
+		const FAnimNotifyEventReference& EventReference) override;
+
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat")
 	FDDRMeleeSweepParams SweepParams;
 };

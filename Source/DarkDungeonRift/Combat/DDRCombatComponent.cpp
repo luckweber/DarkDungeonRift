@@ -29,6 +29,8 @@ static TAutoConsoleVariable<int32> CVarCombatDebug(
 UDDRCombatComponent::UDDRCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	// Depois do CMC/root motion — corrige Z do juggle no mesmo frame.
+	PrimaryComponentTick.TickGroup = TG_PostPhysics;
 	DamageEffectClass = UGE_DDRDamage::StaticClass();
 }
 
@@ -43,6 +45,86 @@ void UDDRCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 		{
 			ClearBufferedAttack();
 		}
+	}
+
+	if (bInAirCombat)
+	{
+		MaintainAirAltitude();
+	}
+
+	if (bAirCarryActive)
+	{
+		SyncJuggleTargetFollow();
+	}
+}
+
+void UDDRCombatComponent::ApplyLauncherAirTuning(
+	const float InLaunchRiseHeight,
+	const float InJuggleTargetHeightAbovePlayer)
+{
+	LaunchRiseHeight = InLaunchRiseHeight;
+	JuggleTargetHeightAbovePlayer = InJuggleTargetHeightAbovePlayer;
+}
+
+void UDDRCombatComponent::ApplyAirAttackJuggleTuning(
+	const float InJuggleTargetHeightAbovePlayer,
+	const float InAirPopVerticalNudgeScale)
+{
+	JuggleTargetHeightAbovePlayer = InJuggleTargetHeightAbovePlayer;
+	AirPopVerticalNudgeScale = InAirPopVerticalNudgeScale;
+}
+
+void UDDRCombatComponent::SetAirCarryActive(const bool bActive, const float ForwardOffset)
+{
+	bAirCarryActive = bActive;
+	AirCarryForwardOffset = ForwardOffset;
+	if (!bActive)
+	{
+		SyncJuggleTargetFollow();
+	}
+}
+
+void UDDRCombatComponent::SyncJuggleTargetFollow()
+{
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor || !ActiveJuggleTarget.IsValid())
+	{
+		return;
+	}
+
+	ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get());
+	if (!TargetChar || !TargetChar->IsAirborne())
+	{
+		return;
+	}
+
+	TargetChar->SetAirborneFollow(OwnerActor, AirCarryForwardOffset, bAirCarryActive);
+}
+
+void UDDRCombatComponent::MaintainAirAltitude()
+{
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (!OwnerChar || !MoveComp || !bHasAirAnchor)
+	{
+		return;
+	}
+
+	if (MoveComp->MovementMode != MOVE_Flying)
+	{
+		MoveComp->SetMovementMode(MOVE_Flying);
+	}
+
+	FVector Velocity = MoveComp->Velocity;
+	Velocity.Z = 0.f;
+	MoveComp->Velocity = Velocity;
+
+	const FVector Loc = OwnerChar->GetActorLocation();
+	if (!FMath::IsNearlyEqual(Loc.Z, AirAnchorZ, 0.5f))
+	{
+		FVector Pinned = Loc;
+		Pinned.Z = AirAnchorZ;
+		OwnerChar->SetActorLocation(Pinned, false, nullptr, ETeleportType::TeleportPhysics);
 	}
 }
 
@@ -128,6 +210,11 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		else if (Params.bAirPop)
 		{
 			AirPopTarget(HitActor);
+			if (Params.bCarryAirborneTargets)
+			{
+				ActiveJuggleTarget = HitActor;
+				SetAirCarryActive(true, Params.AirCarryForwardOffset);
+			}
 		}
 		else if (Params.bSlamDownTargets)
 		{
@@ -209,11 +296,19 @@ void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
 {
 	if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(TargetActor))
 	{
+		// Altura inicial do alvo: LaunchRiseHeight (tune no BP para combinar com o RM do clip
+		// Attack_Up_Floor_To_Air). Co-altitude fina acontece em EnterAirCombat, após o player
+		// terminar o pulo — nunca puxa o player para baixo.
 		TargetChar->StartAirborne(LaunchRiseHeight, TargetAirborneHoldSeconds);
+		ActiveJuggleTarget = TargetActor;
 		bLaunchedTargetThisSwing = true;
 
+		// Gate de abilities: assim que alguem foi lancado, LMB vira AirAttack (nao espera
+		// o fim da montage do launcher — senao AttackLight dispara no meio do uppercut).
 		if (UAbilitySystemComponent* SourceASC = GetOwnerASC())
 		{
+			SourceASC->AddLooseGameplayTag(DDRTags::State_Combat_InAir);
+
 			FGameplayCueParameters CueParams;
 			CueParams.Instigator = GetOwner();
 			CueParams.Location = TargetActor->GetActorLocation();
@@ -237,8 +332,16 @@ void UDDRCombatComponent::AirPopTarget(AActor* TargetActor)
 		return;
 	}
 
-	const float PopHeight = AirPopHeightBase * FMath::Pow(AirPopDecay, TargetChar->GetAirborneHitCount());
-	TargetChar->ApplyAirPop(PopHeight, TargetAirborneHoldSeconds);
+	// Co-altitude: altura RELATIVA ao player, não stack infinito de +150cm por hit.
+	const AActor* OwnerActor = GetOwner();
+	const float RefZ = (bInAirCombat && bHasAirAnchor && OwnerActor)
+		? AirAnchorZ
+		: (OwnerActor ? OwnerActor->GetActorLocation().Z : TargetChar->GetActorLocation().Z);
+
+	const float Nudge = AirPopHeightBase * AirPopVerticalNudgeScale
+		* FMath::Pow(AirPopDecay, static_cast<float>(TargetChar->GetAirborneHitCount()));
+	const float DesiredZ = RefZ + JuggleTargetHeightAbovePlayer + Nudge;
+	TargetChar->SetAirborneTargetZ(DesiredZ, TargetAirborneHoldSeconds);
 }
 
 void UDDRCombatComponent::EnterAirCombat()
@@ -256,6 +359,21 @@ void UDDRCombatComponent::EnterAirCombat()
 	}
 
 	bInAirCombat = true;
+	// Ancora na altitude do PULO do player (fim do RM do launcher) — não no inimigo.
+	AirAnchorZ = OwnerChar->GetActorLocation().Z;
+	bHasAirAnchor = true;
+
+	// Alinha o alvo à co-altitude depois que o player subiu (doc 16 §2).
+	if (ActiveJuggleTarget.IsValid())
+	{
+		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get()))
+		{
+			if (TargetChar->IsAirborne())
+			{
+				TargetChar->OverrideAirborneTargetZ(AirAnchorZ + JuggleTargetHeightAbovePlayer);
+			}
+		}
+	}
 	MoveComp->SetMovementMode(MOVE_Flying);
 	MoveComp->Velocity = FVector::ZeroVector;
 	MoveComp->StopMovementImmediately();
@@ -291,6 +409,9 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 	}
 
 	bInAirCombat = false;
+	bHasAirAnchor = false;
+	bAirCarryActive = false;
+	ActiveJuggleTarget.Reset();
 	GetWorld()->GetTimerManager().ClearTimer(AirHoldTimerHandle);
 
 	if (UAbilitySystemComponent* ASC = GetOwnerASC())
@@ -329,6 +450,28 @@ AActor* UDDRCombatComponent::FindSoftLockTarget(bool bPreferAirborne) const
 
 	const FVector OwnerLoc = OwnerActor->GetActorLocation();
 
+	auto IsWithinVerticalGap = [this, &OwnerLoc](const AActor* Candidate) -> bool
+	{
+		if (!Candidate)
+		{
+			return false;
+		}
+		return FMath::Abs(Candidate->GetActorLocation().Z - OwnerLoc.Z) <= SoftLockMaxVerticalGap;
+	};
+
+	// Juggle ativo: prioriza o alvo que já está no ar (se ainda na mesma faixa de altura).
+	if (bPreferAirborne && ActiveJuggleTarget.IsValid() && CanHitActor(ActiveJuggleTarget.Get()))
+	{
+		if (IsWithinVerticalGap(ActiveJuggleTarget.Get()))
+		{
+			const FVector To = ActiveJuggleTarget->GetActorLocation() - OwnerLoc;
+			if (To.Size2D() <= SoftLockRadius)
+			{
+				return ActiveJuggleTarget.Get();
+			}
+		}
+	}
+
 	// Direção da INTENÇÃO: input de movimento atual > facing.
 	FVector PreferredDir = OwnerActor->GetActorForwardVector();
 	if (const APawn* OwnerPawn = Cast<APawn>(OwnerActor))
@@ -359,6 +502,11 @@ AActor* UDDRCombatComponent::FindSoftLockTarget(bool bPreferAirborne) const
 		const FVector To = Candidate->GetActorLocation() - OwnerLoc;
 		const float Dist = To.Size2D();
 		if (Dist > SoftLockRadius)
+		{
+			continue;
+		}
+
+		if (!IsWithinVerticalGap(Candidate))
 		{
 			continue;
 		}

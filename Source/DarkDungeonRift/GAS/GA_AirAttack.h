@@ -19,6 +19,13 @@ public:
 	UGA_AirAttack();
 
 protected:
+	virtual bool CanActivateAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayTagContainer* SourceTags,
+		const FGameplayTagContainer* TargetTags,
+		FGameplayTagContainer* OptionalRelevantTags) const override;
+
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -31,4 +38,12 @@ protected:
 	virtual bool ShouldPreferAirborneTargets() const override { return true; }
 
 	virtual EDDRMotionWarpProfile GetMotionWarpProfile() const override { return EDDRMotionWarpProfile::Air; }
+
+	/** Co-altitude por hit do juggle (ANS_DDRHitbox com bAirPop). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|AirAttack|Juggle", meta = (ClampMin = "0"))
+	float JuggleTargetHeightAbovePlayer = 60.f;
+
+	/** Nudge vertical extra por hit (× decay) — pequeno, não stack infinito. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|AirAttack|Juggle", meta = (ClampMin = "0", ClampMax = "1"))
+	float AirPopVerticalNudgeScale = 0.15f;
 };

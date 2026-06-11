@@ -45,7 +45,12 @@ GA_Launcher (Ability.Attack.Launcher):
 | AltitudeAlvo (pop inicial) | 250-350 cm | Altura que o RootMotionSource **dirige** (não "Launch Z balístico") |
 | Tempo de hang no topo | ~0.3-0.5 s | Quanto o alvo "segura" antes de poder cair |
 | Player sobe junto? | **Sim** (recomendado) | "Follow launch" estilo DMC — mantém player junto do alvo |
-| Player AltitudeAlvo | **= AltitudeAlvo do alvo** | Co-altitude garantida porque ambos são *dirigidos*, não jogados |
+| Player AltitudeAlvo | **≈ altura do RM do player** | Co-altitude: o **player** ancora no fim do pulo; o **alvo** alinha ~60 cm acima (não o contrário) |
+
+> ✅ **Implementação M2 (C++ atual):** o design ainda prefere altura *dirigida* (não balística). Na prática:
+> - **Player:** root motion de `Attack_Up_Floor_To_Air` em `AM_Launcher` (`GA_Launcher` põe `MOVE_Flying` durante a montage); ao acertar, `EnterAirCombat` fixa `AirAnchorZ` na **altura atual do player** (`MaintainAirAltitude`).
+> - **Alvo:** `StartAirborne(LaunchRiseHeight)` no hit (`bLaunchTargets`); ao fim da montage, snap de co-altitude (`JuggleTargetHeightAbovePlayer` acima do `AirAnchorZ`).
+> - **Tuning no editor:** `BP_GA_Launcher` → **Launch Rise Height** + **Juggle Target Height Above Player**; fallback global no Combat Component do player — [60 §2/§5](../systems/60_M2_Editor_Setup.md).
 
 > 🎮 **Follow launch** (player sobe junto) é o que faz o combo aéreo funcionar em ação. Sem isso, o inimigo sobe e o player fica no chão olhando. **Mas** ele tem custo de leitura em topdown — ver §6 (é a pergunta que o spike M⁻¹ precisa responder).
 
@@ -71,17 +76,19 @@ O segredo do juggle é o alvo **não cair rápido**:
 
 | Variável | Valor inicial | Função |
 |---|---|---|
-| **Hang-time alvo por hit** | ~0.35 s | Quanto o alvo "segura" no ar após cada pop |
-| **PopHeight por hit** | ~120-180 cm | Altura do re-float (dirigida por RootMotionSource) |
-| **decayFactor** | 0.85 por hit | PopHeight *= decay a cada hit → combo não é infinito |
-| **Altura mínima de combo** | ~80 cm | Abaixo disto o alvo **cai** (sai do juggle) |
-| **Cap de hits no ar** (`MaxJuggleHits`) | **7** (faixa de tuning 6-8) | Teto anti-abuse; atributo lido por `GA_AirAttack` ([05 §3.1](../systems/05_GAS_Architecture.md), [19](19_Abilities_Deep.md)). Eco *JugglePlus* → 8 |
+| **Hang-time alvo por hit** | ~1.1 s (`TargetAirborneHoldSeconds`) | Timer renovado a cada hit |
+| **Co-altitude por hit** | ~60 cm (`JuggleTargetHeightAbovePlayer`) | Alvo fica **relativo ao `AirAnchorZ` do player**, não stack de +150 cm |
+| **Nudge extra por hit** | ×0.15 (`AirPopVerticalNudgeScale`) | Pequeno bump com decay — anti-infinito sem subir ao céu |
+| **decayFactor** | 0.85 (`AirPopDecay`) | Nudge *= decay^hits |
+| **Cap de hits no ar** (`MaxJuggleHits`) | **7** | Teto anti-abuse (`UDDRCombatComponent`) |
+
+**Tuning no editor (preferido):** `BP_GA_AirAttack` → **Juggle Target Height Above Player** · **Air Pop Vertical Nudge Scale** (copiados ao ativar; fallback no Combat Component).
 
 ```
-Hit aéreo no alvo (após o freeze do hit-stop soltar):
+Hit aéreo no alvo (ANS_DDRHitbox bAirPop, após hit-stop):
   → GE_Damage
-  → RootMotionSource pop = PopHeight  (PopHeight *= decayFactor)
-  → se PopHeight < AlturaMínima OU hits >= Cap → encerra juggle (alvo cai)
+  → SetAirborneTargetZ(AirAnchorZ + JuggleTargetHeightAbovePlayer + nudge*decay^hits)
+  → se hits >= MaxJuggleHits → EndAirborne (alvo cai)
 ```
 
 > 🐞 **`ddr.JuggleDebug 1`** (no espírito do `ddr.LocomotionDebug`, doc 08 §5): desenhe em tela **altura do alvo, PopHeight atual, decay, contagem de hits**. Você precisa *ver* o juggle pra tunar o feel — é número, não intuição.
@@ -109,6 +116,8 @@ GA_AirAttack (Ability.Attack.Air):
   - hit detection idêntico (trace na arma)
   - cada hit re-flutua o alvo (§3)
   - encadeia por input buffer (doc 07), igual ao chão
+  - **sets de anim:** `06_Combo_Attack_Air_06` avança no ar (RM) · `07_Wave_07` fica parado — no set 06, `ANS_DDRHitbox` com **`bCarryAirborneTargets`** arrasta o alvo no XY ([60 §3](../systems/60_M2_Editor_Setup.md))
+  - **tuning juggle:** `JuggleTargetHeightAbovePlayer` + `AirPopVerticalNudgeScale` no `BP_GA_AirAttack` (§3 acima)
 ```
 
 > Reaproveita **toda** a arquitetura do combo de chão (doc 15): seções, janelas, hit detection, buffer. A diferença é a tag `InAir` e o re-float do alvo. Não reinvente — estenda.

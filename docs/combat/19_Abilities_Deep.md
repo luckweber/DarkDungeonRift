@@ -167,21 +167,33 @@ Mesma máquina do Light (seções + buffer + `Combat.Hit`), mas **mais lento, ma
 
 **Targeting:** `FaceAndSetupMotionWarp(Launcher)` — warp horizontal curto (~180 cm), Z do clip; montage `AM_Launcher` com janela `AttackWarp` — [60 §7.2](../systems/60_M2_Editor_Setup.md).
 
-**Fluxo de Ability Tasks:**
+**Tuning aéreo (`EditDefaultsOnly` no `BP_GA_Launcher`):**
+
+| Propriedade | Default | Uso |
+|---|---|---|
+| `LaunchRiseHeight` | 300 cm | Altura inicial do alvo no hit (`StartAirborne`) |
+| `JuggleTargetHeightAbovePlayer` | 60 cm | Co-altitude ao `EnterAirCombat` (fim da montage) |
+
+Ao ativar, `ApplyLauncherAirTuning` copia para o `UDDRCombatComponent` (fallback = valores no Combat Component do player).
+
+**Fluxo de Ability Tasks (M2 implementado):**
 ```
 ActivateAbility:
   1. CommitAbility (paga cooldown)
-  1b. FaceAndSetupMotionWarp(profile=Launcher)
+  1b. ApplyLauncherAirTuning + FaceAndSetupMotionWarp(profile=Launcher)
+  1c. MOVE_Flying (CMC aceita Z do root motion do clip Floor_To_Air)
   2. Task PlayMontageAndWait(AM_Launcher)
-  3. Task WaitGameplayEvent("Combat.Launch")  (notify de impacto)
-       → NO ALVO: aplica GE_Airborne (concede State.Combat.Airborne) +
-                  RootMotionSource(vertical) dirige à AltitudeAlvo e SEGURA (hang)
-       → NO PLAYER (follow): RootMotionSource à MESMA AltitudeAlvo +
-                  Owned ganha State.Combat.InAir → habilita GA_AirAttack/AirSlam
-  4. OnMontageEnd → EndAbility (mantém State.Combat.InAir até pousar/slam)
+  3. ANS_DDRHitbox (bLaunchTargets) no swing:
+       → alvo: StartAirborne + tag State.Combat.Airborne
+       → player: tag State.Combat.InAir (LMB vira AirAttack já no hit)
+  4. OnMontageCompleted:
+       se lançou alguém → EnterAirCombat (AirAnchorZ = altura do PULO do player;
+       alvo alinha JuggleTargetHeightAbovePlayer acima)
+       senão → Falling (whiff)
+  5. EndAbility → ClearAttackMotionWarp
 ```
 
-> ⚠️ **Contrato técnico (revisão de design, Davi · risco ALTA — [16 §2](16_Aerial_Combos.md)):** a subida é **`UAbilityTask_ApplyRootMotionConstantForce` / `...MoveToForce`** (RootMotionSource **ancorado**), **NUNCA** `LaunchCharacter`. `LaunchCharacter` é balístico não-determinístico: com gravidades diferentes (player vs alvo), os corpos divergem na 2ª pancada e o follow launch quebra. RootMotionSource *dirige* a altura → co-altitude garantida. 🔒 Single-player remove o motivo extra (predição) — mas a razão de **feel/determinismo continua válida**, então o contrato permanece.
+> ⚠️ **Contrato de design ([16 §2](16_Aerial_Combos.md)):** altura *dirigida*, não balística. **M2:** player sobe via **root motion da montage**; alvo via `StartAirborne` + interp de Z. Tune `LaunchRiseHeight` no `BP_GA_Launcher` para combinar com o ΔZ do clip — [60 §2](../systems/60_M2_Editor_Setup.md).
 
 **Concede/dispara:** `State.Combat.Airborne` (alvo, gate do juggle + pausa de IA, [16 §8](16_Aerial_Combos.md)) e `State.Combat.InAir` (player, gate das abilities aéreas). Estes dois tags são o **switch** que liga todo o combo aéreo.
 
@@ -202,9 +214,18 @@ ActivateAbility:
 | **Montage** | `AM_AirCombo` (seções, espelha o de chão) |
 | **Instancing** | `InstancedPerActor` |
 
-**Targeting:** `FaceAndSetupMotionWarp(Air)` com `bPreferAirborne` — prioriza alvo `State.Combat.Airborne`; warp menor (~120 cm). **Sem** janela Motion Warp em `AM_AirCombo` (drift indesejado no ar) — [60 §7.2](../systems/60_M2_Editor_Setup.md).
+**Targeting:** `FaceAndSetupMotionWarp(Air)` com `bPreferAirborne` — prioriza alvo `State.Combat.Airborne`; warp menor (~120 cm). Soft-lock ignora alvos com `|ΔZ| > SoftLockMaxVerticalGap` (~220 cm). **Sem** janela Motion Warp em `AM_AirCombo` — [60 §7.2](../systems/60_M2_Editor_Setup.md).
 
-**Fluxo de Ability Tasks:** idêntico ao `GA_Attack_Light` (seções + buffer + `Combat.Hit`), **mais** o re-float: cada hit aplica um `RootMotionSource` curto (PopHeight, com decay) no alvo ([16 §3](16_Aerial_Combos.md)). O **cap de hits** é dono da ability (lê atributo `MaxJuggleHits`, [03b §6](../design/03b_Reward_System.md)).
+**Tuning juggle (`EditDefaultsOnly` no `BP_GA_AirAttack`):**
+
+| Propriedade | Default | Uso |
+|---|---|---|
+| `JuggleTargetHeightAbovePlayer` | 60 cm | Co-altitude por hit (`bAirPop` → `SetAirborneTargetZ`) |
+| `AirPopVerticalNudgeScale` | 0.15 | Nudge extra × decay por hit |
+
+Ao ativar, `ApplyAirAttackJuggleTuning` copia para o `UDDRCombatComponent`. Cada golpe também chama `RefreshAirHold` (anti auto-drop do player).
+
+**Fluxo de Ability Tasks:** idêntico ao `GA_Attack_Light` (seções + buffer + `Combat.Hit`), **mais** re-float co-altitude no alvo via `ANS_DDRHitbox` (`bAirPop`) — [16 §3](16_Aerial_Combos.md). Cap de hits: `MaxJuggleHits` no Combat Component.
 
 > 🪂 **Roteamento de input:** `IA_Attack` chama `AbilityLocalInputPressed(Attack)`; o GAS ativa a ability **concedida com esse InputID cujas `ActivationRequiredTags` batem**. Como `GA_AirAttack` requer `InAir` e `GA_Attack_Light` não, o estado do player resolve qual sai — sem `if` no input. Mantenha **ambas** concedidas; o gate de tag faz a seleção.
 

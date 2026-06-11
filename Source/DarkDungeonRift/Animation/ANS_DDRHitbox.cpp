@@ -18,6 +18,10 @@ void UANS_DDRHitbox::NotifyBegin(
 	if (UDDRCombatComponent* Combat = MeshComp->GetOwner()->FindComponentByClass<UDDRCombatComponent>())
 	{
 		Combat->ResetHitTracking();
+		if (SweepParams.bCarryAirborneTargets)
+		{
+			Combat->SetAirCarryActive(true, SweepParams.AirCarryForwardOffset);
+		}
 	}
 }
 
@@ -36,5 +40,17 @@ void UANS_DDRHitbox::NotifyTick(
 	{
 		FDDRMeleeSweepParams Params = SweepParams;
 		Combat->PerformMeleeSweep(Params);
+		if (Params.bCarryAirborneTargets)
+		{
+			Combat->SyncJuggleTargetFollow();
+		}
 	}
+}
+
+void UANS_DDRHitbox::NotifyEnd(
+	USkeletalMeshComponent* MeshComp,
+	UAnimSequenceBase* Animation,
+	const FAnimNotifyEventReference& EventReference)
+{
+	// Carry permanece entre golpes do combo — desliga só em ExitAirCombat (slam/pouso).
 }

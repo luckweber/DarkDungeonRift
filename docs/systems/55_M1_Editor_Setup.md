@@ -97,7 +97,7 @@ Em **cada** seção, adicione dois **Anim Notify State**:
 | Combo Window | **`ANS_DDRComboWindow`** | recovery, antes do fim da seção |
 | Motion Warp | **`Motion Warping`** (engine notify) | startup/swing, **antes** do hitbox — **1× por seção** (Atk1–4) |
 
-> 🎯 **Motion Warp por seção:** o C++ chama `FaceAndSetupMotionWarp` a cada golpe (Atk1 e nos jumps Atk2+), mas o lunge só acontece se a **seção que está tocando** tiver a janela na timeline. Detalhe: [57 §2b](../combat/57_M1_Combo_Editor_Setup.md) · [60 §7.3](60_M2_Editor_Setup.md).
+> 🎯 **Motion Warp por seção:** o C++ chama `FaceAndSetupMotionWarp` a cada golpe (Atk1 e nos jumps Atk2+), mas o lunge só acontece se a **seção que está tocando** tiver a janela na timeline. **Pins:** target **`AttackWarp`**, Translation ✅, Ignore Z ✅, **Warp Rotation ❌** (face no startup). Detalhe: [57 §2b](../combat/57_M1_Combo_Editor_Setup.md) · [60 §7.3](60_M2_Editor_Setup.md).
 
 Tune no `ANS_DDRHitbox` (Details):
 

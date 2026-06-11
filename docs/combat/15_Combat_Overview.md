@@ -168,7 +168,7 @@ Pipeline de 4 camadas ([18 §6](18_Combat_System_Deep.md)): **soft-lock** → **
 | Soft-lock + face | `UDDRCombatComponent::FaceSoftLockTarget` | tune `SoftLockRadius` / `SoftLockHalfAngleDegrees` no BP |
 | Motion warp | `FaceAndSetupMotionWarp` + `UMotionWarpingComponent` | notify **Motion Warping** → warp target `AttackWarp` |
 
-- Warp target canônico: **`AttackWarp`** (Skew Warp, `Ignore Z` no chão).
+- Warp target canônico: **`AttackWarp`** (Skew Warp, Translation ON, Ignore Z, **Warp Rotation OFF**).
 - Cap de distância (`MaxWarpDistance` ~200 cm) = whiff honesto fora do alcance.
 - **`AM_Combo`:** uma janela Motion Warp **por seção** (Atk1–4) — C++ recalcula o alvo a cada golpe; sem notify na seção = encara mas não avança ([57 §2b](57_M1_Combo_Editor_Setup.md)).
 

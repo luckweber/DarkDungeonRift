@@ -75,9 +75,16 @@ Em **Atk1**, **Atk2**, **Atk3** e **Atk4** (mesma config em todas):
 
 1. Notify state **`Motion Warping`** no **startup/swing**, **antes** do `ANS_DDRHitbox`.
 2. **Root Motion Modifier** = `Skew Warp` (ou `Warp`).
-3. **Warp Target Name** = `AttackWarp` · **Warp Translation** ✅ · **Ignore Z Axis** ✅.
+3. Pins do notify (copie igual em todas as seções):
 
-Passo a passo completo + perfis por ability: [60 §7.3](../systems/60_M2_Editor_Setup.md).
+| Campo | Valor |
+|---|---|
+| **Warp Target Name** | **`AttackWarp`** (nunca `None`) |
+| **Warp Translation** | ✅ |
+| **Ignore Z Axis** | ✅ |
+| **Warp Rotation** | ❌ OFF *(recomendado — face no C++)* |
+
+Passo a passo completo + perfis + rotação: [60 §7.3](../systems/60_M2_Editor_Setup.md).
 
 ### Ordem de setup (não precisa das 4 de uma vez)
 
@@ -169,7 +176,7 @@ AdvanceCombo():
 - [ ] `WaitInputPress` em loop + buffer 0.25s
 - [ ] `WaitGameplayEvent` Begin/End da janela
 - [ ] `AdvanceCombo` usa **Montage Jump to Section** (nunca link de montage)
-- [ ] Notify **Motion Warping** (`AttackWarp`, Skew Warp, Ignore Z) no startup de cada seção — [60 §7.3](../systems/60_M2_Editor_Setup.md)
+- [ ] Notify **Motion Warping** (`AttackWarp`, Skew Warp, Translation ✅, Ignore Z ✅, **Warp Rotation ❌**) no startup de cada seção — [60 §7.3](../systems/60_M2_Editor_Setup.md)
 - [ ] Todos os 6 testes do §6 passam
 
 ---
@@ -187,6 +194,8 @@ AdvanceCombo():
 | Combo não reseta após dash | faltou tratar `OnInterrupted/OnCancelled` | §4 passo 1 |
 | **Bate no vazio** perto do dummy | falta motion warp na montage | [60 §7.3](../systems/60_M2_Editor_Setup.md) — target `AttackWarp`; soft-lock já é automático no C++ |
 | **Atk1 ok, Atk2+ no vazio** (olha pro alvo) | warp só em Atk1 | §2b — **uma janela por seção** |
+| Olha + esfera magenta, **sem lunge** | `Warp Target Name` = `None` | §2b — **`AttackWarp`** · [60 §7.3](../systems/60_M2_Editor_Setup.md) |
+| Golpe gira durante o swing | `Warp Rotation` ON | §2b — desligue; rotação = C++ no startup |
 
 ---
 

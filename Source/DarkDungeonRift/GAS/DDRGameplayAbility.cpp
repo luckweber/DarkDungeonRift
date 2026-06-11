@@ -23,6 +23,14 @@ UDDRAbilitySystemComponent* UDDRGameplayAbility::GetDDRAbilitySystemComponent() 
 
 UDDRCombatComponent* UDDRGameplayAbility::GetDDRCombatComponent() const
 {
+	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo())
+	{
+		if (const AActor* Avatar = ActorInfo->AvatarActor.Get())
+		{
+			return Avatar->FindComponentByClass<UDDRCombatComponent>();
+		}
+	}
+
 	const AActor* Avatar = GetAvatarActorFromActorInfo();
 	return Avatar ? Avatar->FindComponentByClass<UDDRCombatComponent>() : nullptr;
 }

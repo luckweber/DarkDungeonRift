@@ -36,6 +36,15 @@ struct FDDRMeleeSweepParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air")
 	bool bAirPop = false;
 
+	// Arrasta alvos Airborne no XY junto com o atacante (set 06 — combo que avança no ar).
+	// OFF no set 07 (Wave — player parado no ar). Liga por seção/notify na AM_AirCombo.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air", meta = (EditCondition = "bAirPop"))
+	bool bCarryAirborneTargets = false;
+
+	/** Distância à frente do atacante onde o alvo juggleado fica (cm). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air", meta = (EditCondition = "bCarryAirborneTargets", ClampMin = "0"))
+	float AirCarryForwardOffset = 90.f;
+
 	// Sweep vira AoE esférico centrado no dono (slam): ignora lâmina/forward.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air")
 	bool bAoEAtOwner = false;

@@ -41,7 +41,19 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 > ⚙️ **Por que o código põe o player em `MOVE_Flying` durante a montage:** em **`MOVE_Walking` o CMC DESCARTA o Z do root motion** (gruda o personagem no chão) — sintoma clássico: *"pulinho curto e trava, como root lock"*. O `GA_Launcher` troca pra Flying ao ativar e restaura `Falling` no fim **se não entrou no ar** (whiff/cancel caem de volta com a gravidade). Você não configura nada — só recompile.
 3. Adicione **`ANS_DDRHitbox`** no swing com: `Base Damage 15` · `Hit Stop Frames 3` · **`bLaunchTargets = ✅ TRUE`** ← é isso que lança o alvo.
 
-> 🎯 **Regra do código:** o player só **entra no ar** se o swing **lançou alguém** (whiff = termina no chão, sem voar à toa). O alvo sobe **300cm dirigido** e segura ~1.1s (renovado por hit). `Attack_Up_01_Seq` (uppercut que NÃO sobe) fica como launcher alternativo P1.
+> 🎯 **Regra do código:** o player só **entra no ar** se o swing **lançou alguém** (whiff = termina no chão, sem voar à toa). O alvo sobe **dirigido** (`LaunchRiseHeight`, default 300 cm) e segura ~1.1s (renovado por hit). `Attack_Up_01_Seq` (uppercut que NÃO sobe) fica como launcher alternativo P1.
+
+> 📐 **Tuning launcher (altura player × inimigo):** o **pulo do player** vem do **root motion** do clip `Attack_Up_Floor_To_Air` — o C++ **não** calcula isso. No fim da montage, `EnterAirCombat` ancora o player na **altura atual do RM** (`AirAnchorZ`) e **alinha o inimigo** ~`JuggleTargetHeightAbovePlayer` acima — o player **nunca** é puxado para baixo.
+>
+> **Onde tunar (preferido):**
+> | Ability BP | Campo | Uso |
+> |---|---|---|
+> | `BP_GA_Launcher` | **Launch Rise Height** | altura do inimigo no uppercut (250–350) |
+> | `BP_GA_Launcher` | **Juggle Target Height Above Player** | co-altitude ao *entrar* no ar |
+> | `BP_GA_AirAttack` | **Juggle Target Height Above Player** | co-altitude a cada hit (`bAirPop`) |
+> | `BP_GA_AirAttack` | **Air Pop Vertical Nudge Scale** | nudge extra por hit (~0.15) |
+>
+> O **Combat Component** no player guarda só **fallback** global — as abilities copiam os valores ao ativar.
 
 ---
 
@@ -49,9 +61,21 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 
 **Clips:** `Attack_Up_Air_To_Air_03_Seq` + um dos `Combo_Attack_Air_06/Wave_07`.
 
-1. Montage **`AM_AirCombo`** com **2 seções**: `Air1` (Air_To_Air) e `Air2` (Combo_Air). ⚠️ **Montage Sections → Clear!**
-2. **`EnableRootMotion = ❌ FALSE`** nos clips aéreos — o player está **segurado em Flying** pelo código; RM aqui só causaria drift.
-3. Por seção: **`ANS_DDRHitbox`** com **`bAirPop = ✅ TRUE`** (re-flutua o alvo: 150cm × 0.85^hits, cap 7) + **`ANS_DDRComboWindow`** (encadeia Air1→Air2, mesmo padrão do chão).
+1. Montage **`AM_AirCombo`** com seções `Air1`–`Air4` (ou 2 no MVP). ⚠️ **Montage Sections → Clear!**
+2. **Root Motion nos clips aéreos** (escolha **uma**):
+   - **✅ Recomendado:** `EnableRootMotion = TRUE` — o swing **sincroniza** cápsula ↔ mesh (sem slide visual). O C++ **fixa o Z** (`AirAnchorZ` + `MaintainAirAltitude`) — você **não cai** mesmo com RM ligado.
+   - **Alternativa:** `EnableRootMotion = FALSE` — só se o clip for **100% in-place** (zero translação no root). Senão a mesh “desliza” e a posição parece bugada.
+   - **Root Motion Root Lock:** `Ref Pose` (default) · **Force Root Lock** OFF.
+3. **Sem** notify Motion Warping no air combo (drift indesejado) — ver §7.3.
+4. Por seção: **`ANS_DDRHitbox`** com **`bAirPop = ✅ TRUE`** + **`ANS_DDRComboWindow`**.
+5. **Carry do alvo (set 06 vs 07):**
+
+| Set de clips | Comportamento no ar | `bCarryAirborneTargets` no `ANS_DDRHitbox` |
+|---|---|---|
+| **`06_Combo_Attack_Air_06`** | player **avança** (RM horizontal) | ✅ **ON** — inimigo segue no XY (~`AirCarryForwardOffset` 90 cm) |
+| **`07_Combo_Attack_Air_Wave_07`** | player **parado** no ar | ❌ **OFF** — alvo fica na posição do launch |
+
+> 🔑 **`bCarryAirborneTargets`** no hitbox: enquanto o notify está ativo (e depois do 1º hit), o alvo `Airborne` **interpola** XY até ficar à frente do player — o juggle não “fica pra trás” quando o combo avança.
 
 > O `GA_AirAttack` **herda** toda a máquina do combo de chão (seções/janela/buffer) — e cada golpe **renova o hold aéreo** do player (sem atacar por 1.4s → cai sozinho).
 
@@ -69,17 +93,19 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 
 ## 5. BPs filhos + Startup Abilities
 
-| BP (parent) | Campo | Asset |
+| BP (parent) | Campo | Asset / nota |
 |---|---|---|
 | `BP_GA_Launcher` (← `GA_Launcher`) | Launcher Montage | `AM_Launcher` |
+| `BP_GA_Launcher` | **Launch Rise Height** · **Juggle Target Height Above Player** | tuning aéreo (§2) |
 | `BP_GA_AirAttack` (← `GA_AirAttack`) | Combo Montage | `AM_AirCombo` |
+| `BP_GA_AirAttack` | **Juggle Target Height Above Player** · **Air Pop Vertical Nudge Scale** | tuning do juggle (§3) |
 | `BP_GA_AirSlam` (← `GA_AirSlam`) | Slam Montage | `AM_AirSlam` |
 | `BP_GA_AttackLight` (já existe) | **Run Attack Montage** | `AM_RunAttack` (§6) |
 
 No `BP_DDRPlayer` → **Startup Abilities** (5 entradas): troque as classes C++ pelos BPs:
 `BP_GA_AttackLight`(Attack) · `BP_GA_AirAttack`(**Attack** — mesmo botão!) · `BP_GA_Dash`(Dash) · `BP_GA_Launcher`(Launcher) · `BP_GA_AirSlam`(AirSlam).
 
-> 🔑 **Mesmo botão, ability certa:** `GA_AttackLight` agora tem `Blocked: InAir` e `GA_AirAttack` tem `Required: InAir` — o LMB ativa o certo pelo **estado**, sem `if` no input ([19 §roteamento](../combat/19_Abilities_Deep.md)).
+> 🔑 **Mesmo botão, ability certa:** `GA_AttackLight` bloqueia `State.Combat.InAir`; `GA_AirAttack` exige essa tag. A tag entra **no hit do launcher** (`bLaunchTargets`) — não é só "pular" ou estar em Falling. O ASC prioriza `GA_AirAttack` quando a tag está ativa ([19 §roteamento](../combat/19_Abilities_Deep.md)).
 
 ---
 
@@ -168,11 +194,19 @@ Montages com seções (`Atk1`–`Atk4`) precisam de **uma notify `Motion Warping
 
 1. Na timeline, no **startup/swing** (antes do hitbox), adicione notify state: **`Motion Warping`** (engine).
 2. No notify → **Root Motion Modifier** = **`Skew Warp`** (ou `Warp`).
-3. Configure:
-   - **Warp Target Name** = `AttackWarp` ← **exato**
-   - **Warp Translation** = ✅
-   - **Ignore Z Axis** = ✅ (ground/run/launcher — Z vem do RM do clip no launcher)
-   - **Warp Rotation** = ✅ (opcional; o código já encara no startup)
+3. Configure os **pins do notify** (mesmos valores em todas as seções/montages):
+
+| Campo (Details) | Valor DDR | Nota |
+|---|---|---|
+| **Warp Target Name** | **`AttackWarp`** | ⚠️ **Nunca `None`** — tem que bater com `DDRMotionWarpNames::AttackWarp` no C++ |
+| **Warp Translation** | ✅ ON | é o lunge horizontal |
+| **Ignore Z Axis** | ✅ ON | chão/run/launcher — Z vem do chão ou do RM vertical do clip |
+| **Mode** | `Linear` (default) | ok |
+| **Warp Rotation** | ❌ **OFF** | **recomendado** — o C++ já encara no startup (`FaceSoftLockTarget`); ligar = risco de rotação dupla / "homing slash" ([18 §6.2](18_Combat_System_Deep.md)) |
+| *Se Warp Rotation ON* | Rotation Type = **`Default`** | usa o yaw que o C++ passa em `AddOrUpdateWarpTargetFromLocationAndRotation`; **não** use `Facing` |
+| *Se Warp Rotation ON* | Rotation Method = `Slerp`, Multiplier = `1.0` | defaults ok |
+
+> 🔑 **Rotação = C++. Translation = montage.** Soft-lock vira o personagem **antes** do swing; o notify só **fecha o gap** (translation). Por isso `Warp Rotation` fica desligado no setup canônico.
 
 | Montage | Janela Motion Warp? | Ignore Z? |
 |---|---|---|
@@ -258,20 +292,32 @@ Sua intuição (grafo com conectores + regras "se está no ar") está **correta*
 | **"Pulinho curto e trava"** (parece root lock) | `MOVE_Walking` descarta o **Z** do root motion | corrigido no código (Flying durante a montage) — **recompile** |
 | Player flutua após whiff/cancel do launcher | build antiga (sem restauração de Falling) | recompile — `EndAbility` restaura |
 | Alvo não sobe | `bLaunchTargets` desmarcado no notify | §2 passo 3 |
-| Alvo cai rápido demais | hold/pop baixos | `TargetAirborneHoldSeconds`/`AirPopHeightBase` no CombatComponent (BP) |
-| Player desliza no ar | clips aéreos com RM | §3 — `EnableRootMotion=FALSE` nos air clips |
+| Alvo cai rápido demais | hold/pop baixos | `TargetAirborneHoldSeconds` no Combat Component (BP) |
+| **Inimigo sobe muito acima do player** (no combo) | `AirPop` stackava +150cm/hit | tune **`BP_GA_AirAttack`** → Juggle Target Height (~60) + Air Pop Nudge (~0.15) |
+| **Soft-lock no inimigo no céu** (você no chão) | sem filtro de ΔZ | `SoftLockMaxVerticalGap` (~220) no Combat Component (fallback global) |
+| **Player teleporta para baixo** após launcher | `AirAnchorZ` puxava pro Z do inimigo | recompile — ancora no **pulo do player**; inimigo alinha depois (§2) |
+| Launcher: inimigo sobe pouco / player muito alto | `LaunchRiseHeight` ≠ ΔZ do clip RM | tune **Launch Rise Height** no `BP_GA_Launcher` (§2) |
+| Player **cai** no air combo | RM com componente Z nos clips | recompile (`AirAnchorZ`) · ou RM OFF só em clips in-place |
+| Mesh **desliza** / posição bugada | RM **OFF** em clip com translação | §3 — `EnableRootMotion=TRUE`; C++ fixa o Z |
+| Drift horizontal no ar | motion warp no `AM_AirCombo` | §7.3 — sem warp aéreo |
 | LMB no chão não ataca | recompile (Blocked InAir entrou no AttackLight) | rebuild + restart editor |
+| **No ar, LMB ainda toca `AM_Combo`** (light) | pulo comum ≠ juggle · tag `InAir` só após **lançar** alguém | §2 — `bLaunchTargets` no notify do launcher; recompile (tag no hit) |
+| AirAttack não ativa | `BP_GA_AirAttack` sem **Combo Montage** = `AM_AirCombo` | §5 · seções `Air1`–`Air4` |
+| AirAttack não ativa | falta `BP_GA_AirAttack` no Startup Abilities (Input **Attack**) | §5 — **duas** abilities no mesmo InputID |
+| **Crash em `GetDDRCombatComponent` / air combo** | build antiga chamava `InputPressed` manual no ASC | recompile — roteamento InAir usa só `TryActivate` + `Super` |
 | Slam não muda pra "End" | nomes das seções (`Start`/`End` exatos) | §4 |
 | Slam sem dano | — (AoE é código; confira `ddr.CombatDebug 1`) | raio 250 alcança? |
 | Air combo toca as 2 seções de uma vez | seções linkadas | **Clear** ([57 §0](../combat/57_M1_Combo_Editor_Setup.md)) |
 | Não leio a altura | sem sombra blob | §7 — P0! |
 | Run-attack nunca sai | velocidade < 450 / montage não setada | §6 |
-| **Bate no vazio** perto do dummy | sem Motion Warp / warp name errado | §7.3 — target `AttackWarp` |
+| **Bate no vazio** perto do dummy | sem Motion Warp / warp name errado | §7.3 — target **`AttackWarp`** (não `None`) |
 | Personagem não avança no swing | falta notify Motion Warping na montage | §7.3 |
+| Olha pro alvo, esfera magenta, **zero lunge** | `Warp Target Name` = `None` ou typo | §7.3 — digite **`AttackWarp`** exato |
+| Golpe **gira estranho** / homing durante swing | `Warp Rotation` ligado | §7.3 — **desligue** Warp Rotation; face já vem do C++ |
 | Warp "teleporta" demais | `MaxWarpDistance` alto demais | §7.2 — cap 200cm ground |
 | Olha pro inimigo mas não alcança | só soft-lock, sem warp | §7 — as 4 camadas |
 | **Atk1 alcança, Atk2+ bate no vazio** | warp só na 1ª seção | §7.3 — **replique** o notify em Atk2/3/4 |
-| Air combo drifta | RM ligado nos clips aéreos | §3 — `EnableRootMotion=FALSE` |
+| Air combo drifta (cai) | RM Z sem pin de altitude (build antiga) | recompile + §3 — RM ON ok com `AirAnchorZ` |
 
 ---
 

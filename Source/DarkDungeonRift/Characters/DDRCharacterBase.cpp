@@ -45,10 +45,28 @@ void ADDRCharacterBase::Tick(float DeltaSeconds)
 		return;
 	}
 
+	FVector Location = GetActorLocation();
+
+	if (bAirborneFollowEnabled && AirborneFollowAttacker.IsValid())
+	{
+		const AActor* Attacker = AirborneFollowAttacker.Get();
+		const FVector AttackerLoc = Attacker->GetActorLocation();
+		const FVector Fwd = Attacker->GetActorForwardVector();
+		const FVector DesiredXY = AttackerLoc + Fwd * AirborneFollowForwardOffset;
+		Location.X = FMath::FInterpTo(Location.X, DesiredXY.X, DeltaSeconds, AirborneInterpSpeed);
+		Location.Y = FMath::FInterpTo(Location.Y, DesiredXY.Y, DeltaSeconds, AirborneInterpSpeed);
+	}
+
 	// Altura DIRIGIDA (doc 16 §2): interp suave até o Z alvo; o hold timer decide a queda.
-	const FVector Location = GetActorLocation();
-	const float NewZ = FMath::FInterpTo(Location.Z, AirborneTargetZ, DeltaSeconds, AirborneInterpSpeed);
-	SetActorLocation(FVector(Location.X, Location.Y, NewZ), /*bSweep=*/true);
+	Location.Z = FMath::FInterpTo(Location.Z, AirborneTargetZ, DeltaSeconds, AirborneInterpSpeed);
+	SetActorLocation(Location, /*bSweep=*/true);
+}
+
+void ADDRCharacterBase::SetAirborneFollow(AActor* Attacker, const float ForwardOffset, const bool bEnable)
+{
+	bAirborneFollowEnabled = bEnable && Attacker != nullptr;
+	AirborneFollowAttacker = Attacker;
+	AirborneFollowForwardOffset = ForwardOffset;
 }
 
 void ADDRCharacterBase::StartAirborne(float RiseHeight, float HoldSeconds)
@@ -93,6 +111,28 @@ void ADDRCharacterBase::ApplyAirPop(float PopHeight, float HoldSeconds)
 	RestartAirborneHoldTimer(HoldSeconds);
 }
 
+void ADDRCharacterBase::SetAirborneTargetZ(const float NewTargetZ, const float HoldSeconds)
+{
+	if (!bAirborneActive)
+	{
+		return;
+	}
+
+	++AirborneHitCount;
+	AirborneTargetZ = NewTargetZ;
+	RestartAirborneHoldTimer(HoldSeconds);
+}
+
+void ADDRCharacterBase::OverrideAirborneTargetZ(const float NewTargetZ)
+{
+	if (!bAirborneActive)
+	{
+		return;
+	}
+
+	AirborneTargetZ = NewTargetZ;
+}
+
 void ADDRCharacterBase::EndAirborne(bool bSlammed)
 {
 	if (!bAirborneActive)
@@ -102,6 +142,8 @@ void ADDRCharacterBase::EndAirborne(bool bSlammed)
 
 	bAirborneActive = false;
 	AirborneHitCount = 0;
+	bAirborneFollowEnabled = false;
+	AirborneFollowAttacker.Reset();
 	SetActorTickEnabled(false);
 	GetWorldTimerManager().ClearTimer(AirborneHoldTimerHandle);
 

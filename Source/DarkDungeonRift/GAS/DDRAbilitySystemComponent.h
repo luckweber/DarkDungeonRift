@@ -10,4 +10,7 @@ UCLASS(ClassGroup = (DDR))
 class DARKDUNGEONRIFT_API UDDRAbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()
+
+public:
+	virtual void AbilityLocalInputPressed(int32 InputID) override;
 };

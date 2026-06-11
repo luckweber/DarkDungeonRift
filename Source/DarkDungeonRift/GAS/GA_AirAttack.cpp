@@ -2,6 +2,7 @@
 
 #include "GA_AirAttack.h"
 
+#include "AbilitySystemComponent.h"
 #include "DDRCombatComponent.h"
 #include "DDRGameplayTags.h"
 
@@ -15,11 +16,46 @@ UGA_AirAttack::UGA_AirAttack()
 	ActivationBlockedTags.RemoveTag(DDRTags::State_Combat_InAir);
 	ActivationRequiredTags.AddTag(DDRTags::State_Combat_InAir);
 
+	// Nao ativa no meio do launcher/outro golpe — espera a montage terminar.
+	ActivationBlockedTags.AddTag(DDRTags::State_Combat_Attacking);
+
 	// Secoes do combo aereo (Air1 = Attack_Up_Air_To_Air; Air2 = Combo_Attack_Air...).
-	ComboSections = { TEXT("Air1"), TEXT("Air2") };
+	ComboSections = { TEXT("Air1"), TEXT("Air2"), TEXT("Air3"), TEXT("Air4") };
 
 	// Sem opener de corrida no ar.
 	RunAttackMontage = nullptr;
+}
+
+bool UGA_AirAttack::CanActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags,
+	FGameplayTagContainer* OptionalRelevantTags) const
+{
+	// Nao chame GA_AttackLight::CanActivate — ele bloqueia InAir.
+	if (!UDDRGameplayAbility::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr;
+	const AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
+	const UDDRCombatComponent* Combat = Avatar ? Avatar->FindComponentByClass<UDDRCombatComponent>() : nullptr;
+
+	const bool bHasInAirTag = ASC && ASC->HasMatchingGameplayTag(DDRTags::State_Combat_InAir);
+	const bool bInAirCombat = Combat && Combat->IsInAirCombat();
+	if (!bHasInAirTag && !bInAirCombat)
+	{
+		return false;
+	}
+
+	if (!ComboMontage)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void UGA_AirAttack::ActivateAbility(
@@ -35,6 +71,7 @@ void UGA_AirAttack::ActivateAbility(
 	{
 		if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 		{
+			Combat->ApplyAirAttackJuggleTuning(JuggleTargetHeightAbovePlayer, AirPopVerticalNudgeScale);
 			Combat->RefreshAirHold();
 		}
 	}

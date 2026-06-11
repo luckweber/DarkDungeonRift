@@ -384,6 +384,7 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | `MaxWarpDist` (ground) | ~200 cm | `MaxWarpDistance` = **200** |
 | `MaxWarpDist` (air) | menor | `MaxWarpDistanceAir` = **120** |
 | `MaxWarpDist` (launcher) | curto horizontal | `MaxWarpDistanceLauncher` = **180** |
+| `SoftLockMaxVerticalGap` | filtro ΔZ | **220** cm — ignora inimigo no céu enquanto você está no chão |
 | `AttackTurnSpeed` | ~720°/s | snap **instantâneo** no startup (yaw direto; tune futuro) |
 
 **Implementação C++ (notas úteis):**
@@ -391,7 +392,9 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | Tópico | Onde | Detalhe |
 |---|---|---|
 | Soft-lock | `FindSoftLockTarget` | cone na **intenção** (input > facing); fallback = mais próximo no raio |
+| Filtro vertical | `SoftLockMaxVerticalGap` | descarta alvos com \|ΔZ\| > cap — evita lock no juggle antigo no céu |
 | Airborne priority | `bPreferAirborne` | `GA_AirAttack` / `GA_AirSlam` somam +1000 no score do alvo `Airborne` |
+| Tuning aéreo | `GA_Launcher` / `GA_AirAttack` | `LaunchRiseHeight`, `JuggleTargetHeightAbovePlayer`, `AirPopVerticalNudgeScale` — [60 §2/§5](../systems/60_M2_Editor_Setup.md) |
 | Face + warp | `FaceAndSetupMotionWarp` | chame **antes** de `PlayMontageAndWait`; perfil via `EDDRMotionWarpProfile` |
 | Warp target | `DDRMotionWarpNames::AttackWarp` | montage precisa de notify **Motion Warping** com esse nome |
 | Combo seccionado | `UGA_AttackLight::AdvanceCombo` | C++ recalcula `AttackWarp` a cada seção; **`AM_Combo` = 1 janela por seção** (Atk1–4) — [57 §2b](57_M1_Combo_Editor_Setup.md) |
@@ -400,6 +403,8 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | Debug | `ddr.CombatDebug 1` | linha ciano (soft-lock) + esfera magenta (warp point) |
 
 > ⚠️ **Cap no warp = honestidade.** Warp ilimitado vira teleporte e quebra o espaço do combate (player "gruda" em inimigos longe). O `MaxWarpDist` garante que warp é *fechar a última distância*, não *atravessar a sala*. Fora do cap, o golpe erra — e errar tem que ser possível pro acerto ter valor.
+
+**Pins do notify Motion Warping (editor):** target **`AttackWarp`** · Translation ✅ · Ignore Z ✅ · **Warp Rotation ❌** (face no startup via C++; se ligar rotation, use Type = `Default` apenas). Setup: [60 §7.3](../systems/60_M2_Editor_Setup.md).
 
 > 🎮 **Como acertar fica certeiro:** soft-lock escolhe o alvo óbvio → faceamento vira o personagem no startup → motion-warp fecha o gap residual → sweep (§2) confirma o hit. As 4 camadas juntas dão o feel "minha intenção virou acerto" sem hard-lock e sem tirar a mão do jogador. **Setup no editor:** [60 §7](../systems/60_M2_Editor_Setup.md) · perfis por ability em [19 §3](19_Abilities_Deep.md).
 
@@ -443,6 +448,11 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | Atk1 alcança, Atk2+ não | Warp só na 1ª seção do combo | [57 §2b](57_M1_Combo_Editor_Setup.md) — replique o notify em cada seção |
 | "Homing slash" / auto-aim injusto | Faceamento rodando no `Active` | §6.2 — vire só no `Startup` (já assim no C++) |
 | Personagem "teleporta" pra inimigo longe | Warp sem cap | §6.3 — `MaxWarpDistance` no Combat Component |
+| Olha + debug magenta, sem lunge | `Warp Target Name` = `None` | [60 §7.3](../systems/60_M2_Editor_Setup.md) — **`AttackWarp`** |
+| Rotação estranha no swing | `Warp Rotation` ON na montage | §6.2 + [60 §7.3](../systems/60_M2_Editor_Setup.md) — desligue; face = startup C++ |
+| Soft-lock no inimigo no céu (você no chão) | sem filtro de ΔZ | `SoftLockMaxVerticalGap` (~220) no Combat Component |
+| Inimigo sobe demais no combo aéreo | `AirPop` stackava altura | tune `BP_GA_AirAttack` → Juggle Target Height / Air Pop Nudge Scale — [16 §3](16_Aerial_Combos.md) |
+| Player teleporta para baixo após launcher | `AirAnchorZ` puxava pro inimigo | recompile — ancora no pulo do player; tune `BP_GA_Launcher` — [60 §2](../systems/60_M2_Editor_Setup.md) |
 
 ---
 
