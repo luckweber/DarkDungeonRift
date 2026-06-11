@@ -25,7 +25,7 @@
 - [ ] **Espada:** socket `weapon_r` no skeleton + SM no `WeaponMesh` + sockets `weapon_start`/`end` na SM (§3.4)
 - [ ] `BP_TrainingDummy` na arena (§5)
 - [ ] PIE: combo 3 golpes + hit-stop + dash-cancel (§6)
-- [ ] Soft-lock + motion warp (`AttackWarp` em `AM_Combo`) — [60 §7](60_M2_Editor_Setup.md) *(C++ pronto; janelas no editor)*
+- [ ] Soft-lock + motion warp — **1 notify `AttackWarp` por seção** em `AM_Combo` (Atk1–4) — [57 §2b](../combat/57_M1_Combo_Editor_Setup.md) · [60 §7](60_M2_Editor_Setup.md) *(C++ recalcula warp a cada golpe; janelas no editor)*
 
 ---
 
@@ -95,6 +95,9 @@ Em **cada** seção, adicione dois **Anim Notify State**:
 |---|---|---|
 | Hitbox | **`ANS_DDRHitbox`** | no swing (janela ativa) |
 | Combo Window | **`ANS_DDRComboWindow`** | recovery, antes do fim da seção |
+| Motion Warp | **`Motion Warping`** (engine notify) | startup/swing, **antes** do hitbox — **1× por seção** (Atk1–4) |
+
+> 🎯 **Motion Warp por seção:** o C++ chama `FaceAndSetupMotionWarp` a cada golpe (Atk1 e nos jumps Atk2+), mas o lunge só acontece se a **seção que está tocando** tiver a janela na timeline. Detalhe: [57 §2b](../combat/57_M1_Combo_Editor_Setup.md) · [60 §7.3](60_M2_Editor_Setup.md).
 
 Tune no `ANS_DDRHitbox` (Details):
 
@@ -211,6 +214,7 @@ ddr.LocomotionDebug 1
 | **`ddr.CombatDebug 1` não desenha** | build antiga (o cvar só logava) | recompile o C++ — agora **1 = log + draw** |
 | Sweep não sai da lâmina (sai do peito) | sockets `weapon_start`/`end` ausentes na SM | §3.4 passo 2 (sem eles o fallback frontal é o esperado) |
 | **Bate no vazio** perto do dummy | falta motion warp / `AttackWarp` errado | [60 §7](60_M2_Editor_Setup.md) — soft-lock já vem do C++; tune `SoftLockRadius` no Combat Component |
+| **Atk1 alcança, Atk2+ no vazio** | warp só na 1ª seção | [57 §2b](../combat/57_M1_Combo_Editor_Setup.md) — 1 notify por seção |
 | Personagem não olha pro dummy | soft-lock fora do cone | tune `SoftLockHalfAngleDegrees` / `SoftLockRadius` no BP; `ddr.CombatDebug 1` (linha ciano) |
 
 ---
@@ -237,4 +241,4 @@ ddr.LocomotionDebug 1
 | **Sweep da lâmina** | `UDDRCombatComponent` (`WeaponTraceSocketStart/End`, fallback frontal) | automático com os sockets da SM |
 | Debug visual | cvar `ddr.CombatDebug` (**1 = log + draw**) | console no PIE |
 | **Soft-lock** | `FindSoftLockTarget` / `FaceSoftLockTarget` | tune Combat Component no BP |
-| **Motion warp** | `FaceAndSetupMotionWarp` (ground) | notify `Motion Warping` → `AttackWarp` em `AM_Combo` — [60 §7](60_M2_Editor_Setup.md) |
+| **Motion warp** | `FaceAndSetupMotionWarp` a cada golpe | notify `Motion Warping` → `AttackWarp` **em cada seção** de `AM_Combo` — [57 §2b](../combat/57_M1_Combo_Editor_Setup.md) |

@@ -170,6 +170,7 @@ Pipeline de 4 camadas ([18 §6](18_Combat_System_Deep.md)): **soft-lock** → **
 
 - Warp target canônico: **`AttackWarp`** (Skew Warp, `Ignore Z` no chão).
 - Cap de distância (`MaxWarpDistance` ~200 cm) = whiff honesto fora do alcance.
+- **`AM_Combo`:** uma janela Motion Warp **por seção** (Atk1–4) — C++ recalcula o alvo a cada golpe; sem notify na seção = encara mas não avança ([57 §2b](57_M1_Combo_Editor_Setup.md)).
 
 > 🛠️ **Setup no editor:** [60 — M2 Editor Setup §7](../systems/60_M2_Editor_Setup.md) (combo chão, run-attack, launcher). Regras por ability (ground/air/launcher/slam) na mesma seção.
 

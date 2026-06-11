@@ -394,6 +394,7 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | Airborne priority | `bPreferAirborne` | `GA_AirAttack` / `GA_AirSlam` somam +1000 no score do alvo `Airborne` |
 | Face + warp | `FaceAndSetupMotionWarp` | chame **antes** de `PlayMontageAndWait`; perfil via `EDDRMotionWarpProfile` |
 | Warp target | `DDRMotionWarpNames::AttackWarp` | montage precisa de notify **Motion Warping** com esse nome |
+| Combo seccionado | `UGA_AttackLight::AdvanceCombo` | C++ recalcula `AttackWarp` a cada seção; **`AM_Combo` = 1 janela por seção** (Atk1–4) — [57 §2b](57_M1_Combo_Editor_Setup.md) |
 | Componente | `UMotionWarpingComponent` | em `ADDRCharacterBase`; `bSearchForWindowsInAnimsWithinMontages = true` |
 | Perfis | `GA_AttackLight` / `GA_AirAttack` / `GA_Launcher` / `GA_AirSlam` | Ground, Air, Launcher, Slam — ver [60 §7.2](../systems/60_M2_Editor_Setup.md) |
 | Debug | `ddr.CombatDebug 1` | linha ciano (soft-lock) + esfera magenta (warp point) |
@@ -439,6 +440,7 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | Lança inimigo a qualquer hora (trivial) | `CanLaunch` sem gate de poise | §5.4 — exija `Poise<=0` |
 | Golpe sai na direção do stick, ignora alvo óbvio | Soft-lock desligado / cone estreito | §6.1/§6.2; tune `SoftLockRadius` no BP — [60 §7.1](../systems/60_M2_Editor_Setup.md) |
 | Bate no vazio perto do alvo | Falta notify Motion Warping / `AttackWarp` errado | §6.3 — [60 §7.3](../systems/60_M2_Editor_Setup.md) |
+| Atk1 alcança, Atk2+ não | Warp só na 1ª seção do combo | [57 §2b](57_M1_Combo_Editor_Setup.md) — replique o notify em cada seção |
 | "Homing slash" / auto-aim injusto | Faceamento rodando no `Active` | §6.2 — vire só no `Startup` (já assim no C++) |
 | Personagem "teleporta" pra inimigo longe | Warp sem cap | §6.3 — `MaxWarpDistance` no Combat Component |
 

@@ -153,6 +153,19 @@ Tune no **Combat Component** do `BP_DDRPlayer`:
 
 Em **cada** montage que avança o corpo (combo chão, run-attack, launcher — **não** nos clips aéreos puros):
 
+#### Combo seccionado (`AM_Combo`) — **uma janela por seção**
+
+Montages com seções (`Atk1`–`Atk4`) precisam de **uma notify `Motion Warping` em cada seção**, não só na primeira. São **duas camadas** que trabalham juntas:
+
+| Camada | Quem faz | Quando |
+|---|---|---|
+| **C++** | `FaceAndSetupMotionWarp` em `UGA_AttackLight` | No startup de **cada** golpe — Atk1 **e** ao `MontageJumpToSection` (Atk2/3/4) |
+| **Montage** | Notify `Motion Warping` na timeline da seção | Só durante o **swing daquela seção** — a engine aplica o lunge |
+
+- Só **Atk1** com warp → Atk1 alcança; Atk2+ **encaram** o alvo (soft-lock) mas **não avançam** = combo inconsistente.
+- **Workflow:** comece com warp só em **Atk1** (§7.4) → valide no PIE → **replique** o mesmo notify em Atk2, Atk3 e Atk4 (mesmos pins: `AttackWarp`, Skew Warp, Ignore Z).
+- Detalhe do combo no editor: [57 §2b](../combat/57_M1_Combo_Editor_Setup.md).
+
 1. Na timeline, no **startup/swing** (antes do hitbox), adicione notify state: **`Motion Warping`** (engine).
 2. No notify → **Root Motion Modifier** = **`Skew Warp`** (ou `Warp`).
 3. Configure:
@@ -257,6 +270,7 @@ Sua intuição (grafo com conectores + regras "se está no ar") está **correta*
 | Personagem não avança no swing | falta notify Motion Warping na montage | §7.3 |
 | Warp "teleporta" demais | `MaxWarpDistance` alto demais | §7.2 — cap 200cm ground |
 | Olha pro inimigo mas não alcança | só soft-lock, sem warp | §7 — as 4 camadas |
+| **Atk1 alcança, Atk2+ bate no vazio** | warp só na 1ª seção | §7.3 — **replique** o notify em Atk2/3/4 |
 | Air combo drifta | RM ligado nos clips aéreos | §3 — `EnableRootMotion=FALSE` |
 
 ---

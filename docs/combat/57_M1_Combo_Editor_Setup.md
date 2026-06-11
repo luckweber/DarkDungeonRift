@@ -52,6 +52,38 @@ Comportamentos garantidos:
 | `ANS_Hitbox` | 1 por seção, cobrindo o **swing** | janela de acerto ([15 §3](15_Combat_Overview.md)) |
 | `ANS_ComboWindow` | 1 por seção (Atk1-3), ~**40-70%** da seção (recovery) | janela de encadear ([15 §3](15_Combat_Overview.md)) |
 | `ANS_ComboWindow` no **Atk4** | **não** (é o finisher) | último golpe não encadeia em si; a janela do Atk4 pode existir só p/ **attack→launcher** ([15 §6](15_Combat_Overview.md)) |
+| **`Motion Warping`** (engine) | **1 por seção** (Atk1–4), no startup/swing | ver §2b — sem isso o golpe encara mas não avança |
+
+---
+
+## 2b. Motion Warping — uma janela **por seção** (`Atk1`–`Atk4`)
+
+O `AM_Combo` é seccionado: cada golpe é uma **seção independente** na mesma montage. O Motion Warp segue a mesma regra dos outros notifies (`ANS_Hitbox`, `ANS_ComboWindow`) — **um por seção**.
+
+### Duas camadas (C++ × editor)
+
+| Camada | Responsável | O que faz em cada golpe |
+|---|---|---|
+| **C++** | `UGA_AttackLight` → `FaceAndSetupMotionWarp` | Recalcula o alvo `AttackWarp` no Atk1 **e** a cada `AdvanceCombo` / `MontageJumpToSection` |
+| **Montage** | Notify state **`Motion Warping`** na timeline da seção | A engine **aplica** o lunge só enquanto essa janela está ativa na seção que toca |
+
+> 🔑 **Encarar ≠ alcançar.** O C++ sempre atualiza face + warp point no startup de cada golpe. Mas se **Atk2** não tiver notify na timeline, o personagem **vira** pro dummy e a esfera magenta aparece (`ddr.CombatDebug 1`) — só **não desliza** no swing daquele golpe.
+
+### O que colocar em cada seção
+
+Em **Atk1**, **Atk2**, **Atk3** e **Atk4** (mesma config em todas):
+
+1. Notify state **`Motion Warping`** no **startup/swing**, **antes** do `ANS_DDRHitbox`.
+2. **Root Motion Modifier** = `Skew Warp` (ou `Warp`).
+3. **Warp Target Name** = `AttackWarp` · **Warp Translation** ✅ · **Ignore Z Axis** ✅.
+
+Passo a passo completo + perfis por ability: [60 §7.3](../systems/60_M2_Editor_Setup.md).
+
+### Ordem de setup (não precisa das 4 de uma vez)
+
+1. Coloque warp **só em Atk1** → PIE: 1 golpe deve alcançar o dummy.
+2. Encadeie até Atk2 → se Atk2 **olha mas não avança**, falta o notify na seção Atk2.
+3. Replique pras seções restantes (copiar/colar o notify entre seções é ok).
 
 ---
 
@@ -123,6 +155,7 @@ AdvanceCombo():
 | Apertar **dentro** da janela | encadeia imediato |
 | Apertar **depois** da janela fechar | NÃO encadeia; seção termina e para |
 | Dash no meio de qualquer golpe | corta o golpe (dash-cancel, [15 §6](15_Combat_Overview.md)) → `OnInterrupted` reseta o combo |
+| Combo encadeia mas **só Atk1 alcança** o dummy | Motion Warp só na 1ª seção | §2b — replique o notify em Atk2/3/4 |
 
 ---
 
@@ -153,6 +186,7 @@ AdvanceCombo():
 | Montage não toca no jogo (só no preview) | ABP sem o nó `Slot 'DefaultSlot'` | [08 §4](../locomotion/08_Locomotion_Overview.md) |
 | Combo não reseta após dash | faltou tratar `OnInterrupted/OnCancelled` | §4 passo 1 |
 | **Bate no vazio** perto do dummy | falta motion warp na montage | [60 §7.3](../systems/60_M2_Editor_Setup.md) — target `AttackWarp`; soft-lock já é automático no C++ |
+| **Atk1 ok, Atk2+ no vazio** (olha pro alvo) | warp só em Atk1 | §2b — **uma janela por seção** |
 
 ---
 
