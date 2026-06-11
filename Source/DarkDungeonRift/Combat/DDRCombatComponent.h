@@ -10,6 +10,7 @@
 
 class UAbilitySystemComponent;
 class UGE_DDRDamage;
+class UGA_AirSlam;
 
 UCLASS(ClassGroup = (DDR), meta = (BlueprintSpawnableComponent))
 class DARKDUNGEONRIFT_API UDDRCombatComponent : public UActorComponent
@@ -55,11 +56,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DDR|Combat|SoftLock")
 	AActor* FindSoftLockTarget(bool bPreferAirborne) const;
 
-	// Vira o dono (yaw) pro alvo do soft-lock no startup do golpe. Retorna o alvo (ou null).
+	/** Gira o yaw pro alvo (só se estiver no cone de ataque à frente). */
 	UFUNCTION(BlueprintCallable, Category = "DDR|Combat|SoftLock")
 	AActor* FaceSoftLockTarget(bool bPreferAirborne);
 
-	/** Soft-lock + motion warp (doc 18 §6). Chame no startup de cada golpe, antes da montage. */
+	/** Soft-lock + face/warp — só assiste se o alvo está no cone à frente (nunca vira 180°). */
 	UFUNCTION(BlueprintCallable, Category = "DDR|Combat|MotionWarp")
 	AActor* FaceAndSetupMotionWarp(EDDRMotionWarpProfile Profile, bool bPreferAirborne);
 
@@ -80,7 +81,21 @@ public:
 	/** Segundos desde o fim do último dash (FLT_MAX se nunca dashou). */
 	float GetTimeSinceDashEnded() const;
 
+	/** GA_AirSlam ativo — permite jump de secao / retomar Loop após pin. */
+	void RegisterSlamAbility(UGA_AirSlam* SlamAbility);
+	void UnregisterSlamAbility();
+
+	void BeginSlamAirPin();
+	void EndSlamAirPin(const FDDRMeleeSweepParams& Params);
+	void ReleaseSlamAirPinForLanding();
+	void SnapSlamEndToJuggleTarget();
+	void SetSlamPinSweepParams(const FDDRMeleeSweepParams& Params);
+	bool IsSlamAirPinActive() const { return bSlamAirPinActive; }
+
 private:
+	void ApplySlamPlayerFollow(const FDDRMeleeSweepParams& Params, AActor* HitActor);
+	void MaintainSlamAirPin();
+	bool IsTargetInAttackArc(const AActor* Target) const;
 	bool CanHitActor(AActor* OtherActor) const;
 	void ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params);
 	void SendHitEvent(AActor* HitActor) const;
@@ -194,6 +209,13 @@ private:
 	void AirPopTarget(AActor* TargetActor);
 	void OnPlayerAirHoldExpired();
 	void MaintainAirAltitude();
+
+	bool bSlamAirPinActive = false;
+	float SlamPinZ = 0.f;
+	bool bSlamEndJumpedThisSwing = false;
+	bool bSlamPinSweepParamsSet = false;
+	FDDRMeleeSweepParams SlamPinSweepParams;
+	TWeakObjectPtr<UGA_AirSlam> ActiveSlamAbility;
 
 	bool bAirCarryActive = false;
 	float AirCarryForwardOffset = 90.f;

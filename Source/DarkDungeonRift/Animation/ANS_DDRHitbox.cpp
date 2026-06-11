@@ -22,6 +22,14 @@ void UANS_DDRHitbox::NotifyBegin(
 		{
 			Combat->SetAirCarryActive(true, SweepParams.AirCarryForwardOffset);
 		}
+		if (SweepParams.bSlamDownTargets)
+		{
+			Combat->SetSlamPinSweepParams(SweepParams);
+			if (SweepParams.SlamPlayerFollow == EDDRSlamPlayerFollow::PinInAir)
+			{
+				Combat->BeginSlamAirPin();
+			}
+		}
 	}
 }
 
@@ -52,5 +60,17 @@ void UANS_DDRHitbox::NotifyEnd(
 	UAnimSequenceBase* Animation,
 	const FAnimNotifyEventReference& EventReference)
 {
-	// Carry permanece entre golpes do combo — desliga só em ExitAirCombat (slam/pouso).
+	if (!MeshComp || !MeshComp->GetOwner())
+	{
+		return;
+	}
+
+	if (UDDRCombatComponent* Combat = MeshComp->GetOwner()->FindComponentByClass<UDDRCombatComponent>())
+	{
+		if (SweepParams.bSlamDownTargets
+			&& SweepParams.SlamPlayerFollow == EDDRSlamPlayerFollow::PinInAir)
+		{
+			Combat->EndSlamAirPin(SweepParams);
+		}
+	}
 }

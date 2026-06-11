@@ -391,11 +391,13 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 
 | Tópico | Onde | Detalhe |
 |---|---|---|
-| Soft-lock | `FindSoftLockTarget` | cone na **intenção** (input > facing); fallback = mais próximo no raio |
+| Soft-lock | `FindSoftLockTarget` | cone na **intenção** (input > facing); chão = **sem** fallback atrás; aéreo = fallback só na frente |
+| Launcher gate | `GA_Launcher::CanActivateAbility` | exige alvo no cone a ≤ `LauncherMaxActivationDistance` (~250 cm) |
+| Dash-attack | `GA_AttackLight` (`bDashAttackOpener`) | **sem** face nem warp — estocada reta na direção do dodge |
 | Filtro vertical | `SoftLockMaxVerticalGap` | descarta alvos com \|ΔZ\| > cap — evita lock no juggle antigo no céu |
 | Airborne priority | `bPreferAirborne` | `GA_AirAttack` / `GA_AirSlam` somam +1000 no score do alvo `Airborne` |
 | Tuning aéreo | `GA_Launcher` / `GA_AirAttack` | `LaunchRiseHeight`, `JuggleTargetHeightAbovePlayer`, `AirPopVerticalNudgeScale` — [60 §2/§5](../systems/60_M2_Editor_Setup.md) |
-| Face + warp | `FaceAndSetupMotionWarp` | chame **antes** de `PlayMontageAndWait`; perfil via `EDDRMotionWarpProfile` |
+| Face + warp | `FaceAndSetupMotionWarp` | face + warp **só** se `IsTargetInAttackArc` (mesmo cone — nunca 180° / atacar de costas) |
 | Warp target | `DDRMotionWarpNames::AttackWarp` | montage precisa de notify **Motion Warping** com esse nome |
 | Combo seccionado | `UGA_AttackLight::AdvanceCombo` | C++ recalcula `AttackWarp` a cada seção; **`AM_Combo` = 1 janela por seção** (Atk1–4) — [57 §2b](57_M1_Combo_Editor_Setup.md) |
 | Componente | `UMotionWarpingComponent` | em `ADDRCharacterBase`; `bSearchForWindowsInAnimsWithinMontages = true` |
@@ -404,7 +406,7 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 
 > ⚠️ **Cap no warp = honestidade.** Warp ilimitado vira teleporte e quebra o espaço do combate (player "gruda" em inimigos longe). O `MaxWarpDist` garante que warp é *fechar a última distância*, não *atravessar a sala*. Fora do cap, o golpe erra — e errar tem que ser possível pro acerto ter valor.
 
-**Pins do notify Motion Warping (editor):** target **`AttackWarp`** · Translation ✅ · Ignore Z ✅ · **Warp Rotation ❌** (face no startup via C++; se ligar rotation, use Type = `Default` apenas). Setup: [60 §7.3](../systems/60_M2_Editor_Setup.md).
+**Pins do notify Motion Warping (editor):** target **`AttackWarp`** · Translation ✅ · Ignore Z ✅ · **Warp Rotation ✅** (face no startup C++ + rotação do warp alinhada ao alvo). Setup: [60 §7.3](../systems/60_M2_Editor_Setup.md).
 
 > 🎮 **Como acertar fica certeiro:** soft-lock escolhe o alvo óbvio → faceamento vira o personagem no startup → motion-warp fecha o gap residual → sweep (§2) confirma o hit. As 4 camadas juntas dão o feel "minha intenção virou acerto" sem hard-lock e sem tirar a mão do jogador. **Setup no editor:** [60 §7](../systems/60_M2_Editor_Setup.md) · perfis por ability em [19 §3](19_Abilities_Deep.md).
 

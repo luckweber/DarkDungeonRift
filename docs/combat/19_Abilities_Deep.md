@@ -173,8 +173,9 @@ Mesma máquina do Light (seções + buffer + `Combat.Hit`), mas **mais lento, ma
 |---|---|---|
 | `LaunchRiseHeight` | 300 cm | Altura inicial do alvo no hit (`StartAirborne`) |
 | `JuggleTargetHeightAbovePlayer` | 60 cm | Co-altitude ao `EnterAirCombat` (fim da montage) |
+| `LauncherMaxActivationDistance` | 250 cm | `CanActivateAbility` — whiff se alvo fora do alcance |
 
-Ao ativar, `ApplyLauncherAirTuning` copia para o `UDDRCombatComponent` (fallback = valores no Combat Component do player).
+Ao ativar, `ApplyLauncherAirTuning` copia para o `UDDRCombatComponent` (fallback = valores no Combat Component do player). **Só ativa** com alvo no soft-lock dentro do alcance.
 
 **Fluxo de Ability Tasks (M2 implementado):**
 ```
@@ -250,31 +251,35 @@ Ao ativar, `ApplyAirAttackJuggleTuning` copia para o `UDDRCombatComponent`. Cada
 
 **Targeting:** `FaceAndSetupMotionWarp(Slam)` — só **face** (`bPreferAirborne`); **sem** lunge horizontal. **Sem** janela Motion Warp em `AM_AirSlam` — [60 §7.2](../systems/60_M2_Editor_Setup.md).
 
+**Tuning (`EditDefaultsOnly` no `BP_GA_AirSlam`):**
+
+| Propriedade | Default | Uso |
+|---|---|---|
+| `SlamEndTrigger` | BeforeGroundProximity | quando pular pra seção `End` |
+| `SlamEndGroundProximity` | 250 cm | distância ao chão para entrar no End no ar |
+| `SlamFallVelocity` | -3500 | descida incondicional na ativação |
+| `SlamHomingMaxDistance` | 350 cm | cap de homing XY |
+| `bResumeLoopSectionAfterPin` | OFF | só Start/Loop; End ignora resume no C++ |
+
 **Fluxo de Ability Tasks (como implementado):**
 ```
 ActivateAbility:
-  1. CommitAbility + bind LandedDelegate
-  1b. FaceAndSetupMotionWarp(Slam, bPreferAirborne=true)  // só face — sem warp
-  2. Task PlayMontageAndWait(AM_AirSlam, "Start")
-  2b. Montage_SetNextSection: Start→Loop e Loop→Loop (se a seção existir)
-  3. ExitAirCombat(bSlam=true) estende o hold do alvo (SlamTargetHoldSeconds 2s);
-       o slam FORÇA Falling + SlamFallVelocity (-3500) INCONDICIONALMENTE —
-       cobre R no meio da montage do launcher (hold aéreo ainda não existia;
-       sem isso sobrava a velocity de subida → arco balístico preso no Loop).
-       Descida é VELOCITY: o slam força IgnoreRootMotion no AnimInstance
-       (clip com RM ON não "boia" mais) e restaura no EndAbility
-  3b. Homing: velocity XY mira o alvo (SlamHomingMaxDistance 350 — whiff honesto;
-       motion warp de engine não serve: warp é root motion, descida é velocity)
-  3c. APEX: arremessa o alvo na ativação (EndAirborne slam, -4500 > player -3500
-       → alvo esmaga PRIMEIRO) + hit-stop 2f + Cue.Hit.Light (bSlamClaimedTargetOnActivate)
-  4. LandedDelegate (impacto):
-       - Montage_JumpToSection("End") + GameplayCue.Slam (poeira+shake → doc 21)
-       - AoE em COLUNA (SlamRadius 250 × SlamVerticalReach 450): dano → doc 18
-       - bSlamDownTargets: Airborne na coluna → EndAirborne(slam) → despenca
-  5. End da montage → EndAbility (sem Loop e pouso tardio: o pouso encerra)
+  1. CommitAbility + tag State.Combat.SlamFall + bind LandedDelegate
+  1b. FaceAndSetupMotionWarp(Slam, bPreferAirborne=true)  // face no cone; perfil Slam = só rotação
+  2. PlayMontageAndWait("Start") + Start→Loop self-loop
+  3. ExitAirCombat(bSlam=true) estende hold do alvo; ActiveJuggleTarget preservado
+  4. Falling + SlamFallVelocity + homing XY + IgnoreRootMotion
+  5. CheckSlamEndProximity (16ms) → TryJumpToEndSection:
+       snap co-altitude → BeginSlamAirPin → JumpToSection("End")
+  6. ANS_DDRHitbox no End: bSlamDownTargets + bAoEAtOwner + PinInAir
+       → sweep cada frame enquanto pinado; EndSlamAirPin NÃO resume queda
+  7. Montage fim → ReleaseSlamAirPinForLanding → EndAbility
+  8. LandedDelegate: cue Slam (sem sweep); ignorado enquanto pin ativo
 ```
 
-**Concede/dispara:** `ExitAirCombat` **remove** `State.Combat.InAir` na ativação (o juggle do alvo morre no impacto via `bSlamDownTargets`). É o **clímax** — todo o juice se concentra aqui ([16 §5](16_Aerial_Combos.md)), mas o juice em si é do [21](../feel/21_Juice_FX.md).
+**Setup editor:** [60 §4](../systems/60_M2_Editor_Setup.md) — `bSlamClaimedTargetOnActivate` **OFF**; hitbox na seção `End` (e `Start` se quiser grab no ar).
+
+**Concede/dispara:** `ExitAirCombat` na ativação; o alvo juggleado só cai quando o **hitbox** conecta. Clímax de juice: [16 §5](16_Aerial_Combos.md) + [21](../feel/21_Juice_FX.md).
 
 > 🔒 **Single-player:** descida por **velocity** no CMC (posição final = chão, por colisão) — mais simples que `RootMotionSource` e suficiente sem rede. O `LandedDelegate` é a única "verdade" do impacto: anim, AoE e cue derivam dele.
 

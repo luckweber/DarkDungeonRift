@@ -8,13 +8,13 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "DDRCharacterBase.h"
 #include "DDRCombatComponent.h"
-#include "DDRCombatTypes.h"
 #include "DDRHitStopSubsystem.h"
 #include "DDRMotionWarpTypes.h"
 #include "DDRGameplayTags.h"
 #include "DDRLog.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "TimerManager.h"
 
 UGA_AirSlam::UGA_AirSlam()
 {
@@ -60,18 +60,41 @@ void UGA_AirSlam::ActivateAbility(
 	}
 
 	bImpactTriggered = false;
+	bEndSectionStarted = false;
 
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] ATIVADO montage=%s | secoes: Start=%d Loop=%d End=%d | playerZ=%.0f t=%.2f"),
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->AddLooseGameplayTag(DDRTags::State_Combat_SlamFall);
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] ATIVADO montage=%s | secoes: Start=%d Loop=%d End=%d | playerZ=%.0f endTrigger=%d t=%.2f"),
 		*GetNameSafe(SlamMontage),
 		SlamMontage->GetSectionIndex(StartSection),
 		SlamMontage->GetSectionIndex(LoopSection),
 		SlamMontage->GetSectionIndex(LandSection),
 		Character->GetActorLocation().Z,
+		static_cast<int32>(SlamEndTrigger),
 		GetWorld()->GetTimeSeconds());
 
-	// Pouso dispara o impacto.
+	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+	{
+		Combat->RegisterSlamAbility(this);
+	}
+
+	// Pouso: cue / End so se SlamEndTrigger == OnGroundLand.
 	Character->LandedDelegate.AddDynamic(this, &UGA_AirSlam::OnSlamLanded);
 	bLandedBound = true;
+
+	if (SlamEndTrigger == EDDRSlamEndTrigger::BeforeGroundProximity)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			SlamProximityTimerHandle,
+			this,
+			&UGA_AirSlam::CheckSlamEndProximity,
+			0.016f,
+			true);
+		CheckSlamEndProximity();
+	}
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this, NAME_None, SlamMontage, 1.f, StartSection, /*bStopWhenAbilityEnds=*/false);
@@ -203,71 +226,212 @@ void UGA_AirSlam::ActivateAbility(
 	}
 }
 
-void UGA_AirSlam::OnSlamLanded(const FHitResult& Hit)
+void UGA_AirSlam::JumpToMontageSection(const FName SectionName)
 {
-	if (bImpactTriggered)
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character || !SlamMontage || SectionName.IsNone())
 	{
 		return;
 	}
-	bImpactTriggered = true;
 
-	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] POUSO em (%.0f, %.0f, %.0f) t=%.2f — disparando AoE"),
-		Character ? Character->GetActorLocation().X : 0.f,
-		Character ? Character->GetActorLocation().Y : 0.f,
-		Character ? Character->GetActorLocation().Z : 0.f,
-		GetWorld()->GetTimeSeconds());
-
-	// Anim: pula pra fase de impacto (sai do Loop/Start).
-	bool bJumpedToEnd = false;
-	if (Character)
+	if (SlamMontage->GetSectionIndex(SectionName) == INDEX_NONE)
 	{
+		UE_LOG(LogDDR, Warning, TEXT("[SLAM] secao '%s' nao existe em %s"), *SectionName.ToString(), *GetNameSafe(SlamMontage));
+		return;
+	}
+
+	if (USkeletalMeshComponent* Mesh = Character->GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+		{
+			if (AnimInstance->Montage_IsPlaying(SlamMontage))
+			{
+				AnimInstance->Montage_JumpToSection(SectionName, SlamMontage);
+				if (SectionName == LandSection)
+				{
+					bEndSectionStarted = true;
+				}
+				UE_LOG(LogDDR, Log, TEXT("[SLAM] JumpToSection '%s' z=%.0f t=%.2f"),
+					*SectionName.ToString(), Character->GetActorLocation().Z, GetWorld()->GetTimeSeconds());
+			}
+		}
+	}
+}
+
+void UGA_AirSlam::ResumeFallAfterSlamPin(const float FallVelocityZ, const bool bResumeLoopSection)
+{
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	const bool bWasPinnedFlying = MoveComp->MovementMode == MOVE_Flying;
+	if (!MoveComp->IsFalling() && !bWasPinnedFlying)
+	{
+		UE_LOG(LogDDR, Log, TEXT("[SLAM] retoma queda IGNORADA — no chao endStarted=%d t=%.2f"),
+			bEndSectionStarted ? 1 : 0, GetWorld()->GetTimeSeconds());
+		return;
+	}
+
+	MoveComp->SetMovementMode(MOVE_Falling);
+	FVector Vel = MoveComp->Velocity;
+	Vel.Z = FallVelocityZ;
+	MoveComp->Velocity = Vel;
+
+	// Nunca volta pra Loop depois que End começou (BeforeGroundProximity / hit) — causa loop infinito.
+	const bool bShouldResumeLoop = bResumeLoopSection && bResumeLoopSectionAfterPin
+		&& !bEndSectionStarted
+		&& SlamMontage->GetSectionIndex(LoopSection) != INDEX_NONE;
+
+	if (bShouldResumeLoop)
+	{
+		JumpToMontageSection(LoopSection);
 		if (USkeletalMeshComponent* Mesh = Character->GetMesh())
 		{
 			if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
 			{
-				if (AnimInstance->Montage_IsPlaying(SlamMontage)
-					&& SlamMontage->GetSectionIndex(LandSection) != INDEX_NONE)
+				AnimInstance->Montage_SetNextSection(LoopSection, LoopSection, SlamMontage);
+			}
+		}
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] retoma queda velZ=%.0f loop=%d endStarted=%d t=%.2f"),
+		FallVelocityZ, bShouldResumeLoop ? 1 : 0, bEndSectionStarted ? 1 : 0, GetWorld()->GetTimeSeconds());
+}
+
+void UGA_AirSlam::NotifySlamHitboxJumpToEnd()
+{
+	TryJumpToEndSection(TEXT("Hitbox"));
+}
+
+void UGA_AirSlam::TryJumpToEndSection(const TCHAR* Reason)
+{
+	if (bEndSectionStarted)
+	{
+		return;
+	}
+
+	bEndSectionStarted = true;
+	GetWorld()->GetTimerManager().ClearTimer(SlamProximityTimerHandle);
+
+	// Congela ANTES do jump de secao — velocity -3500 pousa em ~1 frame; o notify do
+	// hitbox chega tarde demais (log: POUSO 0.01s antes do PinInAir).
+	if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+	{
+		if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
+		{
+			if (MoveComp->IsFalling())
+			{
+				if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 				{
-					AnimInstance->Montage_JumpToSection(LandSection, SlamMontage);
-					bJumpedToEnd = true;
+					Combat->SnapSlamEndToJuggleTarget();
+					Combat->BeginSlamAirPin();
 				}
 			}
 		}
 	}
 
-	// AoE no ponto de impacto: COLUNA vertical (raio x SlamVerticalReach) — dano +
-	// derruba os Airborne (inclusive o juggleado la no alto) + hit-stop pesado.
+	JumpToMontageSection(LandSection);
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] End via %s"), Reason);
+}
+
+void UGA_AirSlam::CheckSlamEndProximity()
+{
+	if (bEndSectionStarted || SlamEndTrigger != EDDRSlamEndTrigger::BeforeGroundProximity)
+	{
+		return;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	const UCharacterMovementComponent* MoveComp = Character ? Character->GetCharacterMovement() : nullptr;
+	if (!Character || !MoveComp || !MoveComp->IsFalling())
+	{
+		return;
+	}
+
+	FHitResult Floor;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(DDRSlamEndProx), false, Character);
+	const FVector Loc = Character->GetActorLocation();
+	if (!GetWorld()->LineTraceSingleByChannel(
+		Floor, Loc, Loc - FVector(0.f, 0.f, 4000.f), ECC_Visibility, Params))
+	{
+		return;
+	}
+
+	const float DistToGround = Loc.Z - Floor.ImpactPoint.Z;
+	if (DistToGround <= SlamEndGroundProximity)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(SlamProximityTimerHandle);
+		TryJumpToEndSection(TEXT("BeforeGroundProximity"));
+	}
+}
+
+void UGA_AirSlam::OnSlamLanded(const FHitResult& Hit)
+{
+	GetWorld()->GetTimerManager().ClearTimer(SlamProximityTimerHandle);
+
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+
 	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 	{
-		FDDRMeleeSweepParams AoE;
-		AoE.BaseDamage = SlamDamage;
-		AoE.SweepRadius = SlamRadius;
-		AoE.SweepReach = SlamVerticalReach;
-		AoE.HitStopFrames = SlamHitStopFrames;
-		AoE.bAoEAtOwner = true;
-		AoE.bSlamDownTargets = true;
-
-		Combat->ResetHitTracking();
-		Combat->PerformMeleeSweep(AoE);
+		if (Combat->IsSlamAirPinActive())
+		{
+			UE_LOG(LogDDR, Log, TEXT("[SLAM] POUSO ignorado — PinInAir ativo z=%.0f t=%.2f"),
+				Character ? Character->GetActorLocation().Z : 0.f, GetWorld()->GetTimeSeconds());
+			return;
+		}
 	}
 
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] POUSO em (%.0f, %.0f, %.0f) endStarted=%d t=%.2f"),
+		Character ? Character->GetActorLocation().X : 0.f,
+		Character ? Character->GetActorLocation().Y : 0.f,
+		Character ? Character->GetActorLocation().Z : 0.f,
+		bEndSectionStarted ? 1 : 0,
+		GetWorld()->GetTimeSeconds());
+
+	if (SlamEndTrigger == EDDRSlamEndTrigger::OnGroundLand && !bEndSectionStarted)
 	{
-		FGameplayCueParameters CueParams;
-		CueParams.Instigator = Character;
-		CueParams.Location = Character ? Character->GetActorLocation() : FVector::ZeroVector;
-		ASC->ExecuteGameplayCue(DDRTags::Cue_Slam, CueParams);
+		TryJumpToEndSection(TEXT("OnGroundLand"));
 	}
 
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] impacto resolvido: jumpToEnd=%d"), bJumpedToEnd ? 1 : 0);
-
-	// Montage ja tinha acabado (queda mais longa que o clip, sem secao Loop): o pouso
-	// fez o AoE — encerra aqui, porque OnMontageFinished nao vira de novo.
-	if (!bJumpedToEnd)
+	if (!bImpactTriggered)
 	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		bImpactTriggered = true;
+
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Instigator = Character;
+			CueParams.Location = Character ? Character->GetActorLocation() : FVector::ZeroVector;
+			ASC->ExecuteGameplayCue(DDRTags::Cue_Slam, CueParams);
+		}
+	}
+
+	// Montage sem Loop e End ja tocou: encerra no pouso.
+	if (bEndSectionStarted)
+	{
+		return;
+	}
+
+	if (const ACharacter* C = Character)
+	{
+		if (USkeletalMeshComponent* Mesh = C->GetMesh())
+		{
+			if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+			{
+				if (!AnimInstance->Montage_IsPlaying(SlamMontage))
+				{
+					EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+				}
+			}
+		}
 	}
 }
 
@@ -298,6 +462,25 @@ void UGA_AirSlam::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SlamProximityTimerHandle);
+	}
+
+	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+	{
+		if (Combat->IsSlamAirPinActive())
+		{
+			Combat->ReleaseSlamAirPinForLanding();
+		}
+		Combat->UnregisterSlamAbility();
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->RemoveLooseGameplayTag(DDRTags::State_Combat_SlamFall);
+	}
+
 	if (bLandedBound)
 	{
 		if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))

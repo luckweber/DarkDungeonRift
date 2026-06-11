@@ -8,11 +8,22 @@
 
 class UAnimMontage;
 
-// Finisher descendente (doc 16 par.5), 3 FASES: "Start" (mergulho) -> "Loop" (queda,
-// self-loop via Montage_SetNextSection — dura o que a queda durar) -> "End" (impacto,
-// pulado pelo LandedDelegate). A descida REAL e o codigo (velocity -3500); o AoE do
-// pouso e uma COLUNA vertical (raio x altura) — pega o alvo juggleado la no alto e
-// derruba (bSlamDownTargets). Secao "Loop" e opcional (montage 2-secoes funciona).
+/** Quando a montage pula pra secao End (impacto / slam-down no ar). */
+UENUM(BlueprintType)
+enum class EDDRSlamEndTrigger : uint8
+{
+	/** Pouso no chao -> secao End (finisher com player no solo). */
+	OnGroundLand UMETA(DisplayName = "On Ground Land"),
+	/** 1º hit com bJumpToSlamEndSection no hitbox (ainda no ar). */
+	OnSlamHit UMETA(DisplayName = "On Slam Hit"),
+	/** Ainda caindo, a X cm do chao -> End (slam-down aereo antes do pouso). */
+	BeforeGroundProximity UMETA(DisplayName = "Before Ground Proximity"),
+};
+
+// Finisher descendente (doc 16 par.5), 3 FASES: "Start" (mergulho/apex) -> "Loop" (queda,
+// self-loop) -> "End" (impacto no chao, pulado pelo LandedDelegate). Descida = velocity.
+// Dano + derrube do alvo = ANS_DDRHitbox nas secoes Start/End (bSlamDownTargets) —
+// NAO no pouso nem na ativacao (a espada tem que acertar).
 UCLASS()
 class DARKDUNGEONRIFT_API UGA_AirSlam : public UDDRGameplayAbility
 {
@@ -20,6 +31,12 @@ class DARKDUNGEONRIFT_API UGA_AirSlam : public UDDRGameplayAbility
 
 public:
 	UGA_AirSlam();
+
+	/** Chamado pelo CombatComponent (hitbox / pin). */
+	void JumpToMontageSection(FName SectionName);
+	void NotifySlamHitboxJumpToEnd();
+	void ResumeFallAfterSlamPin(float FallVelocityZ, bool bResumeLoopSection);
+	bool IsEndSectionStarted() const { return bEndSectionStarted; }
 
 protected:
 	virtual void ActivateAbility(
@@ -59,27 +76,24 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam", meta = (ClampMax = "0"))
 	float SlamFallVelocity = -3500.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam")
+	/** Valores sugeridos pro ANS_DDRHitbox na secao End (dano real vem do notify). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (DisplayName = "Suggested Damage (doc only)"))
 	float SlamDamage = 25.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam")
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (DisplayName = "Suggested Radius (doc only)"))
 	float SlamRadius = 250.f;
 
-	/** Altura da COLUNA do AoE acima do ponto de pouso (cm) — alcanca o alvo juggleado. */
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam", meta = (ClampMin = "0"))
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (ClampMin = "0", DisplayName = "Suggested Vertical Reach (doc only)"))
 	float SlamVerticalReach = 450.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam")
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (DisplayName = "Suggested Hit Stop Frames (doc only)"))
 	int32 SlamHitStopFrames = 6;
 
-	// Coreografia DMC: o golpe do APEX (inicio do Start) ja ARREMESSA o alvo juggleado —
-	// ele cai a SlammedFallVelocity (-4500, mais rapido que o player) e esmaga no chao
-	// PRIMEIRO; o AoE do pouso cobre o dano + outros Airborne no raio.
+	/** LEGADO: derruba o alvo no frame 0 sem hitbox — deixe OFF (use ANS_DDRHitbox). */
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel")
-	bool bSlamClaimedTargetOnActivate = true;
+	bool bSlamClaimedTargetOnActivate = false;
 
-	/** Hit-stop do "agarrao" no apex (frames) — vende o golpe que arremessa. */
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel", meta = (ClampMin = "0", ClampMax = "10"))
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel", meta = (ClampMin = "0", ClampMax = "10", EditCondition = "bSlamClaimedTargetOnActivate"))
 	int32 SlamGrabHitStopFrames = 2;
 
 	// Homing por VELOCITY (motion warp nao serve aqui: warp e root motion, e a descida
@@ -94,8 +108,26 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Homing", meta = (ClampMin = "0"))
 	float SlamMaxHorizontalSpeed = 1800.f;
 
+	/** Quando pular pra secao End da AM_AirSlam. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Sections")
+	EDDRSlamEndTrigger SlamEndTrigger = EDDRSlamEndTrigger::BeforeGroundProximity;
+
+	/** BeforeGroundProximity: distancia ao chao (cm) para entrar na secao End ainda no ar. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Sections",
+		meta = (ClampMin = "50", EditCondition = "SlamEndTrigger == EDDRSlamEndTrigger::BeforeGroundProximity"))
+	float SlamEndGroundProximity = 200.f;
+
+	/** Apos PinInAir no hitbox (so durante Start/Loop): retoma Loop. OFF se End ja comecou. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Sections")
+	bool bResumeLoopSectionAfterPin = false;
+
 private:
+	void CheckSlamEndProximity();
+	void TryJumpToEndSection(const TCHAR* Reason);
+
+	FTimerHandle SlamProximityTimerHandle;
 	bool bLandedBound = false;
+	bool bEndSectionStarted = false;
 	// Garante AoE/cue uma unica vez e decide quem encerra a ability (End ou pouso tardio).
 	bool bImpactTriggered = false;
 

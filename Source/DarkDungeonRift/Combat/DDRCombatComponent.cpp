@@ -4,6 +4,7 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DDRAttributeSet.h"
 #include "DDRCharacterBase.h"
@@ -14,6 +15,7 @@
 #include "DDRLog.h"
 #include "DrawDebugHelpers.h"
 #include "EngineUtils.h"
+#include "GA_AirSlam.h"
 #include "GE_DDRDamage.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -56,6 +58,11 @@ void UDDRCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	{
 		SyncJuggleTargetFollow();
 	}
+
+	if (bSlamAirPinActive)
+	{
+		MaintainSlamAirPin();
+	}
 }
 
 void UDDRCombatComponent::ApplyLauncherAirTuning(
@@ -90,6 +97,235 @@ float UDDRCombatComponent::GetTimeSinceDashEnded() const
 		return FLT_MAX;
 	}
 	return World->GetTimeSeconds() - LastDashEndTimeSeconds;
+}
+
+void UDDRCombatComponent::RegisterSlamAbility(UGA_AirSlam* SlamAbility)
+{
+	ActiveSlamAbility = SlamAbility;
+	bSlamEndJumpedThisSwing = false;
+}
+
+void UDDRCombatComponent::UnregisterSlamAbility()
+{
+	ActiveSlamAbility.Reset();
+	bSlamAirPinActive = false;
+	bSlamEndJumpedThisSwing = false;
+	bSlamPinSweepParamsSet = false;
+	ActiveJuggleTarget.Reset();
+}
+
+void UDDRCombatComponent::BeginSlamAirPin()
+{
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	if (!OwnerChar)
+	{
+		return;
+	}
+
+	if (bSlamAirPinActive)
+	{
+		return;
+	}
+
+	bSlamAirPinActive = true;
+	SlamPinZ = OwnerChar->GetActorLocation().Z;
+
+	if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
+	{
+		MoveComp->SetMovementMode(MOVE_Flying);
+		MoveComp->Velocity = FVector::ZeroVector;
+		MoveComp->StopMovementImmediately();
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir ON z=%.0f t=%.2f"), SlamPinZ, GetWorld()->GetTimeSeconds());
+}
+
+void UDDRCombatComponent::EndSlamAirPin(const FDDRMeleeSweepParams& Params)
+{
+	if (!bSlamAirPinActive)
+	{
+		return;
+	}
+
+	// Secao End: notify curto — manter congelado ate a montage acabar (nao relancar -3500).
+	if (const UGA_AirSlam* Slam = ActiveSlamAbility.Get())
+	{
+		if (Slam->IsEndSectionStarted())
+		{
+			UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir notify fim — mantendo no ar (End em andamento) t=%.2f"),
+				GetWorld()->GetTimeSeconds());
+			return;
+		}
+	}
+
+	bSlamAirPinActive = false;
+
+	const float FallVel = Params.bResumeFallAfterSlamPin ? Params.SlamFollowFallVelocity : 0.f;
+	if (UGA_AirSlam* Slam = ActiveSlamAbility.Get())
+	{
+		Slam->ResumeFallAfterSlamPin(FallVel, Params.bResumeFallAfterSlamPin);
+	}
+	else if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+	{
+		if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
+		{
+			MoveComp->SetMovementMode(MOVE_Falling);
+			if (Params.bResumeFallAfterSlamPin)
+			{
+				FVector Vel = MoveComp->Velocity;
+				Vel.Z = FallVel;
+				MoveComp->Velocity = Vel;
+			}
+		}
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir OFF resumeFall=%d velZ=%.0f t=%.2f"),
+		Params.bResumeFallAfterSlamPin ? 1 : 0, FallVel, GetWorld()->GetTimeSeconds());
+
+	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+	{
+		if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
+		{
+			if (MoveComp->MovementMode == MOVE_Flying && !MoveComp->IsFalling())
+			{
+				MoveComp->SetMovementMode(MOVE_Walking);
+			}
+		}
+	}
+}
+
+void UDDRCombatComponent::ReleaseSlamAirPinForLanding()
+{
+	if (!bSlamAirPinActive)
+	{
+		return;
+	}
+
+	bSlamAirPinActive = false;
+	bSlamPinSweepParamsSet = false;
+
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	if (!OwnerChar)
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	FHitResult Floor;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(DDRSlamPinLand), false, OwnerChar);
+	const FVector TraceStart = OwnerChar->GetActorLocation();
+	if (GetWorld()->LineTraceSingleByChannel(
+		Floor, TraceStart, TraceStart - FVector(0.f, 0.f, 4000.f), ECC_Visibility, Params))
+	{
+		const float HalfHeight = OwnerChar->GetCapsuleComponent()
+			? OwnerChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+			: 88.f;
+		FVector LandLoc = OwnerChar->GetActorLocation();
+		LandLoc.Z = Floor.ImpactPoint.Z + HalfHeight;
+		OwnerChar->SetActorLocation(LandLoc, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+
+	MoveComp->Velocity = FVector::ZeroVector;
+	MoveComp->SetMovementMode(MOVE_Walking);
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] PinInAir RELEASE pouso z=%.0f t=%.2f"),
+		OwnerChar->GetActorLocation().Z, GetWorld()->GetTimeSeconds());
+}
+
+void UDDRCombatComponent::SnapSlamEndToJuggleTarget()
+{
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	if (!OwnerChar)
+	{
+		return;
+	}
+
+	AActor* Target = ActiveJuggleTarget.Get();
+	if (!Target)
+	{
+		Target = FindSoftLockTarget(/*bPreferAirborne=*/true);
+	}
+
+	const ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(Target);
+	if (!TargetChar || !TargetChar->IsAirborne())
+	{
+		return;
+	}
+
+	FVector Loc = OwnerChar->GetActorLocation();
+	const float TargetZ = TargetChar->GetActorLocation().Z;
+	Loc.Z = TargetZ;
+	OwnerChar->SetActorLocation(Loc, false, nullptr, ETeleportType::TeleportPhysics);
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] snap co-altitude alvoZ=%.0f playerZ=%.0f t=%.2f"),
+		TargetZ, Loc.Z, GetWorld()->GetTimeSeconds());
+}
+
+void UDDRCombatComponent::SetSlamPinSweepParams(const FDDRMeleeSweepParams& Params)
+{
+	SlamPinSweepParams = Params;
+	bSlamPinSweepParamsSet = true;
+}
+
+void UDDRCombatComponent::MaintainSlamAirPin()
+{
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (!OwnerChar || !MoveComp)
+	{
+		return;
+	}
+
+	if (MoveComp->MovementMode != MOVE_Flying)
+	{
+		MoveComp->SetMovementMode(MOVE_Flying);
+	}
+
+	MoveComp->Velocity = FVector::ZeroVector;
+
+	const FVector Loc = OwnerChar->GetActorLocation();
+	if (!FMath::IsNearlyEqual(Loc.Z, SlamPinZ, 0.5f))
+	{
+		FVector Pinned = Loc;
+		Pinned.Z = SlamPinZ;
+		OwnerChar->SetActorLocation(Pinned, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+
+	if (bSlamPinSweepParamsSet)
+	{
+		if (const UGA_AirSlam* Slam = ActiveSlamAbility.Get())
+		{
+			if (Slam->IsEndSectionStarted())
+			{
+				PerformMeleeSweep(SlamPinSweepParams);
+			}
+		}
+	}
+}
+
+void UDDRCombatComponent::ApplySlamPlayerFollow(const FDDRMeleeSweepParams& Params, AActor* HitActor)
+{
+	if (Params.SlamPlayerFollow == EDDRSlamPlayerFollow::FollowToGround)
+	{
+		if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+		{
+			if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
+			{
+				bSlamAirPinActive = false;
+				MoveComp->SetMovementMode(MOVE_Falling);
+				FVector Vel = MoveComp->Velocity;
+				Vel.Z = Params.SlamFollowFallVelocity;
+				MoveComp->Velocity = Vel;
+				UE_LOG(LogDDR, Log, TEXT("[SLAM] FollowToGround velZ=%.0f t=%.2f"),
+					Params.SlamFollowFallVelocity, GetWorld()->GetTimeSeconds());
+			}
+		}
+	}
 }
 
 void UDDRCombatComponent::SetAirCarryActive(const bool bActive, const float ForwardOffset)
@@ -250,11 +486,22 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		{
 			ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(HitActor);
 			const bool bTargetAirborne = TargetChar && TargetChar->IsAirborne();
-			UE_LOG(LogDDR, Log, TEXT("[SLAM] AoE acertou %s | castBase=%d airborne=%d -> slamdown=%d"),
-				*GetNameSafe(HitActor), TargetChar ? 1 : 0, bTargetAirborne ? 1 : 0, bTargetAirborne ? 1 : 0);
+			UE_LOG(LogDDR, Log, TEXT("[SLAM] hit %s | airborne=%d follow=%d jumpEnd=%d"),
+				*GetNameSafe(HitActor), bTargetAirborne ? 1 : 0,
+				static_cast<int32>(Params.SlamPlayerFollow), Params.bJumpToSlamEndSection ? 1 : 0);
 			if (bTargetAirborne)
 			{
 				TargetChar->EndAirborne(/*bSlammed=*/true);
+				ApplySlamPlayerFollow(Params, HitActor);
+			}
+
+			if (Params.bJumpToSlamEndSection && !bSlamEndJumpedThisSwing)
+			{
+				bSlamEndJumpedThisSwing = true;
+				if (UGA_AirSlam* Slam = ActiveSlamAbility.Get())
+				{
+					Slam->NotifySlamHitboxJumpToEnd();
+				}
 			}
 		}
 
@@ -473,7 +720,10 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 	bInAirCombat = false;
 	bHasAirAnchor = false;
 	bAirCarryActive = false;
-	ActiveJuggleTarget.Reset();
+	if (!bSlam)
+	{
+		ActiveJuggleTarget.Reset();
+	}
 	GetWorld()->GetTimerManager().ClearTimer(AirHoldTimerHandle);
 
 	if (UAbilitySystemComponent* ASC = GetOwnerASC())
@@ -597,17 +847,61 @@ AActor* UDDRCombatComponent::FindSoftLockTarget(bool bPreferAirborne) const
 		}
 	}
 
-	// Fora do cone? Em topdown a intenção é "bate no que está perto" — fallback no mais próximo.
-	return BestInCone ? BestInCone : NearestAny;
+	// Juggle aéreo: fallback no mais próximo, mas só na frente (nunca costas).
+	if (bPreferAirborne)
+	{
+		if (BestInCone)
+		{
+			return BestInCone;
+		}
+		if (NearestAny)
+		{
+			const FVector To = NearestAny->GetActorLocation() - OwnerLoc;
+			const float CosA = FVector::DotProduct(PreferredDir, To.GetSafeNormal2D());
+			if (CosA >= 0.f)
+			{
+				return NearestAny;
+			}
+		}
+		return nullptr;
+	}
+
+	// Chão: só alvo no cone à frente.
+	return BestInCone;
+}
+
+bool UDDRCombatComponent::IsTargetInAttackArc(const AActor* Target) const
+{
+	const AActor* OwnerActor = GetOwner();
+	if (!Target || !OwnerActor)
+	{
+		return false;
+	}
+
+	FVector PreferredDir = OwnerActor->GetActorForwardVector();
+	if (const APawn* OwnerPawn = Cast<APawn>(OwnerActor))
+	{
+		const FVector Input = OwnerPawn->GetLastMovementInputVector();
+		if (!Input.IsNearlyZero())
+		{
+			PreferredDir = Input;
+		}
+	}
+	PreferredDir = PreferredDir.GetSafeNormal2D();
+
+	const FVector To = Target->GetActorLocation() - OwnerActor->GetActorLocation();
+	const float CosA = FVector::DotProduct(PreferredDir, To.GetSafeNormal2D());
+	const float CosHalfAngle = FMath::Cos(FMath::DegreesToRadians(SoftLockHalfAngleDegrees));
+	return CosA >= CosHalfAngle;
 }
 
 AActor* UDDRCombatComponent::FaceSoftLockTarget(bool bPreferAirborne)
 {
 	AActor* Target = FindSoftLockTarget(bPreferAirborne);
 	AActor* OwnerActor = GetOwner();
-	if (!Target || !OwnerActor)
+	if (!Target || !OwnerActor || !IsTargetInAttackArc(Target))
 	{
-		return Target;
+		return nullptr;
 	}
 
 	FVector To = Target->GetActorLocation() - OwnerActor->GetActorLocation();
@@ -632,9 +926,25 @@ AActor* UDDRCombatComponent::FaceSoftLockTarget(bool bPreferAirborne)
 
 AActor* UDDRCombatComponent::FaceAndSetupMotionWarp(const EDDRMotionWarpProfile Profile, const bool bPreferAirborne)
 {
-	AActor* Target = FaceSoftLockTarget(bPreferAirborne);
+	AActor* Target = FindSoftLockTarget(bPreferAirborne);
+	const bool bCanAssist = Target && IsTargetInAttackArc(Target);
 
-	if (!bMotionWarpEnabled || Profile == EDDRMotionWarpProfile::None)
+	if (bCanAssist)
+	{
+		if (AActor* OwnerActor = GetOwner())
+		{
+			FVector To = Target->GetActorLocation() - OwnerActor->GetActorLocation();
+			To.Z = 0.f;
+			if (!To.IsNearlyZero())
+			{
+				FRotator NewRot = OwnerActor->GetActorRotation();
+				NewRot.Yaw = To.Rotation().Yaw;
+				OwnerActor->SetActorRotation(NewRot);
+			}
+		}
+	}
+
+	if (!bMotionWarpEnabled || Profile == EDDRMotionWarpProfile::None || !bCanAssist)
 	{
 		return Target;
 	}

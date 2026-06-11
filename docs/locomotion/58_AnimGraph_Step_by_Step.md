@@ -38,6 +38,7 @@ O que fica de **fora** (de propósito): start/stop transitions e distance match 
 | `bIsMoving` | Bool | `LocomotionState.bIsMoving` (Speed > 10) |
 | `bIsFalling` | Bool | `LocomotionState.bIsFalling` |
 | `bIsDashing` | Bool | `LocomotionState.bIsDashing` |
+| `bIsCombatFalling` | Bool | `LocomotionState.bIsCombatFalling` (`State.Combat.SlamFall` durante `GA_AirSlam`) |
 
 ### 1.2 Event Graph (MVP — game thread, ok p/ 1 player)
 
@@ -48,8 +49,19 @@ Event Blueprint Initialize Animation:
 Event Blueprint Update Animation:
   Player (válido?) → Get DDR Movement → Get Locomotion State
     → Break DDRLocomotionState
-    → SET Speed / Direction / Gait / bIsMoving / bIsFalling / bIsDashing
+    → SET Speed / Direction / Gait / bIsMoving / bIsFalling / bIsDashing / bIsCombatFalling
 ```
+
+### 1.3 Queda de combate (slam) — `Jump_Combat_*`
+
+Quando `bIsCombatFalling && bIsFalling` (tag `State.Combat.SlamFall` ligada pelo `GA_AirSlam`):
+
+| Estado | Clip sugerido |
+|---|---|
+| **Fall** (ou ramo paralelo) | `Jump_Combat_Loop_*_Seq` |
+| **Land** | `Jump_Combat_End_*_Seq` |
+
+> Ramifique **antes** do Fall genérico: `bIsCombatFalling` → poses de combate; senão → Fall/Land normais do Jump 4-way.
 
 > ⚠️ **Cast UMA vez** (no Initialize), não a cada frame. O `GetLocomotionState` é `BlueprintPure` — o nó aparece direto no BP.
 

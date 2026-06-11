@@ -20,6 +20,13 @@ public:
 	UGA_Launcher();
 
 protected:
+	virtual bool CanActivateAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayTagContainer* SourceTags,
+		const FGameplayTagContainer* TargetTags,
+		FGameplayTagContainer* OptionalRelevantTags) const override;
+
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -51,6 +58,10 @@ protected:
 	 *  Negativo = alvo ABAIXO do player (melhor leitura em golpes aereos descendentes). */
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher|Air", meta = (UIMin = "-150", UIMax = "300"))
 	float JuggleTargetHeightAbovePlayer = 60.f;
+
+	/** Só ativa se houver alvo hittable dentro deste raio 2D (cm). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher", meta = (ClampMin = "0"))
+	float LauncherMaxActivationDistance = 250.f;
 
 private:
 	// MOVE_Walking DESCARTA o Z do root motion (gruda no chao) — o launcher precisa de

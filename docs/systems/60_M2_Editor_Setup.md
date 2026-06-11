@@ -50,6 +50,7 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 > |---|---|---|
 > | `BP_GA_Launcher` | **Launch Rise Height** | altura do inimigo no uppercut (250–350) |
 > | `BP_GA_Launcher` | **Juggle Target Height Above Player** | co-altitude ao *entrar* no ar — **negativo = alvo abaixo do player** |
+> | `BP_GA_Launcher` | **Launcher Max Activation Distance** | só ativa perto do alvo (~250 cm) |
 > | `BP_GA_AirAttack` | **Juggle Target Height Above Player** | co-altitude a cada hit (`bAirPop`) — negativo (~-30 a -60) "assenta" o alvo na lâmina dos swings descendentes |
 > | `BP_GA_AirAttack` | **Air Pop Vertical Nudge Scale** | nudge extra por hit (~0.15) |
 >
@@ -85,15 +86,34 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 
 **Clips:** `Attack_Air_To_Floor_Start_01_Seq` + `Attack_Air_To_Floor_Loop_01_Seq` + `Attack_Air_To_Floor_End_01_Seq` (pasta `08_Attack_Air_to_Floor_01`).
 
-1. Montage **`AM_AirSlam`** com **3 seções**: `Start`, `Loop`, `End` (nomes **exatos**). ⚠️ **Montage Sections → Clear** como sempre — quem encadeia é o **C++**: na ativação ele liga `Start→Loop` e **self-loopa** o `Loop` (`Montage_SetNextSection`); o **pouso** (`LandedDelegate`) pula pra `End`. A queda dura o que durar — o Loop dá quantas voltas precisar.
+1. Montage **`AM_AirSlam`** com **3 seções**: `Start`, `Loop`, `End` (nomes **exatos**). ⚠️ **Montage Sections → Clear** — o C++ liga `Start→Loop` e self-loopa o `Loop`. A seção **`End`** entra via **`Slam End Trigger`** (default **Before Ground Proximity** ~250 cm do chão), **não** pelo pouso.
 2. **Root Motion:** `Start`/`Loop` = **❌ OFF** (clareza) — mas o código agora **força `IgnoreRootMotion` durante o slam** (restaurado no fim): mesmo com RM ON no clip, a descida é sempre a velocity -3500. *(Antes, RM ON fazia a anim dirigir a cápsula e matar a queda — player "boiando".)*
-3. **NÃO** precisa de hitbox notify: o **AoE do impacto é o código** — uma **COLUNA vertical** (raio 250 × altura `Slam Vertical Reach` 450, tunável no `BP_GA_AirSlam`): dano 25, hit-stop 6 frames, **derruba todos os Airborne** — inclusive o alvo juggleado lá no alto — + `GameplayCue.Slam`.
-4. **Alvo seguro + homing (código, nada a configurar):** ao ativar, o slam **(a)** estende o hold do alvo juggleado (`Slam Target Hold Seconds` = 2s no Combat Component); **(b)** **mira o XY do alvo** na descida (`bHomeToTarget`; cap `Slam Homing Max Distance` 350cm = whiff honesto; vel. máx 1800) — a coluna **sempre conecta** no alvo perseguido. ⚠️ Motion warping de engine **não** serve aqui: warp é *root motion*, e a descida é *velocity*.
-5. **Coreografia do impacto (feel, código):** o golpe do **apex** (frame da ativação, o swing do `Start`) **já arremessa o alvo** — ele cai a `SlammedFallVelocity` **-4500** (na base do personagem; mais rápido que o player a -3500) e **esmaga no chão PRIMEIRO**. Beats de juice: **hit-stop 2 frames no apex** (`Slam Grab Hit Stop Frames`) + **hit-stop 6 no impacto** (AoE) + `GameplayCue.Hit.Light` no apex e `GameplayCue.Slam` no pouso — os cues são os **ganchos pro juice visual** (shake/poeira/trail = BP, [21](../feel/21_Juice_FX.md)). Toggle: `bSlamClaimedTargetOnActivate` (OFF = alvo só cai com o AoE do pouso, comportamento antigo).
+3. **`ANS_DDRHitbox` obrigatório** — dano e derrube só quando a **espada acerta**:
+   - **`bSlamDownTargets = ✅ TRUE`**
+   - **`Slam Player Follow`** (no notify):
+     | Modo | Uso |
+     |---|---|
+     | **Pin In Air** | **End:** C++ congela Z na co-altitude do juggle **ao entrar no End**; mantém no ar até a montage acabar. **Start/Loop:** pin só durante o notify; pode retomar queda |
+     | **Follow To Ground** | Stocada — player **desce junto** com o alvo até o chão |
+     | **None** | Só derruba o alvo; player segue a física normal |
+   - **`bAoE At Owner`**: ✅ na seção **End** (coluna vertical até o alvo juggleado)
+   - **`bResume Fall After Slam Pin`**: ON só no **Start/Loop** — na **End** o C++ **ignora** o resume (mantém pin até a montage acabar)
+   - **`bJump To Slam End Section`**: ON no hitbox do **Start** se quiser entrar no End no **hit** (ainda no ar)
+4. **`BP_GA_AirSlam` → Slam End Trigger** (quando a montage entra na seção `End`):
+   | Valor | Quando |
+   |---|---|
+   | **Before Ground Proximity** (default) | Ainda no ar, ~200 cm do chão — End toca **antes** do pouso (slam-down aéreo) |
+   | **On Slam Hit** | Só quando o hitbox com `bJump To Slam End Section` acerta |
+   | **On Ground Land** | Pouso no solo → End (finisher com player já no chão) |
+   - **`Resume Loop Section After Pin`** (`BP_GA_AirSlam`): **OFF** (default) — na **End** o C++ ignora resume; só use ON se testar pin no Start/Loop
+5. **Pouso:** só `GameplayCue.Slam` (juice). **Sem** dano/derrube automático.
+6. **Alvo seguro + homing:** hold estendido + homing XY (`Slam Target Hold Seconds` ~2s no Combat Component).
+7. **`bSlamClaimedTargetOnActivate`:** ❌ OFF
+8. **AnimBP queda:** `bIsCombatFalling` → `Jump_Combat_Loop` / `Jump_Combat_End` ([58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md))
 
 > 🎮 **"Segurar R pra loopar?" NÃO.** O `Loop` existe pra **distância de queda variável** (anchor mais alto, desnível de arena) — quem decide quantas voltas ele dá é o **tempo de queda**, não o input. Slam é **comprometido** ([15 §6](../combat/15_Combat_Overview.md)): apertou R, desce até o impacto. Pairar segurando botão conflitaria com o auto-drop do juggle e tiraria o peso do finisher.
 
-> 🧷 **MVP 2 seções ainda vale:** sem a seção `Loop`, se o clip `Start` acabar antes do pouso o código **segura a ability** até o `LandedDelegate` — o AoE nunca se perde (build antiga encerrava cedo e o slam "secava").
+> 🧷 **MVP 2 seções ainda vale:** sem a seção `Loop`, se o clip `Start` acabar antes do pouso o código **segura a ability** até o `LandedDelegate` — o hitbox da seção `End` dispara quando a anim tocar.
 
 ---
 
@@ -102,10 +122,10 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 | BP (parent) | Campo | Asset / nota |
 |---|---|---|
 | `BP_GA_Launcher` (← `GA_Launcher`) | Launcher Montage | `AM_Launcher` |
-| `BP_GA_Launcher` | **Launch Rise Height** · **Juggle Target Height Above Player** | tuning aéreo (§2) |
+| `BP_GA_Launcher` | **Launch Rise Height** · **Juggle Target Height Above Player** · **Launcher Max Activation Distance** (~250) | tuning aéreo + alcance (§2) |
 | `BP_GA_AirAttack` (← `GA_AirAttack`) | Combo Montage | `AM_AirCombo` |
 | `BP_GA_AirAttack` | **Juggle Target Height Above Player** · **Air Pop Vertical Nudge Scale** | tuning do juggle (§3) |
-| `BP_GA_AirSlam` (← `GA_AirSlam`) | Slam Montage | `AM_AirSlam` |
+| `BP_GA_AirSlam` (← `GA_AirSlam`) | Slam Montage · **Slam End Trigger** · **Slam End Ground Proximity** (~250) · **Resume Loop Section After Pin** OFF | `AM_AirSlam` (§4) |
 | `BP_GA_AttackLight` (já existe) | **Dash Attack Montage** | `AM_RunAttack` (§6 — dash-attack) |
 
 No `BP_DDRPlayer` → **Startup Abilities** (5 entradas): troque as classes C++ pelos BPs:
@@ -134,11 +154,12 @@ No `BP_DDRPlayer` → **Startup Abilities** (5 entradas): troque as classes C++ 
 > **Por que isto existe:** com **orient-to-movement**, o golpe sai na direção do stick, não do inimigo. O pipeline canônico ([18 §6](../combat/18_Combat_System_Deep.md)) é **4 camadas**:
 
 ```
-1. Soft-lock   → escolhe o alvo óbvio (cone + distância)
-2. Face        → gira o yaw no STARTUP (antes do swing)
-3. Motion Warp → avança até ~90cm do alvo (cap de distância)
-4. Sweep       → ANS_DDRHitbox confirma o hit
+1. Soft-lock   → escolhe o alvo no cone à frente (sem fallback atrás)
+2. Face + Warp → gira e warp só se o alvo está no cone (nunca 180° / atacar de costas)
+3. Sweep       → ANS_DDRHitbox confirma o hit
 ```
+
+> 🎯 **Dash+attack:** estocada **reta** — sem warp nem rotação. **Launcher:** só ativa com alvo dentro de `Launcher Max Activation Distance` (~250 cm). Notify **AttackWarp:** Translation ON, **Warp Rotation ON**, Ignore Z ON.
 
 **Já no C++** (`UDDRCombatComponent` + `UMotionWarpingComponent` no personagem). **Você** configura as janelas nas montages.
 
@@ -281,7 +302,7 @@ Sua intuição (grafo com conectores + regras "se está no ar") está **correta*
 | **E** acertando o dummy | dummy sobe 300cm e **segura**; player **sobe junto** (RM do clip) e **trava no ar** |
 | **LMB no ar** | air combo (Air1→Air2); cada hit **re-flutua** o dummy (cada vez menos — decay) |
 | Parar de atacar no ar ~1.4s | player **cai** sozinho (auto-drop) |
-| **R no ar** | desce em slam (Start→Loop) → no pouso pula pra End + **AoE coluna** (dano + hit-stop pesado) + dummy juggleado **despenca** |
+| **R no ar** | desce em slam (Start→Loop) → pouso pula pra End → **hitbox End** derruba o dummy quando a espada acerta |
 | 7+ hits aéreos | dummy cai (cap do juggle) |
 | **Dash → LMB** (durante o dodge ou ≤0.15s após) | dash cancela → **estocada** avança; janela → encadeia no combo |
 | `ddr.CombatDebug 1` | sweeps + soft-lock (ciano) + warp point (magenta) + AoE slam |
@@ -330,11 +351,17 @@ Toda a cadeia de combate loga com prefixo + timestamp — é a régua pra tunar 
 | **Crash em `GetDDRCombatComponent` / air combo** | build antiga chamava `InputPressed` manual no ASC | recompile — roteamento InAir usa só `TryActivate` + `Super` |
 | Slam não muda pra "End" | nomes das seções (`Start`/`Loop`/`End` exatos) | §4 |
 | **Dummy fica PENDURADO no ar pra sempre** (slam e hold expirado não derrubam) | dummy **sem Controller**: o CMC pula `PerformMovement` (gate `bRunPhysicsWithNoController`, default false) — `EndAirborne` setava Falling -3000 e **nada acontecia**. A subida funcionava (é `SetActorLocation` da base), só a QUEDA dependia do CMC | recompile — `bRunPhysicsWithNoController = true` no `ADDRTrainingDummy`. ⚠️ Vale pra **qualquer** alvo juggleável sem AIController |
-| **Slam: dummy juggleado não cai nem toma dano** | (a) AoE antigo era **esfera no pouso** — alvo a ~300cm ficava fora · (b) hold do alvo (1.1s) **expirava na descida** e ele já estava no chão no impacto | recompile — AoE virou **coluna** (250 × 450) + slam **estende o hold do alvo** (2s); confira com `ddr.CombatDebug 1` (esferas vermelhas = hit) |
+| **Slam: dummy cai antes da espada acertar** | `bSlamClaimedTargetOnActivate` ON ou AoE no pouso (build antiga) | recompile · **OFF** no `BP_GA_AirSlam` · adicione `ANS_DDRHitbox` na seção **End** com `bSlamDownTargets` (§4) |
+| **Slam: dummy não cai / sem dano** | falta hitbox na montage ou hold expirou | `ANS_DDRHitbox` no swing **End** · `Slam Target Hold Seconds` ~2s no Combat Component · `ddr.CombatDebug 1` |
 | Player desce devagar / "boiando" no slam | **RM ON** no clip `Start`/`Loop` dirigia a cápsula e anulava a velocity -3500 | recompile — código força `IgnoreRootMotion` no slam (§4); mantenha RM OFF por clareza |
 | Slam desce reto e erra alvo distante | além do cap de homing (350cm) | design (whiff honesto) — tune `Slam Homing Max Distance` no `BP_GA_AirSlam` |
 | **Slam "boia" num arco longo preso no Loop** (dummy já no chão) | **R durante a montage do launcher**: a tag `InAir` entra no hit mas o hold aéreo só começa no fim da montage → `ExitAirCombat` era no-op e sobrava a **velocity de SUBIDA** do launcher (log: `velZ` positivo + `ExitAirCombat IGNORADO`) | recompile — a descida virou **incondicional** na ativação (`Slam Fall Velocity` -3500 no `BP_GA_AirSlam`) |
 | Slam "seca" (sem AoE) em queda alta | montage sem `Loop` acabava antes do pouso (build antiga encerrava a ability cedo) | recompile · adicione a seção `Loop` (§4) |
+| **Slam: player cai no meio do End** | `bResume Fall After Slam Pin` solta o pin no fim do notify | recompile — na **End** o C++ **mantém** pin; `Resume Loop Section After Pin` OFF |
+| **Slam: erra inimigo no ar** (player baixo, dummy alto) | End entrava perto do chão sem co-altitude | recompile — `SnapSlamEndToJuggleTarget` + **`bAoE At Owner`** no hitbox End |
+| **Slam: loop infinito End↔Loop** | pin + resume no chão | recompile — não volta pro `Loop` após `bEndSectionStarted` |
+| Launcher não ativa longe do dummy | `CanActivateAbility` exige proximidade | aproxime ou tune **Launcher Max Activation Distance** |
+| Ataque **de costas** / snap 180° | face sem cone | recompile — só assiste se alvo no cone; dash-attack sem warp |
 | Air combo toca as 2 seções de uma vez | seções linkadas | **Clear** ([57 §0](../combat/57_M1_Combo_Editor_Setup.md)) |
 | Não leio a altura | sem sombra blob | §7 — P0! |
 | Dash-attack nunca sai | LMB fora do dash/grace (0.15s) / montage não setada no slot **Dash Attack Montage** | §6 |
@@ -342,7 +369,7 @@ Toda a cadeia de combate loga com prefixo + timestamp — é a régua pra tunar 
 | **Bate no vazio** perto do dummy | sem Motion Warp / warp name errado | §7.3 — target **`AttackWarp`** (não `None`) |
 | Personagem não avança no swing | falta notify Motion Warping na montage | §7.3 |
 | Olha pro alvo, esfera magenta, **zero lunge** | `Warp Target Name` = `None` ou typo | §7.3 — digite **`AttackWarp`** exato |
-| Golpe **gira estranho** / homing durante swing | `Warp Rotation` ligado | §7.3 — **desligue** Warp Rotation; face já vem do C++ |
+| Golpe **de costas** no ataque normal | alvo atrás no fallback antigo | recompile — soft-lock só cone à frente |
 | Warp "teleporta" demais | `MaxWarpDistance` alto demais | §7.2 — cap 200cm ground |
 | Olha pro inimigo mas não alcança | só soft-lock, sem warp | §7 — as 4 camadas |
 | **Atk1 alcança, Atk2+ bate no vazio** | warp só na 1ª seção | §7.3 — **replique** o notify em Atk2/3/4 |
@@ -354,8 +381,10 @@ Toda a cadeia de combate loga com prefixo + timestamp — é a régua pra tunar 
 
 | Feature | C++ | Editor |
 |---|---|---|
-| Soft-lock | `FindSoftLockTarget` / `FaceSoftLockTarget` | tune Combat Component |
-| Motion warp | `FaceAndSetupMotionWarp` + `UMotionWarpingComponent` | notify `Motion Warping` → `AttackWarp` |
+| Soft-lock | `FindSoftLockTarget` / `IsTargetInAttackArc` | tune Combat Component |
+| Motion warp | `FaceAndSetupMotionWarp` (face+warp no cone) | notify `Motion Warping` → `AttackWarp` |
+| Slam End pin | `TryJumpToEndSection` → snap + pin + sweep | `AM_AirSlam` End hitbox §4 |
+| Slam fall anim | `State.Combat.SlamFall` → `bIsCombatFalling` | [58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md) |
 | Perfil ground | `GA_AttackLight::GetMotionWarpProfile` | `AM_Combo` warp windows |
 | Perfil air | `GA_AirAttack` override | cap menor; sem RM nos clips |
 | Perfil launcher | `GA_Launcher` | `AM_Launcher` warp + RM vertical do clip |

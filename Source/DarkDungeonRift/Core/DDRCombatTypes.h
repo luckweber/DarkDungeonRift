@@ -5,6 +5,18 @@
 #include "CoreMinimal.h"
 #include "DDRCombatTypes.generated.h"
 
+/** O que o PLAYER faz durante um slam que derruba o alvo (ANS_DDRHitbox + bSlamDownTargets). */
+UENUM(BlueprintType)
+enum class EDDRSlamPlayerFollow : uint8
+{
+	/** Só derruba o alvo; player segue a física normal. */
+	None UMETA(DisplayName = "None"),
+	/** Congela o Z do player no ar durante o notify (slam-down no alvo; player cai depois). */
+	PinInAir UMETA(DisplayName = "Pin In Air"),
+	/** Player desce junto com o alvo (stocada / finisher até o chão). */
+	FollowToGround UMETA(DisplayName = "Follow To Ground"),
+};
+
 USTRUCT(BlueprintType)
 struct FDDRMeleeSweepParams
 {
@@ -53,4 +65,24 @@ struct FDDRMeleeSweepParams
 	// Derruba alvos Airborne atingidos (queda rápida do slam, 16 §5).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air")
 	bool bSlamDownTargets = false;
+
+	/** Comportamento do player durante este slam (ver EDDRSlamPlayerFollow). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air",
+		meta = (EditCondition = "bSlamDownTargets"))
+	EDDRSlamPlayerFollow SlamPlayerFollow = EDDRSlamPlayerFollow::PinInAir;
+
+	/** Velocity Z do player em FollowToGround (cm/s, negativo = desce). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air",
+		meta = (EditCondition = "bSlamDownTargets && SlamPlayerFollow == EDDRSlamPlayerFollow::FollowToGround", ClampMax = "0"))
+	float SlamFollowFallVelocity = -3500.f;
+
+	/** No 1º hit: pula a montage do slam pra secao End (ainda no ar). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air",
+		meta = (EditCondition = "bSlamDownTargets"))
+	bool bJumpToSlamEndSection = false;
+
+	/** Ao fim do notify com PinInAir: volta a cair e opcionalmente retoma a secao Loop. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air",
+		meta = (EditCondition = "bSlamDownTargets && SlamPlayerFollow == EDDRSlamPlayerFollow::PinInAir"))
+	bool bResumeFallAfterSlamPin = true;
 };

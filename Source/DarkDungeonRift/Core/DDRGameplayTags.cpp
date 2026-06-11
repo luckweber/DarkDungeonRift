@@ -14,6 +14,7 @@ namespace DDRTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Attacking, "State.Combat.Attacking");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_InAir, "State.Combat.InAir");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Airborne, "State.Combat.Airborne");
+	UE_DEFINE_GAMEPLAY_TAG(State_Combat_SlamFall, "State.Combat.SlamFall");
 	UE_DEFINE_GAMEPLAY_TAG(State_Movement_Sprinting, "State.Movement.Sprinting");
 	UE_DEFINE_GAMEPLAY_TAG(State_Movement_Dashing, "State.Movement.Dashing");
 	UE_DEFINE_GAMEPLAY_TAG(State_Dead, "State.Dead");

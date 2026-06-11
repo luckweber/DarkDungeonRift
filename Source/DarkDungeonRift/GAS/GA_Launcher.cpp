@@ -33,6 +33,35 @@ UGA_Launcher::UGA_Launcher()
 	CooldownGameplayEffectClass = UGE_DDRCooldownLauncher::StaticClass();
 }
 
+bool UGA_Launcher::CanActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags,
+	FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
+	{
+		return false;
+	}
+
+	const AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
+	const UDDRCombatComponent* Combat = Avatar ? Avatar->FindComponentByClass<UDDRCombatComponent>() : nullptr;
+	if (!Combat)
+	{
+		return false;
+	}
+
+	const AActor* Target = Combat->FindSoftLockTarget(/*bPreferAirborne=*/false);
+	if (!Target)
+	{
+		return false;
+	}
+
+	const float Dist2D = FVector::Dist2D(Target->GetActorLocation(), Avatar->GetActorLocation());
+	return Dist2D <= LauncherMaxActivationDistance;
+}
+
 void UGA_Launcher::ActivateAbility(
 	const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo,

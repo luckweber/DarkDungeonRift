@@ -90,7 +90,8 @@ protected:
 	// Troca de montage (opener->combo) interrompe a task anterior — ignorar esse interrupt 1x.
 	bool bIgnoreNextInterrupt = false;
 
-	// Trava de rotação durante o combo (o facing do soft-lock manda; WASD não gira o corpo).
+	// Trava orient-to-movement durante o ataque (dash+attack segue a direção do dodge).
 	bool bSavedOrientToMovement = false;
 	bool bRotationLocked = false;
+	bool bDashAttackOpener = false;
 };

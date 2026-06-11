@@ -131,24 +131,24 @@ Fecha o combo com **peso**:
 ```
 GA_AirSlam (Ability.Attack.AirSlam) — como implementado:
   1. toca AM_AirSlam seção "Start"; C++ liga Start→Loop e self-loopa o Loop
-       (Montage_SetNextSection — queda de qualquer altura, sem segurar botão)
-  2. ExitAirCombat(slam): sai do hold aéreo + ESTENDE o hold do ALVO juggleado (~2s)
-       → e o slam FORÇA Falling + velZ -3500 INCONDICIONALMENTE (mesmo se R cortou
-       o launcher no meio da montage, quando o hold aéreo nem começou)
-       (a descida é VELOCITY, não root motion — o slam força IgnoreRootMotion
-        no AnimInstance durante a queda e restaura no fim)
-  2b. homing: velocity XY mira o alvo do soft-lock (cap 350cm — whiff honesto)
-  2c. APEX (coreografia): o golpe da ativação JÁ arremessa o alvo a -4500
-       (mais rápido que o player -3500 → ele esmaga no chão PRIMEIRO)
-       + hit-stop 2f ("agarrão") + GameplayCue.Hit.Light no alvo
-  3. no pouso (LandedDelegate):
-       - Montage_JumpToSection("End") + GameplayCue.Slam (poeira + shake forte)
-       - AoE em COLUNA vertical (raio 250 × altura 450): dano em área
-       - bSlamDownTargets: todo Airborne na coluna → EndAirborne(slam) → despenca
-         (coluna, não esfera — o alvo juggleado está ~300cm ACIMA do ponto de pouso)
+  2. ExitAirCombat(slam): estende o hold do ALVO juggleado (~2s); mantém
+       ActiveJuggleTarget até o slam acabar (para snap + sweep no End)
+  3. Falling + velZ -3500 INCONDICIONAL + tag State.Combat.SlamFall (AnimBP)
+       → IgnoreRootMotion durante a queda (restaurado no EndAbility)
+  3b. homing XY no alvo do soft-lock (cap 350cm — whiff honesto)
+  4. Slam End Trigger (default BeforeGroundProximity):
+       a ~250cm do chão → JumpToSection("End")
+       b SnapSlamEndToJuggleTarget (co-altitude com o alvo no ar)
+       c BeginSlamAirPin (congela Z ANTES do notify — velocity pousa em 1 frame)
+  5. ANS_DDRHitbox na seção End (obrigatório):
+       bSlamDownTargets + bAoEAtOwner (coluna vertical) + Pin In Air
+       → sweep contínuo enquanto pinado no End (não só a duração do notify)
+       → na seção End o C++ IGNORA bResumeFallAfterSlamPin (mantém no ar
+         até a montage acabar; evita cair no meio do finisher)
+  6. fim da montage → ReleaseSlamAirPinForLanding + GameplayCue.Slam no pouso
 ```
 
-> 💥 O slam é o **clímax** — onde todo o juice se concentra (hitstop maior, shake forte, AoE). Reusa o **Hard Land** do [doc 13 §6](../locomotion/13_Jump_Fall_Landing.md): o sistema de pouso por altura serve diretamente aqui. É por isso que "Height-Based Fall to Landing" é P1 e não P2.
+> 💥 O slam é o **clímax** — hit-stop e derrube vêm do **hitbox** na anim End (com player **congelado no ar** na co-altitude do juggle). O pouso dispara o cue; **sem** sweep automático no `LandedDelegate`. Tag `State.Combat.SlamFall` → `Jump_Combat_*` no AnimBP ([58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md)).
 
 ---
 
@@ -182,6 +182,7 @@ Slam →       remove tags no impacto; volta pro chão
 | Tag | Quem tem | Habilita / bloqueia |
 |---|---|---|
 | `State.Combat.InAir` | player | habilita GA_AirAttack/GA_AirSlam; AnimBP usa SM aérea de combate |
+| `State.Combat.SlamFall` | player | durante `GA_AirSlam` — AnimBP usa `Jump_Combat_Loop` / `Jump_Combat_End` |
 | `State.Combat.Airborne` | alvo | alvo recebe re-float; IA pausada; pode ser combado |
 
 > O AnimInstance lê `State.Combat.InAir` (doc 08 §6) → usa a state machine aérea de **combate** (não a de queda normal do doc 13). Mesmo ar, contexto diferente.

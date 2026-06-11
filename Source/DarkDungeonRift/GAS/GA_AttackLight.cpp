@@ -109,6 +109,7 @@ void UGA_AttackLight::ActivateAbility(
 		const float TimeSinceDash = CombatForDash ? CombatForDash->GetTimeSinceDashEnded() : FLT_MAX;
 		const bool bInGrace = TimeSinceDash <= DashAttackGraceSeconds;
 		bDashAttack = RunAttackMontage && (bDashActive || bInGrace);
+		bDashAttackOpener = bDashAttack;
 
 		UE_LOG(LogDDR, Log, TEXT("[ATK] %s ATIVADO -> %s (dashAtivo=%d graceT=%.2f<=%.2f? %d) t=%.2f"),
 			*GetClass()->GetName(),
@@ -124,8 +125,7 @@ void UGA_AttackLight::ActivateAbility(
 		}
 	}
 
-	// Trava a rotação durante o combo: o facing do SOFT-LOCK manda (WASD não gira o corpo
-	// no meio do golpe). Restaurada no EndAbility.
+	// Trava orient-to-movement durante o ataque (corpo não gira com WASD no meio do swing).
 	if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
 	{
 		if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
@@ -140,7 +140,11 @@ void UGA_AttackLight::ActivateAbility(
 	{
 		Combat->ResetHitTracking();
 		Combat->SetActiveComboSection(ComboIndex);
-		Combat->FaceAndSetupMotionWarp(GetMotionWarpProfile(), ShouldPreferAirborneTargets());
+		// Dash-attack: estocada reta — sem warp (só montage forward).
+		if (!bDashAttackOpener)
+		{
+			Combat->FaceAndSetupMotionWarp(GetMotionWarpProfile(), ShouldPreferAirborneTargets());
+		}
 	}
 
 	if (bDashAttack)
@@ -176,6 +180,8 @@ void UGA_AttackLight::EndAbility(
 		Combat->ClearBufferedAttack();
 		Combat->ClearAttackMotionWarp();
 	}
+
+	bDashAttackOpener = false;
 
 	if (bRotationLocked)
 	{
@@ -347,9 +353,12 @@ void UGA_AttackLight::PlayCurrentSection()
 
 void UGA_AttackLight::PlayRunAttackOpener()
 {
-	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+	if (!bDashAttackOpener)
 	{
-		Combat->FaceAndSetupMotionWarp(EDDRMotionWarpProfile::RunAttack, ShouldPreferAirborneTargets());
+		if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+		{
+			Combat->FaceAndSetupMotionWarp(EDDRMotionWarpProfile::RunAttack, ShouldPreferAirborneTargets());
+		}
 	}
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(

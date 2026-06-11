@@ -44,6 +44,7 @@ Event.*            → GameplayEvents (notify → ability)
 |---|---|---|---|
 | `State.Combat.Attacking` | player/inimigo | abilities de ataque (`ActivationOwnedTags`) | bloqueia outras ações |
 | `State.Combat.InAir` | **player** | `GA_Launcher` / pulo | habilita `GA_AirAttack`, `GA_AirSlam` |
+| `State.Combat.SlamFall` | **player** | `GA_AirSlam` (loose tag) | AnimBP: `Jump_Combat_Loop` / `Jump_Combat_End` ([58 §1.3](../locomotion/58_AnimGraph_Step_by_Step.md)) |
 | `State.Combat.Airborne` | **alvo** | `GA_Launcher` / knockup | juggle; **IA pausa** ([30 §6](../enemies/30_AI_Overview.md)) |
 | `State.Combat.Stagger` | alvo | poise ≤ 0 | vulnerável; pode lançar |
 | `State.Combat.Stunned` | alvo | slam + Eco Vazio | não age |

@@ -53,4 +53,8 @@ struct FDDRLocomotionState
 
 	UPROPERTY(BlueprintReadOnly, Category = "DDR|Locomotion")
 	bool bIsDashing = false;
+
+	/** true durante slam descendente — AnimBP: Jump_Combat_Loop / Jump_Combat_End. */
+	UPROPERTY(BlueprintReadOnly, Category = "DDR|Locomotion")
+	bool bIsCombatFalling = false;
 };
