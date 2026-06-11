@@ -82,6 +82,8 @@ M⁻¹ SPIKE ─→ M0 Esqueleto ─→ M1 Bater ─→ M2 VOAR ─→ M3 Lutar 
 | **Perfect-dodge** (Rha): i-frame 2 camadas (generoso + sub-janela *perfect*) → witch-time | [19](combat/19_Abilities_Deep.md), [20 §4.1](feel/20_Game_Feel.md), [21](feel/21_Juice_FX.md) |
 | **Player flinch/hitreact** ao tomar hit — pune ganância (usa clips de Hit, doc 22) | [18](combat/18_Combat_System_Deep.md) |
 | Boneco de treino com ASC (recebe dano) | [05](systems/05_GAS_Architecture.md) |
+| **Soft-lock** (cone + face no startup) | [18 §6](combat/18_Combat_System_Deep.md) — C++ em `UDDRCombatComponent` |
+| **Motion Warping** (janelas `AttackWarp` nas montages) | [15 §8](combat/15_Combat_Overview.md), [60 §7](systems/60_M2_Editor_Setup.md) |
 
 **✅ Pronto quando:** dá pra encadear um combo de 3 golpes num boneco, **sente peso** (hit-stop global), o **dash-cancel é universal e instantâneo** (critério de aceite — testado frame-a-frame com `ddr.CombatDebug`, Nø), os **3 cancelamentos-âncora** funcionam, e o **perfect-dodge** dá witch-time no timing certo. O combate de chão é gostoso *e expressivo*.
 
@@ -99,6 +101,7 @@ M⁻¹ SPIKE ─→ M0 Esqueleto ─→ M1 Bater ─→ M2 VOAR ─→ M3 Lutar 
 | `GA_AirAttack` (requer InAir) + re-float do alvo + encadeamento (reusa M1) | [16](combat/16_Aerial_Combos.md) |
 | `GA_AirSlam`: desce + **Hard Land** (AoE + shake) | [16](combat/16_Aerial_Combos.md), [13](locomotion/13_Jump_Fall_Landing.md) |
 | Juggle decay (anti-infinito) | [16](combat/16_Aerial_Combos.md) |
+| Soft-lock aéreo (`bPreferAirborne`) + warp por perfil | [60 §7](systems/60_M2_Editor_Setup.md), [18 §6](combat/18_Combat_System_Deep.md) |
 
 **✅ Pronto quando:** você lança um inimigo, comba ele no ar, e fecha com slam — **e um amigo que nunca viu o jogo entende a altura** sem você explicar. **Se isso for divertido, o jogo está provado.** 🎯
 
@@ -166,7 +169,7 @@ Só toque aqui depois do M5 jogável:
 | Start/Stop transitions + Distance Match | [10](locomotion/10_Start_Stop_DistanceMatch.md) | Polish que topdown esconde |
 | Stride Warping | [11](locomotion/11_Warping.md) | Anti-skating invisível de cima |
 | Height landing refinado + predictive | [13](locomotion/13_Jump_Fall_Landing.md) | Já tem o básico; refino é P1 |
-| Motion warp no ataque | [15](combat/15_Combat_Overview.md) | Melhora feel, não é bloqueante |
+| ~~Motion warp no ataque~~ | [15 §8](combat/15_Combat_Overview.md), [60 §7](systems/60_M2_Editor_Setup.md) | ✅ **M1/M2** — implementado; falta só janelas nas montages no editor |
 | Foot IK (se houver rampas) | [14](locomotion/14_Foot_Leg_IK.md) | Só com desnível |
 | Crouch | [09](locomotion/09_Gaits.md) | Pouco uso em ARPG |
 | **Parry** (🟡 P1 — *primeiro* pós-core; ofensivo: parry→stagger→launch) | [22 §5](22_Animation_Inventory.md), [19](combat/19_Abilities_Deep.md) | Barato (janela+tag, reusa poise). Review de Combate |

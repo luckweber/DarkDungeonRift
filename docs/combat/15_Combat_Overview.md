@@ -159,15 +159,19 @@ Legenda: ✅ permitido · ⏳ permitido só na janela · ❌ bloqueado · — n/
 
 ---
 
-## 8. Motion Warping no ataque (P1)
+## 8. Soft-lock + Motion Warping no ataque · 🟢 P0 (implementado)
 
-Para o golpe **alcançar** o alvo (não bater no ar), use `MotionWarping` (plugin do doc 04):
+Pipeline de 4 camadas ([18 §6](18_Combat_System_Deep.md)): **soft-lock** → **face no startup** → **motion warp** → **sweep**.
 
-- O ataque tem um warp target = posição do inimigo travado/próximo.
-- A montage avança o personagem até a distância de acerto.
-- Evita o clássico "swing no vazio" de ARPG.
+| Camada | C++ | Editor |
+|---|---|---|
+| Soft-lock + face | `UDDRCombatComponent::FaceSoftLockTarget` | tune `SoftLockRadius` / `SoftLockHalfAngleDegrees` no BP |
+| Motion warp | `FaceAndSetupMotionWarp` + `UMotionWarpingComponent` | notify **Motion Warping** → warp target `AttackWarp` |
 
-> P1, mas alto valor pro feel de combate. No MVP básico, ataques estacionários funcionam; warp é o polish que faz acertar sentir certeiro.
+- Warp target canônico: **`AttackWarp`** (Skew Warp, `Ignore Z` no chão).
+- Cap de distância (`MaxWarpDistance` ~200 cm) = whiff honesto fora do alcance.
+
+> 🛠️ **Setup no editor:** [60 — M2 Editor Setup §7](../systems/60_M2_Editor_Setup.md) (combo chão, run-attack, launcher). Regras por ability (ground/air/launcher/slam) na mesma seção.
 
 ---
 
@@ -184,7 +188,7 @@ Para o golpe **alcançar** o alvo (não bater no ar), use `MotionWarping` (plugi
 - [ ] Screen shake + hit VFX/SFX (GameplayCue)
 - [ ] Dash cancela ataque (fluidez/escape)
 - [ ] Montage no Slot 'DefaultSlot'
-- [ ] Motion warp no ataque — P1
+- [ ] Soft-lock + motion warp (`AttackWarp` nas montages) — [60 §7](../systems/60_M2_Editor_Setup.md)
 
 ---
 
@@ -194,7 +198,7 @@ Para o golpe **alcançar** o alvo (não bater no ar), use `MotionWarping` (plugi
 |---|---|---|
 | Combo não encadeia | Janela de combo / input buffer mal ligados | §3, doc 07 §5 |
 | Acerta 2× no mesmo swing | Sem lista de já-atingidos | §4 |
-| Bate "no vazio" | Sem motion warp / range curto | §8 ou aumente hitbox |
+| Bate "no vazio" | Falta motion warp / `AttackWarp` errado / fora do cap | §8, [60 §7](../systems/60_M2_Editor_Setup.md); tune soft-lock antes de aumentar hitbox |
 | Sem peso no acerto | Sem hit-stop | §5 — implemente |
 | Ataque "desliza" o personagem | Root motion + braking errados | Decida root motion por golpe |
 | Montage não sobrepõe locomoção | Slot errado / AnimBP sem o slot | Use Slot 'DefaultSlot' (doc 08) |

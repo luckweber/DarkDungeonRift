@@ -8,12 +8,17 @@
 #include "DDRAttributeSet.h"
 #include "DDRCharacterBase.h"
 #include "DDRGameplayTags.h"
+#include "DDRMotionWarpLibrary.h"
+#include "MotionWarpingComponent.h"
 #include "DDRHitStopSubsystem.h"
 #include "DDRLog.h"
 #include "DrawDebugHelpers.h"
+#include "EngineUtils.h"
 #include "GE_DDRDamage.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 static TAutoConsoleVariable<int32> CVarCombatDebug(
 	TEXT("ddr.CombatDebug"),
@@ -55,7 +60,13 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 	FVector End;
 	bool bBladeSweep = false;
 
-	if (const ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(OwnerActor))
+	// AoE do slam (doc 16 par.5): esfera centrada no dono, ignora lamina/forward.
+	if (Params.bAoEAtOwner)
+	{
+		Start = OwnerActor->GetActorLocation();
+		End = Start;
+	}
+	else if (const ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(OwnerActor))
 	{
 		if (UStaticMeshComponent* Weapon = OwnerChar->GetWeaponMesh())
 		{
@@ -70,7 +81,7 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		}
 	}
 
-	if (!bBladeSweep)
+	if (!bBladeSweep && !Params.bAoEAtOwner)
 	{
 		Start = OwnerActor->GetActorLocation() + FVector(0.f, 0.f, 50.f);
 		const FVector Forward = OwnerActor->GetActorForwardVector();
@@ -109,6 +120,25 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		++NewHits;
 		ApplyDamageToTarget(HitActor, Params);
 		SendHitEvent(HitActor);
+
+		if (Params.bLaunchTargets)
+		{
+			LaunchTarget(HitActor);
+		}
+		else if (Params.bAirPop)
+		{
+			AirPopTarget(HitActor);
+		}
+		else if (Params.bSlamDownTargets)
+		{
+			if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(HitActor))
+			{
+				if (TargetChar->IsAirborne())
+				{
+					TargetChar->EndAirborne(/*bSlammed=*/true);
+				}
+			}
+		}
 
 		if (CVarCombatDebug.GetValueOnGameThread() > 0)
 		{
@@ -172,6 +202,264 @@ bool UDDRCombatComponent::HasBufferedAttack() const
 void UDDRCombatComponent::ResetHitTracking()
 {
 	HitActorsThisSwing.Reset();
+	bLaunchedTargetThisSwing = false;
+}
+
+void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
+{
+	if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(TargetActor))
+	{
+		TargetChar->StartAirborne(LaunchRiseHeight, TargetAirborneHoldSeconds);
+		bLaunchedTargetThisSwing = true;
+
+		if (UAbilitySystemComponent* SourceASC = GetOwnerASC())
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Instigator = GetOwner();
+			CueParams.Location = TargetActor->GetActorLocation();
+			SourceASC->ExecuteGameplayCue(DDRTags::Cue_Launch, CueParams);
+		}
+	}
+}
+
+void UDDRCombatComponent::AirPopTarget(AActor* TargetActor)
+{
+	ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(TargetActor);
+	if (!TargetChar || !TargetChar->IsAirborne())
+	{
+		return;
+	}
+
+	// Cap + decay (doc 16 par.3): cada hit re-flutua menos; no teto, o alvo cai.
+	if (TargetChar->GetAirborneHitCount() >= MaxJuggleHits)
+	{
+		TargetChar->EndAirborne(/*bSlammed=*/false);
+		return;
+	}
+
+	const float PopHeight = AirPopHeightBase * FMath::Pow(AirPopDecay, TargetChar->GetAirborneHitCount());
+	TargetChar->ApplyAirPop(PopHeight, TargetAirborneHoldSeconds);
+}
+
+void UDDRCombatComponent::EnterAirCombat()
+{
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	if (!bInAirCombat)
+	{
+		SavedMovementMode = static_cast<uint8>(MoveComp->MovementMode);
+	}
+
+	bInAirCombat = true;
+	MoveComp->SetMovementMode(MOVE_Flying);
+	MoveComp->Velocity = FVector::ZeroVector;
+	MoveComp->StopMovementImmediately();
+
+	if (UAbilitySystemComponent* ASC = GetOwnerASC())
+	{
+		ASC->AddLooseGameplayTag(DDRTags::State_Combat_InAir);
+	}
+
+	RefreshAirHold();
+}
+
+void UDDRCombatComponent::RefreshAirHold()
+{
+	if (!bInAirCombat)
+	{
+		return;
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		AirHoldTimerHandle,
+		this,
+		&UDDRCombatComponent::OnPlayerAirHoldExpired,
+		FMath::Max(PlayerAirHoldSeconds, 0.1f),
+		false);
+}
+
+void UDDRCombatComponent::ExitAirCombat(bool bSlam)
+{
+	if (!bInAirCombat)
+	{
+		return;
+	}
+
+	bInAirCombat = false;
+	GetWorld()->GetTimerManager().ClearTimer(AirHoldTimerHandle);
+
+	if (UAbilitySystemComponent* ASC = GetOwnerASC())
+	{
+		ASC->RemoveLooseGameplayTag(DDRTags::State_Combat_InAir);
+	}
+
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	if (UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr)
+	{
+		MoveComp->SetMovementMode(MOVE_Falling);
+		if (bSlam)
+		{
+			MoveComp->Velocity = FVector(0.f, 0.f, -3500.f);
+		}
+	}
+}
+
+void UDDRCombatComponent::OnPlayerAirHoldExpired()
+{
+	ExitAirCombat(/*bSlam=*/false);
+}
+
+AActor* UDDRCombatComponent::FindSoftLockTarget(bool bPreferAirborne) const
+{
+	if (!bSoftLockEnabled)
+	{
+		return nullptr;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return nullptr;
+	}
+
+	const FVector OwnerLoc = OwnerActor->GetActorLocation();
+
+	// Direção da INTENÇÃO: input de movimento atual > facing.
+	FVector PreferredDir = OwnerActor->GetActorForwardVector();
+	if (const APawn* OwnerPawn = Cast<APawn>(OwnerActor))
+	{
+		const FVector Input = OwnerPawn->GetLastMovementInputVector();
+		if (!Input.IsNearlyZero())
+		{
+			PreferredDir = Input;
+		}
+	}
+	PreferredDir = PreferredDir.GetSafeNormal2D();
+
+	const float CosHalfAngle = FMath::Cos(FMath::DegreesToRadians(SoftLockHalfAngleDegrees));
+
+	AActor* BestInCone = nullptr;
+	float BestScore = -FLT_MAX;
+	AActor* NearestAny = nullptr;
+	float NearestDist = FLT_MAX;
+
+	for (TActorIterator<ADDRCharacterBase> It(GetWorld()); It; ++It)
+	{
+		ADDRCharacterBase* Candidate = *It;
+		if (!Candidate || Candidate == OwnerActor || !CanHitActor(Candidate))
+		{
+			continue;
+		}
+
+		const FVector To = Candidate->GetActorLocation() - OwnerLoc;
+		const float Dist = To.Size2D();
+		if (Dist > SoftLockRadius)
+		{
+			continue;
+		}
+
+		const float CosA = FVector::DotProduct(PreferredDir, To.GetSafeNormal2D());
+
+		// Ângulo pesa mais que distância; alvo juggleado domina quando pedido.
+		float Score = CosA * 200.f - Dist * 0.5f;
+		if (bPreferAirborne && Candidate->IsAirborne())
+		{
+			Score += 1000.f;
+		}
+
+		if (Dist < NearestDist)
+		{
+			NearestDist = Dist;
+			NearestAny = Candidate;
+		}
+
+		if (CosA >= CosHalfAngle && Score > BestScore)
+		{
+			BestScore = Score;
+			BestInCone = Candidate;
+		}
+	}
+
+	// Fora do cone? Em topdown a intenção é "bate no que está perto" — fallback no mais próximo.
+	return BestInCone ? BestInCone : NearestAny;
+}
+
+AActor* UDDRCombatComponent::FaceSoftLockTarget(bool bPreferAirborne)
+{
+	AActor* Target = FindSoftLockTarget(bPreferAirborne);
+	AActor* OwnerActor = GetOwner();
+	if (!Target || !OwnerActor)
+	{
+		return Target;
+	}
+
+	FVector To = Target->GetActorLocation() - OwnerActor->GetActorLocation();
+	To.Z = 0.f;
+	if (!To.IsNearlyZero())
+	{
+		FRotator NewRot = OwnerActor->GetActorRotation();
+		NewRot.Yaw = To.Rotation().Yaw;
+		OwnerActor->SetActorRotation(NewRot);
+	}
+
+#if ENABLE_DRAW_DEBUG
+	if (CVarCombatDebug.GetValueOnGameThread() > 0)
+	{
+		DrawDebugLine(GetWorld(), OwnerActor->GetActorLocation(), Target->GetActorLocation(),
+			FColor::Cyan, false, 0.4f, 0, 1.5f);
+	}
+#endif
+
+	return Target;
+}
+
+AActor* UDDRCombatComponent::FaceAndSetupMotionWarp(const EDDRMotionWarpProfile Profile, const bool bPreferAirborne)
+{
+	AActor* Target = FaceSoftLockTarget(bPreferAirborne);
+
+	if (!bMotionWarpEnabled || Profile == EDDRMotionWarpProfile::None)
+	{
+		return Target;
+	}
+
+	if (ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(GetOwner()))
+	{
+		if (UMotionWarpingComponent* MW = OwnerChar->GetMotionWarpingComponent())
+		{
+			const bool bWarped = DDRMotionWarp::ApplyAttackWarp(
+				MW,
+				Target,
+				Profile,
+				IdealHitDistance,
+				MaxWarpDistance,
+				MaxWarpDistanceAir,
+				MaxWarpDistanceLauncher);
+
+			if (CVarCombatDebug.GetValueOnGameThread() > 0)
+			{
+				UE_LOG(LogDDR, Log, TEXT("MotionWarp profile=%d target=%s applied=%d"),
+					static_cast<int32>(Profile), *GetNameSafe(Target), bWarped ? 1 : 0);
+			}
+		}
+	}
+
+	return Target;
+}
+
+void UDDRCombatComponent::ClearAttackMotionWarp()
+{
+	if (ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(GetOwner()))
+	{
+		if (UMotionWarpingComponent* MW = OwnerChar->GetMotionWarpingComponent())
+		{
+			DDRMotionWarp::ClearAttackWarp(MW);
+		}
+	}
 }
 
 void UDDRCombatComponent::SetActiveComboSection(int32 SectionIndex)

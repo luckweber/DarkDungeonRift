@@ -62,7 +62,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 42 | [Run & Room Manager](systems/42_Run_Room_Manager.md) 🆕 | 🟢 P0 | `DDRRunManager`, fluxo sala→onda→Eco, `DT_RunLayout` |
 | 44 | [Arquitetura Data-Driven](systems/44_Data_Driven.md) 🆕 | 🟢 P0 | **DataTables vs DataAssets**, catálogo de dados, pastas, workflow designer |
 | 54 | [M0 — Setup no Editor](systems/54_M0_Editor_Setup.md) 🆕 | 🟢 P0 | **Passo a passo** no editor após compilar M0: Input, BP_DDRPlayer, mapa teste |
-| 55 | [M1 — Setup no Editor](systems/55_M1_Editor_Setup.md) 🆕 | 🟢 P0 | **Passo a passo** M1: `IA_Attack`, `AM_Combo` + notifies, `GA_Dash` GAS, dummy |
+| 55 | [M1 — Setup no Editor](systems/55_M1_Editor_Setup.md) 🆕 | 🟢 P0 | **Passo a passo** M1: `IA_Attack`, `AM_Combo` + notifies, `GA_Dash` GAS, dummy; cross-ref soft-lock/warp → [60 §7](systems/60_M2_Editor_Setup.md) |
 
 ### 🏃 Locomoção (os 11 recursos)
 | # | Doc | Recursos cobertos | Prioridade topdown |
@@ -78,19 +78,20 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 ### ⚔️ Combate (Hack'n'Slash)
 | # | Doc | Prioridade | Conteúdo |
 |---|---|---|---|
-| 15 | [Visão Geral do Combate](combat/15_Combat_Overview.md) | 🟢 P0 | Sistema de combo melee data-driven via GAS, hit detection, hit-stop |
+| 15 | [Visão Geral do Combate](combat/15_Combat_Overview.md) | 🟢 P0 | Combo melee GAS, hit detection, hit-stop, **soft-lock + Motion Warping** (§8) |
 | 16 | [Combos Aéreos](combat/16_Aerial_Combos.md) | 🟢 P0 | Launcher, juggle, gravidade em ar, slam, finisher |
 | 50 | [Armas & Arsenal](combat/50_Weapons_Arsenal.md) 🆕 | **Arma = identidade:** habilidades + **locomoção (Linked Anim Layers)** + ataques próprios; 1 arma no MVP, arsenal pós-MVP |
 | 56 | [Combate Defensivo](combat/56_Defensive_Combat.md) 🆕 | Perfect-dodge (M1), parry ofensivo (P1), dodge-offset — consolida Review de Combate |
-| 57 | [M1: Combo no Editor](combat/57_M1_Combo_Editor_Setup.md) 🆕 | **Setup real** da `AM_Combo` + `BP_GA_AttackLight`: seções **SEM link** (fix do auto-advance), janela de combo, input buffer 0.25s |
+| 57 | [M1: Combo no Editor](combat/57_M1_Combo_Editor_Setup.md) 🆕 | **Setup real** da `AM_Combo` + `BP_GA_AttackLight`: seções **SEM link** (fix do auto-advance), janela de combo, input buffer 0.25s, notify `AttackWarp` |
 | 59 | [Dodge Direcional 8-Way](combat/59_Directional_Dodge.md) 🆕 | **8 direções: sim, pelo motivo certo** (dash-cancel mantém facing); `AM_Dodge` por seções + trava de rotação no `GA_Dash` |
+| 60 | [M2 Editor Setup ★](systems/60_M2_Editor_Setup.md) 🆕 | **O PILAR no editor:** launcher/juggle/slam, **soft-lock + Motion Warping** (§7), sombra blob, run-attack, combo nodes (§9) |
 
 ### 🔬 Deep Dives — Combate · Habilidades · Feel · Juice 🆕
 > Aprofundamentos escritos pela *writers' room* (4 agentes-autores). Leia após os overviews (15/16). Jogo **single-player** (local-authoritative) → combate agressivo, slow-mo livre.
 
 | # | Doc | Prioridade | Conteúdo |
 |---|---|---|---|
-| 18 | [Combate Profundo](combat/18_Combat_System_Deep.md) | 🟢 P0 | **As REGRAS:** `FDDRAttackData` + frame data, hit detection, fórmula de dano, máquina de combo/cancelamento, poise/stagger, soft-lock |
+| 18 | [Combate Profundo](combat/18_Combat_System_Deep.md) | 🟢 P0 | **As REGRAS:** frame data, hit detection, dano, cancelamento, poise/stagger, **soft-lock + warp** (§6, C++ + [60 §7](systems/60_M2_Editor_Setup.md)) |
 | 19 | [Habilidades (GAS) Profundo](combat/19_Abilities_Deep.md) | 🟢 P0 | **O roster:** fichas das abilities, base `UDDRGameplayAbility`, taxonomia de tags, custo/cooldown, runtime granting de Ecos |
 | 20 | [Game Feel](feel/20_Game_Feel.md) | 🟢 P0 | **O TATO** (você→jogo): responsividade, peso, feel de dash/pulo/sprint/aéreo, cancelamento sentido, tabela-mestra de knobs |
 | 21 | [Juice & FX](feel/21_Juice_FX.md) | 🟢 P0 | **O ECO** (jogo→você): hit-stop, shake, slow-mo, VFX/SFX, catálogo de GameplayCues, escala de juice por golpe |

@@ -25,6 +25,7 @@
 - [ ] **Espada:** socket `weapon_r` no skeleton + SM no `WeaponMesh` + sockets `weapon_start`/`end` na SM (§3.4)
 - [ ] `BP_TrainingDummy` na arena (§5)
 - [ ] PIE: combo 3 golpes + hit-stop + dash-cancel (§6)
+- [ ] Soft-lock + motion warp (`AttackWarp` em `AM_Combo`) — [60 §7](60_M2_Editor_Setup.md) *(C++ pronto; janelas no editor)*
 
 ---
 
@@ -209,12 +210,14 @@ ddr.LocomotionDebug 1
 | Espada na posição errada | transform do socket não ajustado | §3.4 passo 1 — Add Preview Asset + ajustar |
 | **`ddr.CombatDebug 1` não desenha** | build antiga (o cvar só logava) | recompile o C++ — agora **1 = log + draw** |
 | Sweep não sai da lâmina (sai do peito) | sockets `weapon_start`/`end` ausentes na SM | §3.4 passo 2 (sem eles o fallback frontal é o esperado) |
+| **Bate no vazio** perto do dummy | falta motion warp / `AttackWarp` errado | [60 §7](60_M2_Editor_Setup.md) — soft-lock já vem do C++; tune `SoftLockRadius` no Combat Component |
+| Personagem não olha pro dummy | soft-lock fora do cone | tune `SoftLockHalfAngleDegrees` / `SoftLockRadius` no BP; `ddr.CombatDebug 1` (linha ciano) |
 
 ---
 
 ## 8. Próximo passo (M2)
 
-→ [16 — Combos Aéreos](../combat/16_Aerial_Combos.md): `GA_Launcher`, `GA_AirAttack`, sombra no chão — o **pilar** do jogo.
+→ [60 — M2 Editor Setup](60_M2_Editor_Setup.md): launcher/juggle/slam, sombra blob, **soft-lock + Motion Warping (§7)** — o **pilar** do jogo. Spec: [16 — Combos Aéreos](../combat/16_Aerial_Combos.md).
 
 ---
 
@@ -233,3 +236,5 @@ ddr.LocomotionDebug 1
 | **Espada** | `WeaponMesh` em `ADDRCharacterBase` (socket `weapon_r`) | socket no SK + SM no BP + sockets `weapon_start`/`end` na SM (§3.4) |
 | **Sweep da lâmina** | `UDDRCombatComponent` (`WeaponTraceSocketStart/End`, fallback frontal) | automático com os sockets da SM |
 | Debug visual | cvar `ddr.CombatDebug` (**1 = log + draw**) | console no PIE |
+| **Soft-lock** | `FindSoftLockTarget` / `FaceSoftLockTarget` | tune Combat Component no BP |
+| **Motion warp** | `FaceAndSetupMotionWarp` (ground) | notify `Motion Warping` → `AttackWarp` em `AM_Combo` — [60 §7](60_M2_Editor_Setup.md) |

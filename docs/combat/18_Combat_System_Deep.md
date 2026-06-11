@@ -376,16 +376,31 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
   // a montage tem um Motion Warp window que desliza o personagem até lá durante o swing
 ```
 
-| Parâmetro | Valor inicial | Nota |
+| Parâmetro | Spec (design) | **Default C++** (`UDDRCombatComponent`) |
 |---|---|---|
-| `SoftLockRange` | ~250 cm | raio de busca de alvo |
-| `SoftLockHalfAngle` | ~60° (120° total) | cone à frente do `AimDir` |
-| `MaxWarpDist` | ~200 cm | acima disto **não** warpa (vira whiff honesto, não teleporte) |
-| `AttackTurnSpeed` | ~720°/s | snap rápido mas não instantâneo |
+| `SoftLockRange` | ~250 cm | `SoftLockRadius` = **600** (tune no BP; topdown precisa de cone generoso) |
+| `SoftLockHalfAngle` | ~60° (120° total) | `SoftLockHalfAngleDegrees` = **75** |
+| `IdealHitDistance` | ~90 cm | `IdealHitDistance` = **90** |
+| `MaxWarpDist` (ground) | ~200 cm | `MaxWarpDistance` = **200** |
+| `MaxWarpDist` (air) | menor | `MaxWarpDistanceAir` = **120** |
+| `MaxWarpDist` (launcher) | curto horizontal | `MaxWarpDistanceLauncher` = **180** |
+| `AttackTurnSpeed` | ~720°/s | snap **instantâneo** no startup (yaw direto; tune futuro) |
+
+**Implementação C++ (notas úteis):**
+
+| Tópico | Onde | Detalhe |
+|---|---|---|
+| Soft-lock | `FindSoftLockTarget` | cone na **intenção** (input > facing); fallback = mais próximo no raio |
+| Airborne priority | `bPreferAirborne` | `GA_AirAttack` / `GA_AirSlam` somam +1000 no score do alvo `Airborne` |
+| Face + warp | `FaceAndSetupMotionWarp` | chame **antes** de `PlayMontageAndWait`; perfil via `EDDRMotionWarpProfile` |
+| Warp target | `DDRMotionWarpNames::AttackWarp` | montage precisa de notify **Motion Warping** com esse nome |
+| Componente | `UMotionWarpingComponent` | em `ADDRCharacterBase`; `bSearchForWindowsInAnimsWithinMontages = true` |
+| Perfis | `GA_AttackLight` / `GA_AirAttack` / `GA_Launcher` / `GA_AirSlam` | Ground, Air, Launcher, Slam — ver [60 §7.2](../systems/60_M2_Editor_Setup.md) |
+| Debug | `ddr.CombatDebug 1` | linha ciano (soft-lock) + esfera magenta (warp point) |
 
 > ⚠️ **Cap no warp = honestidade.** Warp ilimitado vira teleporte e quebra o espaço do combate (player "gruda" em inimigos longe). O `MaxWarpDist` garante que warp é *fechar a última distância*, não *atravessar a sala*. Fora do cap, o golpe erra — e errar tem que ser possível pro acerto ter valor.
 
-> 🎮 **Como acertar fica certeiro:** soft-lock escolhe o alvo óbvio → faceamento vira o personagem no startup → motion-warp fecha o gap residual → sweep (§2) confirma o hit. As 4 camadas juntas dão o feel "minha intenção virou acerto" sem hard-lock e sem tirar a mão do jogador. **Detalhe de spec por ability** (quais golpes warpam, ângulos por arma) → [19 — Abilities Deep](19_Abilities_Deep.md).
+> 🎮 **Como acertar fica certeiro:** soft-lock escolhe o alvo óbvio → faceamento vira o personagem no startup → motion-warp fecha o gap residual → sweep (§2) confirma o hit. As 4 camadas juntas dão o feel "minha intenção virou acerto" sem hard-lock e sem tirar a mão do jogador. **Setup no editor:** [60 §7](../systems/60_M2_Editor_Setup.md) · perfis por ability em [19 §3](19_Abilities_Deep.md).
 
 ---
 
@@ -403,7 +418,7 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 - [ ] "Cancel on hit" gate (Active só cancela se `AlreadyHit` não-vazia)
 - [ ] Hit reactions por `ReactType` (direção 4-way) + poise/stagger/hyperarmor
 - [ ] `CanLaunch` gate (poise quebrado + mass cap + não-Airborne) → handoff p/ SM do alvo (doc 16)
-- [ ] Soft-lock (cone+score) → faceamento **no startup** → motion-warp com `MaxWarpDist`
+- [x] Soft-lock (cone+score) → faceamento **no startup** → motion-warp com `MaxWarpDist` — ✅ C++ M1/M2; janelas `AttackWarp` no editor → [60 §7](../systems/60_M2_Editor_Setup.md)
 - [ ] `ddr.CombatDebug 1` mostrando estado/nó/janelas/buffer
 
 ---
@@ -422,9 +437,10 @@ Se Target e dist > ReachThreshold (e dist < MaxWarpDist ~200cm):
 | Inimigo trava a cada hit (sem risco) | Sem poise / poise baixo demais | §5.2 — dê poise + regen |
 | Inimigo nunca cambaleia | Hyperarmor permanente / poise infinito | §5.2 — hyperarmor é só durante golpes |
 | Lança inimigo a qualquer hora (trivial) | `CanLaunch` sem gate de poise | §5.4 — exija `Poise<=0` |
-| Golpe sai na direção do stick, ignora alvo óbvio | Sem soft-lock/faceamento | §6.1/§6.2 |
-| "Homing slash" / auto-aim injusto | Faceamento rodando no `Active` | §6.2 — vire só no `Startup` |
-| Personagem "teleporta" pra inimigo longe | Warp sem cap | §6.3 — `MaxWarpDist` |
+| Golpe sai na direção do stick, ignora alvo óbvio | Soft-lock desligado / cone estreito | §6.1/§6.2; tune `SoftLockRadius` no BP — [60 §7.1](../systems/60_M2_Editor_Setup.md) |
+| Bate no vazio perto do alvo | Falta notify Motion Warping / `AttackWarp` errado | §6.3 — [60 §7.3](../systems/60_M2_Editor_Setup.md) |
+| "Homing slash" / auto-aim injusto | Faceamento rodando no `Active` | §6.2 — vire só no `Startup` (já assim no C++) |
+| Personagem "teleporta" pra inimigo longe | Warp sem cap | §6.3 — `MaxWarpDistance` no Combat Component |
 
 ---
 

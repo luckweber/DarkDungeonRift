@@ -150,7 +150,7 @@ void UGE_DDRCooldownDash::PostInitProperties()
 }
 ```
 
-> ✅ Aplicado em `GE_DDRCooldownDash` e `GE_DDRDashIFrames`. Em GE **assets** (Blueprint), o equivalente é adicionar o componente **"Grant Tags to Target Actor"** no painel Components do GE.
+> ✅ Aplicado em `GE_DDRCooldownDash`, `GE_DDRDashIFrames` e `GE_DDRCooldownLauncher` (o crash do construtor foi descoberto em produção no M2 — todo GE novo nasce com `PostInitProperties`). Em GE **assets** (Blueprint), o equivalente é adicionar o componente **"Grant Tags to Target Actor"** no painel Components do GE.
 
 > 🧩 **Upgrades de run = GameplayEffects Infinite + Abilities concedidas.** Pegou "+15% dano"? Aplique um `GE_RunUpgrade_Damage` Infinite no ASC. Pegou "dash causa dano"? Conceda/troque a `GA_Dash`. O [core loop](../design/03_Core_Loop_Roguelike.md) inteiro se expressa em GAS — por isso ele é P0.
 

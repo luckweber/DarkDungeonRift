@@ -107,11 +107,14 @@ Formato de **ficha padronizada** (mesma ordem em todas, skimmable). Custos são 
 | **Montage** | `AM_Combo` (seções Atk1→Atk4), Slot `DefaultSlot` |
 | **Instancing** | `InstancedPerActor`, **Retrigger = false** (avança seção, não re-ativa) |
 
+**Targeting (soft-lock + warp):** no startup, `FaceAndSetupMotionWarp(Ground)` — soft-lock → face → warp target `AttackWarp` (cap ~200 cm). Run-attack opener usa perfil `RunAttack`. Montage precisa de notify **Motion Warping** — [60 §7](../systems/60_M2_Editor_Setup.md), spec [18 §6](18_Combat_System_Deep.md).
+
 **Fluxo de Ability Tasks:**
 ```
 ActivateAbility:
   1. CommitAbility
   2. ComboIndex := próxima seção (1ª ativação → Atk1; reativação na janela → Atk2/3/4)
+  2b. FaceAndSetupMotionWarp(profile=Ground ou RunAttack no opener)
   3. Task PlayMontageAndWait(AM_Combo, StartSection=Atk{ComboIndex})
   4. Task WaitGameplayEvent("Combat.Hit")  → encaminha alvo p/ doc 18 (dano)
   5. ANS_ComboWindow liga flag "pode-encadear"; input buffer (doc 07 §5) +
@@ -162,10 +165,13 @@ Mesma máquina do Light (seções + buffer + `Combat.Hit`), mas **mais lento, ma
 | **Montage** | `AM_Launcher` (uppercut) |
 | **Instancing** | `InstancedPerActor` |
 
+**Targeting:** `FaceAndSetupMotionWarp(Launcher)` — warp horizontal curto (~180 cm), Z do clip; montage `AM_Launcher` com janela `AttackWarp` — [60 §7.2](../systems/60_M2_Editor_Setup.md).
+
 **Fluxo de Ability Tasks:**
 ```
 ActivateAbility:
   1. CommitAbility (paga cooldown)
+  1b. FaceAndSetupMotionWarp(profile=Launcher)
   2. Task PlayMontageAndWait(AM_Launcher)
   3. Task WaitGameplayEvent("Combat.Launch")  (notify de impacto)
        → NO ALVO: aplica GE_Airborne (concede State.Combat.Airborne) +
@@ -196,6 +202,8 @@ ActivateAbility:
 | **Montage** | `AM_AirCombo` (seções, espelha o de chão) |
 | **Instancing** | `InstancedPerActor` |
 
+**Targeting:** `FaceAndSetupMotionWarp(Air)` com `bPreferAirborne` — prioriza alvo `State.Combat.Airborne`; warp menor (~120 cm). **Sem** janela Motion Warp em `AM_AirCombo` (drift indesejado no ar) — [60 §7.2](../systems/60_M2_Editor_Setup.md).
+
 **Fluxo de Ability Tasks:** idêntico ao `GA_Attack_Light` (seções + buffer + `Combat.Hit`), **mais** o re-float: cada hit aplica um `RootMotionSource` curto (PopHeight, com decay) no alvo ([16 §3](16_Aerial_Combos.md)). O **cap de hits** é dono da ability (lê atributo `MaxJuggleHits`, [03b §6](../design/03b_Reward_System.md)).
 
 > 🪂 **Roteamento de input:** `IA_Attack` chama `AbilityLocalInputPressed(Attack)`; o GAS ativa a ability **concedida com esse InputID cujas `ActivationRequiredTags` batem**. Como `GA_AirAttack` requer `InAir` e `GA_Attack_Light` não, o estado do player resolve qual sai — sem `if` no input. Mantenha **ambas** concedidas; o gate de tag faz a seleção.
@@ -219,10 +227,13 @@ ActivateAbility:
 | **Montage** | `AM_Slam` (golpe descendente) |
 | **Instancing** | `InstancedPerActor` |
 
+**Targeting:** `FaceAndSetupMotionWarp(Slam)` — só **face** (`bPreferAirborne`); **sem** lunge horizontal. **Sem** janela Motion Warp em `AM_AirSlam` — [60 §7.2](../systems/60_M2_Editor_Setup.md).
+
 **Fluxo de Ability Tasks:**
 ```
 ActivateAbility:
   1. CommitAbility
+  1b. FaceSoftLockTarget(bPreferAirborne=true)  // perfil Slam — sem warp
   2. Task PlayMontageAndWait(AM_Slam)
   3. No notify "Combat.SlamDown":
        - player desce rápido (RootMotionSource down forte)

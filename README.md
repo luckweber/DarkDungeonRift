@@ -6,7 +6,7 @@ ARPG **top-down** roguelike de hack'n'slash com **combos aéreos** — construí
 
 ## Status
 
-🚧 **M1 em andamento** — M0 (locomoção topdown) completo; M1 (combo de chão + GAS) com C++ base + [guia do editor](docs/systems/55_M1_Editor_Setup.md). Ver [roadmap](docs/17_Implementation_Roadmap.md).
+🚧 **M1/M2 em andamento** — M0 (locomoção topdown) completo; M1 (combo de chão + GAS) e M2 (launcher/juggle/slam + soft-lock/Motion Warping) com C++ base + guias: [M1 Setup](docs/systems/55_M1_Editor_Setup.md) · [M2 Setup ★](docs/systems/60_M2_Editor_Setup.md). Ver [roadmap](docs/17_Implementation_Roadmap.md).
 
 ## Pilares
 
@@ -52,7 +52,7 @@ Toda a documentação está em [`docs/`](docs/00_Index.md). Comece pelo [índice
 | Sistemas | [GAS](docs/systems/05_GAS_Architecture.md) · [Data-driven](docs/systems/44_Data_Driven.md) · [Tags](docs/systems/41_Gameplay_Tags.md) · [Run Manager](docs/systems/42_Run_Room_Manager.md) · [Controles](docs/systems/39_Controls.md) |
 | Combate | [Overview](docs/combat/15_Combat_Overview.md) · [Combos aéreos](docs/combat/16_Aerial_Combos.md) · [Defesa](docs/combat/51_Defensive_Combat.md) · [Armas](docs/combat/50_Weapons_Arsenal.md) · [Projéteis](docs/combat/37_Projectiles.md) |
 | Inimigos & World | [Catálogo MVP](docs/enemies/51_Enemy_Catalog_MVP.md) · [Arenas](docs/world/52_Arena_Level_Design.md) · [IA](docs/enemies/30_AI_Overview.md) |
-| Execução | [Roadmap](docs/17_Implementation_Roadmap.md) · [M0 Setup](docs/systems/54_M0_Editor_Setup.md) · [M1 Setup](docs/systems/55_M1_Editor_Setup.md) |
+| Execução | [Roadmap](docs/17_Implementation_Roadmap.md) · [M0 Setup](docs/systems/54_M0_Editor_Setup.md) · [M1 Setup](docs/systems/55_M1_Editor_Setup.md) · [M2 Setup ★](docs/systems/60_M2_Editor_Setup.md) |
 
 ## Assets de terceiros
 

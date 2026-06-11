@@ -34,6 +34,7 @@ public class DarkDungeonRift : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"MotionWarping",
 			"NetCore"
 		});
 	}

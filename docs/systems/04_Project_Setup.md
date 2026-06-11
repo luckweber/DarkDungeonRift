@@ -2,7 +2,7 @@
 
 > Plugins, módulos de build, e organização de pastas para um ARPG topdown roguelike com GAS no **UE 5.4**. Faça isto **antes** de qualquer gameplay — é o alicerce.
 
-> Estado atual do projeto: template Third Person. `Build.cs` só tem `Core, CoreUObject, Engine, InputCore, EnhancedInput`. Sem GAS, sem plugins de warping. Vamos corrigir.
+> Estado atual do projeto: **M0–M2 em progresso** — GAS (`GameplayAbilities`+`GameplayTags`+`GameplayTasks`), `MotionWarping` (Private), combate M1/M2 no C++. Plugins P0 já habilitados no `.uproject`. Este doc permanece como referência de setup inicial.
 
 ---
 
@@ -45,10 +45,15 @@ Edite [DarkDungeonRift.Build.cs](../../Source/DarkDungeonRift/DarkDungeonRift.Bu
 PublicDependencyModuleNames.AddRange(new string[] {
     "Core", "CoreUObject", "Engine", "InputCore",
     "EnhancedInput",
-    "GameplayAbilities", "GameplayTags", "GameplayTasks",   // GAS (os 3 andam juntos)
-    "MotionWarping",                                         // warp de ataque
-    "AnimationLocomotionLibrary"                             // distance match / foot placement (se usar em C++)
+    "GameplayAbilities", "GameplayTags", "GameplayTasks"   // GAS (os 3 andam juntos)
 });
+
+PrivateDependencyModuleNames.AddRange(new string[] {
+    "MotionWarping"   // warp de ataque — só usado internamente no módulo (Combat/Characters)
+});
+
+// Opcional: distance match / foot placement em C++
+// PublicDependencyModuleNames.Add("AnimationLocomotionLibrary");
 
 // Módulos de editor (opcional, p/ ferramentas):
 // PrivateDependencyModuleNames.AddRange(new string[] { "GameplayAbilitiesEditor" });
@@ -153,7 +158,7 @@ GameplayCue.Land.Hard
 ## 6. Checklist
 
 - [ ] Plugins P0 habilitados (GameplayAbilities, AnimationLocomotionLibrary, MotionWarping)
-- [ ] `Build.cs` com `GameplayAbilities`+`GameplayTags`+`GameplayTasks`
+- [ ] `Build.cs` com `GameplayAbilities`+`GameplayTags`+`GameplayTasks` + `MotionWarping` (Private)
 - [ ] Projeto recompila sem erro após adicionar módulos
 - [ ] Pastas C++ reorganizadas (Characters/GAS/Combat/...)
 - [ ] Pastas Content sob `Content/DarkDungeonRift/`

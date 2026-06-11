@@ -29,7 +29,7 @@ O dash-cancel é o **cancelamento-âncora nº 1** do combate. Quando você corta
 | Modelo | DDR tem? | O 8-way vale? |
 |---|---|---|
 | **Hard lock-on** (trava alvo, strafe contínuo) | ❌ não no MVP ([18 §6](18_Combat_System_Deep.md): decisão = soft-lock, sem hard lock) | — (futuro) |
-| **🔑 Soft-lock + facing de ataque** ([18 §6](18_Combat_System_Deep.md)) | ✅ **SIM** — durante o startup/golpe, o personagem **vira pro alvo** | ✅ é AQUI que o 8-way paga hoje: dash-cancel no meio do golpe = corpo encarando o alvo = esquiva direcional correta |
+| **🔑 Soft-lock + facing de ataque** ([18 §6](18_Combat_System_Deep.md), [60 §7](../systems/60_M2_Editor_Setup.md)) | ✅ **SIM** — `FaceSoftLockTarget` no startup do golpe (C++ em `UDDRCombatComponent`) | ✅ é AQUI que o 8-way paga hoje: dash-cancel no meio do golpe = corpo encarando o alvo = esquiva direcional correta |
 | Orient-to-movement (fora de combate) | ✅ | ➖ corpo já gira pro movimento → quase sempre `F` |
 
 > 🎯 **E o melhor:** a implementação por **ângulo facing→direção** é *exatamente* a que um lock-on usa. Se um dia o hard lock-on entrar (P2), **nada muda no dodge** — com o facing travado no alvo, a mesma seleção de seção produz o strafe-dodge clássico. Construímos a fundação certa.

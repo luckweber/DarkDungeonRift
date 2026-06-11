@@ -10,8 +10,11 @@
 #include "DDRLog.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GA_AirAttack.h"
+#include "GA_AirSlam.h"
 #include "GA_AttackLight.h"
 #include "GA_Dash.h"
+#include "GA_Launcher.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
@@ -51,7 +54,10 @@ ADDRPlayerCharacter::ADDRPlayerCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	StartupAbilities.Add({ UGA_AttackLight::StaticClass(), EDDRAbilityInputID::Attack });
+	StartupAbilities.Add({ UGA_AirAttack::StaticClass(), EDDRAbilityInputID::Attack }); // mesmo botao; gate por InAir
 	StartupAbilities.Add({ UGA_Dash::StaticClass(), EDDRAbilityInputID::Dash });
+	StartupAbilities.Add({ UGA_Launcher::StaticClass(), EDDRAbilityInputID::Launcher });
+	StartupAbilities.Add({ UGA_AirSlam::StaticClass(), EDDRAbilityInputID::AirSlam });
 }
 
 void ADDRPlayerCharacter::BeginPlay()
@@ -107,6 +113,16 @@ void ADDRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		{
 			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::OnDashPressed);
 		}
+
+		if (LauncherAction)
+		{
+			EnhancedInputComponent->BindAction(LauncherAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::OnLauncherPressed);
+		}
+
+		if (AirSlamAction)
+		{
+			EnhancedInputComponent->BindAction(AirSlamAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::OnAirSlamPressed);
+		}
 	}
 	else
 	{
@@ -160,5 +176,21 @@ void ADDRPlayerCharacter::OnDashPressed()
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::Dash));
+	}
+}
+
+void ADDRPlayerCharacter::OnLauncherPressed()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::Launcher));
+	}
+}
+
+void ADDRPlayerCharacter::OnAirSlamPressed()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::AirSlam));
 	}
 }

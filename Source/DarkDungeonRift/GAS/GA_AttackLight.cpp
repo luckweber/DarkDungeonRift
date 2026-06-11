@@ -10,6 +10,7 @@
 #include "DDRGameplayTags.h"
 #include "DDRLog.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UGA_AttackLight::UGA_AttackLight()
 {
@@ -19,6 +20,9 @@ UGA_AttackLight::UGA_AttackLight()
 	FGameplayTagContainer OwnedTags;
 	OwnedTags.AddTag(DDRTags::State_Combat_Attacking);
 	ActivationOwnedTags = OwnedTags;
+
+	// No ar, quem atende o MESMO botao e o GA_AirAttack (gate por tag, doc 19).
+	ActivationBlockedTags.AddTag(DDRTags::State_Combat_InAir);
 
 	bRetriggerInstancedAbility = false;
 }
@@ -42,25 +46,41 @@ void UGA_AttackLight::ActivateAbility(
 		return;
 	}
 
+	ComboIndex = 0;
+	bPlayingRunAttack = false;
+	bIgnoreNextInterrupt = false;
+
+	// Trava a rotação durante o combo: o facing do SOFT-LOCK manda (WASD não gira o corpo
+	// no meio do golpe). Restaurada no EndAbility.
+	if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+	{
+		if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
+		{
+			bSavedOrientToMovement = MoveComp->bOrientRotationToMovement;
+			MoveComp->bOrientRotationToMovement = false;
+			bRotationLocked = true;
+		}
+	}
+
 	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 	{
-		if (Combat->IsComboWindowOpen())
-		{
-			TryAdvanceCombo();
-		}
-		else
-		{
-			ComboIndex = 0;
-		}
 		Combat->ResetHitTracking();
 		Combat->SetActiveComboSection(ComboIndex);
+		Combat->FaceAndSetupMotionWarp(GetMotionWarpProfile(), ShouldPreferAirborneTargets());
+	}
+
+	// Opener em corrida: combo COMECANDO + velocidade alta + montage setada.
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	const float Speed2D = Character ? Character->GetVelocity().Size2D() : 0.f;
+	if (RunAttackMontage && Speed2D >= RunAttackMinSpeed)
+	{
+		bPlayingRunAttack = true;
+		PlayRunAttackOpener();
 	}
 	else
 	{
-		ComboIndex = 0;
+		PlayCurrentSection();
 	}
-
-	PlayCurrentSection();
 
 	UAbilityTask_WaitGameplayEvent* WaitHitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
 		this,
@@ -83,6 +103,19 @@ void UGA_AttackLight::EndAbility(
 	{
 		Combat->CloseComboWindow();
 		Combat->ClearBufferedAttack();
+		Combat->ClearAttackMotionWarp();
+	}
+
+	if (bRotationLocked)
+	{
+		bRotationLocked = false;
+		if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+		{
+			if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
+			{
+				MoveComp->bOrientRotationToMovement = bSavedOrientToMovement;
+			}
+		}
 	}
 
 	ComboIndex = 0;
@@ -115,6 +148,13 @@ void UGA_AttackLight::OnMontageEnded()
 
 void UGA_AttackLight::OnMontageCancelled()
 {
+	// Troca opener->combo dispara OnInterrupted da task antiga — nao e um cancel real.
+	if (bIgnoreNextInterrupt)
+	{
+		bIgnoreNextInterrupt = false;
+		return;
+	}
+
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
@@ -127,6 +167,25 @@ void UGA_AttackLight::TryAdvanceCombo()
 {
 	if (ComboSections.Num() == 0)
 	{
+		return;
+	}
+
+	// Saindo do opener de corrida -> entra no combo normal (Atk1).
+	if (bPlayingRunAttack)
+	{
+		bPlayingRunAttack = false;
+		ComboIndex = 0;
+		bIgnoreNextInterrupt = true; // Montage_Play novo interrompe a task do opener
+
+		if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+		{
+			Combat->ResetHitTracking();
+			Combat->SetActiveComboSection(ComboIndex);
+			Combat->CloseComboWindow();
+			Combat->ClearBufferedAttack();
+		}
+
+		PlayCurrentSection();
 		return;
 	}
 
@@ -144,6 +203,7 @@ void UGA_AttackLight::TryAdvanceCombo()
 		Combat->SetActiveComboSection(ComboIndex);
 		Combat->CloseComboWindow();
 		Combat->ClearBufferedAttack();
+		Combat->FaceAndSetupMotionWarp(GetMotionWarpProfile(), ShouldPreferAirborneTargets());
 	}
 
 	if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
@@ -180,6 +240,26 @@ void UGA_AttackLight::PlayCurrentSection()
 		ComboMontage,
 		1.f,
 		SectionName,
+		true);
+	MontageTask->OnCompleted.AddDynamic(this, &UGA_AttackLight::OnMontageEnded);
+	MontageTask->OnInterrupted.AddDynamic(this, &UGA_AttackLight::OnMontageCancelled);
+	MontageTask->OnCancelled.AddDynamic(this, &UGA_AttackLight::OnMontageCancelled);
+	MontageTask->ReadyForActivation();
+}
+
+void UGA_AttackLight::PlayRunAttackOpener()
+{
+	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+	{
+		Combat->FaceAndSetupMotionWarp(EDDRMotionWarpProfile::RunAttack, ShouldPreferAirborneTargets());
+	}
+
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+		this,
+		NAME_None,
+		RunAttackMontage,
+		1.f,
+		NAME_None,
 		true);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_AttackLight::OnMontageEnded);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_AttackLight::OnMontageCancelled);

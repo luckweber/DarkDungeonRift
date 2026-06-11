@@ -136,6 +136,7 @@ AdvanceCombo():
 - [ ] `WaitInputPress` em loop + buffer 0.25s
 - [ ] `WaitGameplayEvent` Begin/End da janela
 - [ ] `AdvanceCombo` usa **Montage Jump to Section** (nunca link de montage)
+- [ ] Notify **Motion Warping** (`AttackWarp`, Skew Warp, Ignore Z) no startup de cada seção — [60 §7.3](../systems/60_M2_Editor_Setup.md)
 - [ ] Todos os 6 testes do §6 passam
 
 ---
@@ -151,9 +152,10 @@ AdvanceCombo():
 | Seção não para no fim (desliza pro próximo frame) | ainda há link residual entre seções | §0 — confira: cada seção numa linha, sem setas |
 | Montage não toca no jogo (só no preview) | ABP sem o nó `Slot 'DefaultSlot'` | [08 §4](../locomotion/08_Locomotion_Overview.md) |
 | Combo não reseta após dash | faltou tratar `OnInterrupted/OnCancelled` | §4 passo 1 |
+| **Bate no vazio** perto do dummy | falta motion warp na montage | [60 §7.3](../systems/60_M2_Editor_Setup.md) — target `AttackWarp`; soft-lock já é automático no C++ |
 
 ---
 
 ## 9. Próximo passo
 
-→ Hit detection + `Event.Combat.Hit` → dano ([15 §4](15_Combat_Overview.md), [18 §2-3](18_Combat_System_Deep.md)) · hit-stop global ([21 §3](../feel/21_Juice_FX.md)) · a ficha completa da ability: [19 §3](19_Abilities_Deep.md).
+→ Hit detection + `Event.Combat.Hit` → dano ([15 §4](15_Combat_Overview.md), [18 §2-3](18_Combat_System_Deep.md)) · hit-stop global ([21 §3](../feel/21_Juice_FX.md)) · **soft-lock + motion warp** ([60 §7](../systems/60_M2_Editor_Setup.md)) · ficha da ability: [19 §3](19_Abilities_Deep.md).
