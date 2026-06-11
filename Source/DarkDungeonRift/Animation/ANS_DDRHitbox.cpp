@@ -10,7 +10,7 @@ void UANS_DDRHitbox::NotifyBegin(
 	float TotalDuration,
 	const FAnimNotifyEventReference& EventReference)
 {
-	if (!MeshComp)
+	if (!MeshComp || !MeshComp->GetOwner())
 	{
 		return;
 	}

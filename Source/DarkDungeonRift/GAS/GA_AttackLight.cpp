@@ -206,30 +206,19 @@ void UGA_AttackLight::InputPressed(
 {
 	Super::InputPressed(Handle, ActorInfo, ActivationInfo);
 
-	UDDRCombatComponent* Combat = nullptr;
-	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
+	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 	{
-		Combat = ActorInfo->AvatarActor->FindComponentByClass<UDDRCombatComponent>();
-	}
-	if (!Combat)
-	{
-		Combat = GetDDRCombatComponent();
-	}
-	if (!Combat)
-	{
-		return;
-	}
+		if (Combat->IsComboWindowOpen())
+		{
+			UE_LOG(LogDDR, Log, TEXT("[ATK] input na JANELA -> avanca t=%.2f"), GetWorld()->GetTimeSeconds());
+			TryAdvanceCombo();
+			return;
+		}
 
-	if (Combat->IsComboWindowOpen())
-	{
-		UE_LOG(LogDDR, Log, TEXT("[ATK] input na JANELA -> avanca t=%.2f"), GetWorld()->GetTimeSeconds());
-		TryAdvanceCombo();
-		return;
+		UE_LOG(LogDDR, Log, TEXT("[ATK] input FORA da janela -> buffer %.2fs t=%.2f"),
+			InputBufferSeconds, GetWorld()->GetTimeSeconds());
+		Combat->BufferAttackInput(InputBufferSeconds);
 	}
-
-	UE_LOG(LogDDR, Log, TEXT("[ATK] input FORA da janela -> buffer %.2fs t=%.2f"),
-		InputBufferSeconds, GetWorld()->GetTimeSeconds());
-	Combat->BufferAttackInput(InputBufferSeconds);
 }
 
 void UGA_AttackLight::OnMontageEnded()
@@ -353,14 +342,7 @@ void UGA_AttackLight::PlayCurrentSection()
 
 void UGA_AttackLight::PlayRunAttackOpener()
 {
-	if (!bDashAttackOpener)
-	{
-		if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
-		{
-			Combat->FaceAndSetupMotionWarp(EDDRMotionWarpProfile::RunAttack, ShouldPreferAirborneTargets());
-		}
-	}
-
+	// Dash-attack: sem face/warp — estocada reta na direcao do dodge (root motion de AM_RunAttack).
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this,
 		NAME_None,

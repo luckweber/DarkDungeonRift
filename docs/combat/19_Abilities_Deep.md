@@ -107,14 +107,14 @@ Formato de **ficha padronizada** (mesma ordem em todas, skimmable). Custos são 
 | **Montage** | `AM_Combo` (seções Atk1→Atk4), Slot `DefaultSlot` |
 | **Instancing** | `InstancedPerActor`, **Retrigger = false** (avança seção, não re-ativa) |
 
-**Targeting (soft-lock + warp):** `FaceAndSetupMotionWarp(Ground)` no startup de **cada** golpe (Atk1 e a cada `AdvanceCombo`) — soft-lock → face → warp target `AttackWarp` (cap ~200 cm). O **dash-attack opener** (LMB durante o dash ou grace 0.15s, [60 §6](../systems/60_M2_Editor_Setup.md)) usa perfil `RunAttack`. A montage `AM_Combo` precisa de notify **Motion Warping** **em cada seção** (Atk1–4) — o C++ atualiza o alvo, mas o lunge só ocorre na seção que tem a janela. [57 §2b](57_M1_Combo_Editor_Setup.md) · [60 §7](../systems/60_M2_Editor_Setup.md) · spec [18 §6](18_Combat_System_Deep.md).
+**Targeting (soft-lock + warp):** `FaceAndSetupMotionWarp(Ground)` no startup de **cada** golpe do combo (Atk1 e a cada `AdvanceCombo`) — soft-lock → face → warp target `AttackWarp` (cap ~200 cm). O **dash-attack opener** (LMB durante o dash ou grace 0.15s, [60 §6](../systems/60_M2_Editor_Setup.md)) **não** usa face/warp — estocada reta na direção do dodge via **root motion** de `AM_RunAttack` ([18 §6](18_Combat_System_Deep.md)). A montage `AM_Combo` precisa de notify **Motion Warping** **em cada seção** (Atk1–4) — o C++ atualiza o alvo, mas o lunge só ocorre na seção que tem a janela. [57 §2b](57_M1_Combo_Editor_Setup.md) · [60 §7](../systems/60_M2_Editor_Setup.md).
 
 **Fluxo de Ability Tasks:**
 ```
 ActivateAbility:
   1. CommitAbility
   2. ComboIndex := próxima seção (1ª ativação → Atk1; reativação na janela → Atk2/3/4)
-  2b. FaceAndSetupMotionWarp(profile=Ground ou RunAttack no opener)
+  2b. FaceAndSetupMotionWarp(profile=Ground) — dash-attack opener pula este passo
   3. Task PlayMontageAndWait(AM_Combo, StartSection=Atk{ComboIndex})
   4. Task WaitGameplayEvent("Combat.Hit")  → encaminha alvo p/ doc 18 (dano)
   5. ANS_ComboWindow liga flag "pode-encadear"; input buffer (doc 07 §5) +

@@ -638,6 +638,12 @@ void UDDRCombatComponent::CloseComboWindow()
 
 void UDDRCombatComponent::BufferAttackInput(float BufferSeconds)
 {
+	if (bBufferedAttack)
+	{
+		BufferedAttackTimeRemaining = FMath::Max(BufferedAttackTimeRemaining, BufferSeconds);
+		return;
+	}
+
 	bBufferedAttack = true;
 	BufferedAttackTimeRemaining = BufferSeconds;
 	UE_LOG(LogDDR, Log, TEXT("[ATK] buffer armado %.2fs t=%.2f"),

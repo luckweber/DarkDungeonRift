@@ -191,7 +191,7 @@ Warp target name canônico: **`AttackWarp`** (não mude).
 | Ability | Perfil | Max warp | O que faz |
 |---|---|---|---|
 | `GA_AttackLight` | **Ground** | 200 cm | lunge horizontal no swing |
-| Dash-attack opener | **RunAttack** | 200 cm | mesma lógica, alcance maior na estocada |
+| Dash-attack opener | — (sem warp) | — | estocada reta na direção do dodge; avanço = **root motion** de `AM_RunAttack` |
 | `GA_AirAttack` | **Air** | 120 cm | ajuste fino — alvo já está perto no juggle |
 | `GA_Launcher` | **Launcher** | 180 cm | fecha gap **horizontal**; subida = RM do clip |
 | `GA_AirSlam` | **Slam** | — | só **encara** o alvo; descida = velocity do código |
@@ -210,7 +210,7 @@ Tune no **Combat Component** do `BP_DDRPlayer`:
 
 ### 7.3 Montage — adicionar janela Motion Warping (EDITOR)
 
-Em **cada** montage que avança o corpo (combo chão, dash-attack, launcher — **não** nos clips aéreos puros):
+Em **cada** montage de combo/launcher que usa motion warp (combo chão, launcher — **não** dash-attack puro, **não** clips aéreos):
 
 #### Combo seccionado (`AM_Combo`) — **uma janela por seção**
 
@@ -244,7 +244,7 @@ Montages com seções (`Atk1`–`Atk4`) precisam de **uma notify `Motion Warping
 | Montage | Janela Motion Warp? | Ignore Z? |
 |---|---|---|
 | `AM_Combo` (Atk1–4) | ✅ em cada seção, no swing | ✅ |
-| `AM_RunAttack` | ✅ na estocada | ✅ |
+| `AM_RunAttack` | ❌ (estocada reta; avanço = **root motion** do clip) | — |
 | `AM_Launcher` | ✅ no passo antes do uppercut | ✅ |
 | `AM_AirCombo` | ❌ (player em Flying; drift) | — |
 | `AM_AirSlam` | ❌ (descida = código) | — |
