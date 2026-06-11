@@ -8,7 +8,9 @@
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DDRCharacterMovementComponent.h"
+#include "DDRCombatComponent.h"
 #include "DDRGameplayTags.h"
+#include "DDRLog.h"
 #include "GE_DDRCooldownDash.h"
 #include "GE_DDRDashIFrames.h"
 #include "GameFramework/Character.h"
@@ -17,6 +19,10 @@ UGA_Dash::UGA_Dash()
 {
 	AbilityTags.AddTag(DDRTags::Ability_Dash);
 
+	// NAO por State.Movement.Dashing em ActivationOwnedTags: a tag e a janela de I-FRAME
+	// (concedida pelo GE_DDRDashIFrames por 0.25s, doc 19 §3) — amarra-la a vida da ability
+	// estenderia a invencibilidade pra recovery toda do dodge. O dash-attack detecta o dash
+	// pela ability ativa (GA_AttackLight) + grace do NotifyDashEnded.
 	FGameplayTagContainer BlockedTags;
 	BlockedTags.AddTag(DDRTags::Cooldown_Dash);
 	ActivationBlockedTags.AppendTags(BlockedTags);
@@ -72,6 +78,11 @@ void UGA_Dash::ActivateAbility(
 	}
 
 	const FName Section = ComputeDodgeSectionName(Direction);
+
+	UE_LOG(LogDDR, Log, TEXT("[DASH] ATIVADO dir=(%.2f, %.2f) secao=%s modo=%s t=%.2f"),
+		Direction.X, Direction.Y, *Section.ToString(),
+		(DashMontage && DashMontage->HasRootMotion()) ? TEXT("RM clip") : TEXT("ConstantForce"),
+		GetWorld()->GetTimeSeconds());
 
 	// Dois modos, AUTO-DETECTADOS (doc 59 §3):
 	//  A) Clips COM root motion  -> o CLIP dirige a cápsula (distância/easing autorados).
@@ -132,6 +143,17 @@ void UGA_Dash::EndAbility(
 		}
 		bModifiedRotationFlag = false;
 	}
+
+	// Abre a janela de grace do dash-attack (LMB logo apos o dash ainda vira a estocada).
+	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
+	{
+		Combat->NotifyDashEnded();
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[DASH] fim cancelled=%d t=%.2f%s"),
+		bWasCancelled ? 1 : 0,
+		GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f,
+		bWasCancelled ? TEXT(" (cancelado — dash-attack ou morte)") : TEXT(""));
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

@@ -10,6 +10,7 @@
 #include "DDRCombatComponent.h"
 #include "DDRGameplayTags.h"
 #include "DDRLog.h"
+#include "GA_Dash.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -86,6 +87,43 @@ void UGA_AttackLight::ActivateAbility(
 	bPlayingRunAttack = false;
 	bIgnoreNextInterrupt = false;
 
+	// Dash-attack (estilo Hades): atacar DURANTE o dash (ou na grace logo apos) cancela o
+	// dodge e vira a estocada. Detecta pela ABILITY ativa, nao pela tag State.Movement.Dashing
+	// — a tag e o i-frame (0.25s do GE) e nao cobre a recovery do dodge. O cancel roda ANTES
+	// do lock de rotacao abaixo: o EndAbility do dash restaura bOrientRotationToMovement,
+	// e o lock precisa salvar o valor ja restaurado.
+	bool bDashAttack = false;
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		bool bDashActive = false;
+		for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+		{
+			if (Spec.IsActive() && Spec.Ability && Spec.Ability->IsA(UGA_Dash::StaticClass()))
+			{
+				bDashActive = true;
+				break;
+			}
+		}
+
+		const UDDRCombatComponent* CombatForDash = GetDDRCombatComponent();
+		const float TimeSinceDash = CombatForDash ? CombatForDash->GetTimeSinceDashEnded() : FLT_MAX;
+		const bool bInGrace = TimeSinceDash <= DashAttackGraceSeconds;
+		bDashAttack = RunAttackMontage && (bDashActive || bInGrace);
+
+		UE_LOG(LogDDR, Log, TEXT("[ATK] %s ATIVADO -> %s (dashAtivo=%d graceT=%.2f<=%.2f? %d) t=%.2f"),
+			*GetClass()->GetName(),
+			bDashAttack ? TEXT("DASH-ATTACK (estocada)") : TEXT("combo normal"),
+			bDashActive ? 1 : 0,
+			TimeSinceDash > 999.f ? 999.f : TimeSinceDash, DashAttackGraceSeconds, bInGrace ? 1 : 0,
+			GetWorld()->GetTimeSeconds());
+
+		if (bDashActive)
+		{
+			FGameplayTagContainer DashTags(DDRTags::Ability_Dash);
+			ASC->CancelAbilities(&DashTags);
+		}
+	}
+
 	// Trava a rotação durante o combo: o facing do SOFT-LOCK manda (WASD não gira o corpo
 	// no meio do golpe). Restaurada no EndAbility.
 	if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
@@ -105,10 +143,7 @@ void UGA_AttackLight::ActivateAbility(
 		Combat->FaceAndSetupMotionWarp(GetMotionWarpProfile(), ShouldPreferAirborneTargets());
 	}
 
-	// Opener em corrida: combo COMECANDO + velocidade alta + montage setada.
-	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-	const float Speed2D = Character ? Character->GetVelocity().Size2D() : 0.f;
-	if (RunAttackMontage && Speed2D >= RunAttackMinSpeed)
+	if (bDashAttack)
 	{
 		bPlayingRunAttack = true;
 		PlayRunAttackOpener();
@@ -181,15 +216,20 @@ void UGA_AttackLight::InputPressed(
 
 	if (Combat->IsComboWindowOpen())
 	{
+		UE_LOG(LogDDR, Log, TEXT("[ATK] input na JANELA -> avanca t=%.2f"), GetWorld()->GetTimeSeconds());
 		TryAdvanceCombo();
 		return;
 	}
 
+	UE_LOG(LogDDR, Log, TEXT("[ATK] input FORA da janela -> buffer %.2fs t=%.2f"),
+		InputBufferSeconds, GetWorld()->GetTimeSeconds());
 	Combat->BufferAttackInput(InputBufferSeconds);
 }
 
 void UGA_AttackLight::OnMontageEnded()
 {
+	UE_LOG(LogDDR, Log, TEXT("[ATK] %s montage fim (recovery completa) t=%.2f"),
+		*GetClass()->GetName(), GetWorld()->GetTimeSeconds());
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
@@ -202,6 +242,8 @@ void UGA_AttackLight::OnMontageCancelled()
 		return;
 	}
 
+	UE_LOG(LogDDR, Log, TEXT("[ATK] %s montage INTERROMPIDA (dash/launcher/outro golpe) t=%.2f"),
+		*GetClass()->GetName(), GetWorld()->GetTimeSeconds());
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
@@ -220,6 +262,9 @@ void UGA_AttackLight::TryAdvanceCombo()
 	// Saindo do opener de corrida -> entra no combo normal (Atk1).
 	if (bPlayingRunAttack)
 	{
+		UE_LOG(LogDDR, Log, TEXT("[ATK] avanca: estocada -> %s t=%.2f"),
+			ComboSections.Num() > 0 ? *ComboSections[0].ToString() : TEXT("?"),
+			GetWorld()->GetTimeSeconds());
 		bPlayingRunAttack = false;
 		ComboIndex = 0;
 		bIgnoreNextInterrupt = true; // Montage_Play novo interrompe a task do opener
@@ -239,8 +284,14 @@ void UGA_AttackLight::TryAdvanceCombo()
 	const int32 NextIndex = ComboIndex + 1;
 	if (NextIndex >= ComboSections.Num())
 	{
+		UE_LOG(LogDDR, Log, TEXT("[ATK] sem proxima secao (fim do combo em %s)"),
+			*ComboSections[ComboIndex].ToString());
 		return;
 	}
+
+	UE_LOG(LogDDR, Log, TEXT("[ATK] avanca: %s -> %s t=%.2f"),
+		*ComboSections[ComboIndex].ToString(), *ComboSections[NextIndex].ToString(),
+		GetWorld()->GetTimeSeconds());
 
 	ComboIndex = NextIndex;
 

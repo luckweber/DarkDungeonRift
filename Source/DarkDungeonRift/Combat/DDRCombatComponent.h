@@ -75,6 +75,11 @@ public:
 	/** Copia tuning do GA_AirAttack ao ativar (fallback = valores no Combat Component). */
 	void ApplyAirAttackJuggleTuning(float InJuggleTargetHeightAbovePlayer, float InAirPopVerticalNudgeScale);
 
+	/** Chamado pelo GA_Dash no EndAbility — abre a janela de grace do dash-attack. */
+	void NotifyDashEnded();
+	/** Segundos desde o fim do último dash (FLT_MAX se nunca dashou). */
+	float GetTimeSinceDashEnded() const;
+
 private:
 	bool CanHitActor(AActor* OtherActor) const;
 	void ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params);
@@ -115,8 +120,13 @@ private:
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air")
 	float PlayerAirHoldSeconds = 1.4f;       // auto-drop do PLAYER se ocioso no ar
 
-	/** Fallback global — GA_Launcher (entrada) e GA_AirAttack (pop) sobrescrevem ao ativar. */
+	/** Slam "reivindica" o alvo: hold estendido durante a descida (o impacto derruba antes). */
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air")
+	float SlamTargetHoldSeconds = 2.f;
+
+	/** Fallback global — GA_Launcher (entrada) e GA_AirAttack (pop) sobrescrevem ao ativar.
+	 *  Negativo = alvo fica ABAIXO do player (golpes aéreos descendentes). */
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat|Air", meta = (UIMin = "-150", UIMax = "300"))
 	float JuggleTargetHeightAbovePlayer = 60.f;
 
 	/** Fallback global — GA_AirAttack sobrescreve ao ativar. */
@@ -188,6 +198,9 @@ private:
 	bool bAirCarryActive = false;
 	float AirCarryForwardOffset = 90.f;
 	TWeakObjectPtr<AActor> ActiveJuggleTarget;
+
+	/** World time do fim do último dash (grace do dash-attack). */
+	float LastDashEndTimeSeconds = -1.f;
 
 	TSet<TWeakObjectPtr<AActor>> HitActorsThisSwing;
 };

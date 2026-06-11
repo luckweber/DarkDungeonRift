@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "DDRAbilityInput.h"
 #include "DDRCombatComponent.h"
+#include "DDRLog.h"
 
 void UANS_DDRComboWindow::NotifyBegin(
 	USkeletalMeshComponent* MeshComp,
@@ -23,6 +24,7 @@ void UANS_DDRComboWindow::NotifyBegin(
 
 		if (Combat->HasBufferedAttack())
 		{
+			UE_LOG(LogDDR, Log, TEXT("[ATK] buffer CONSUMIDO na abertura da janela"));
 			if (UAbilitySystemComponent* ASC = MeshComp->GetOwner()->FindComponentByClass<UAbilitySystemComponent>())
 			{
 				ASC->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::Attack));

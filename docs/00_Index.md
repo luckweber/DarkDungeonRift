@@ -84,7 +84,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 56 | [Combate Defensivo](combat/56_Defensive_Combat.md) 🆕 | Perfect-dodge (M1), parry ofensivo (P1), dodge-offset — consolida Review de Combate |
 | 57 | [M1: Combo no Editor](combat/57_M1_Combo_Editor_Setup.md) 🆕 | **Setup real** da `AM_Combo` + `BP_GA_AttackLight`: seções **SEM link**, combo window, buffer 0.25s, **Motion Warp por seção** (§2b) |
 | 59 | [Dodge Direcional 8-Way](combat/59_Directional_Dodge.md) 🆕 | **8 direções: sim, pelo motivo certo** (dash-cancel mantém facing); `AM_Dodge` por seções + trava de rotação no `GA_Dash` |
-| 60 | [M2 Editor Setup ★](systems/60_M2_Editor_Setup.md) 🆕 | **O PILAR no editor:** launcher/juggle/slam, **soft-lock + Motion Warping** (§7), sombra blob, run-attack, combo nodes (§9) |
+| 60 | [M2 Editor Setup ★](systems/60_M2_Editor_Setup.md) 🆕 | **O PILAR no editor:** launcher/juggle/slam, **soft-lock + Motion Warping** (§7), sombra blob, dash-attack, combo nodes (§9) |
 
 ### 🔬 Deep Dives — Combate · Habilidades · Feel · Juice 🆕
 > Aprofundamentos escritos pela *writers' room* (4 agentes-autores). Leia após os overviews (15/16). Jogo **single-player** (local-authoritative) → combate agressivo, slow-mo livre.

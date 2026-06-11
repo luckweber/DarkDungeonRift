@@ -70,13 +70,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Attack", meta = (ClampMin = "0.05"))
 	float InputBufferSeconds = 0.3f;
 
-	// OPENER em corrida (Run_Attack_01): se Speed >= RunAttackMinSpeed ao INICIAR o combo,
-	// toca esta montage primeiro; a janela dela encadeia no Atk1 do combo normal.
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Attack|RunAttack")
+	// OPENER dash-attack (estilo Hades): atacar DURANTE o dash (ou ate DashAttackGraceSeconds
+	// depois) cancela o dodge e toca esta montage (Run_Attack_01 — estocada com avanco
+	// autorado no RM); a janela dela encadeia no Atk1 do combo normal.
+	// Nome C++ continua "RunAttackMontage" para nao perder o assign serializado no BP.
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Attack|DashAttack", meta = (DisplayName = "Dash Attack Montage"))
 	TObjectPtr<UAnimMontage> RunAttackMontage;
 
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Attack|RunAttack")
-	float RunAttackMinSpeed = 450.f;
+	/** Janela pos-dash em que o ataque ainda vira dash-attack (s). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Attack|DashAttack", meta = (ClampMin = "0", ClampMax = "0.5"))
+	float DashAttackGraceSeconds = 0.15f;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Attack")
 	int32 ComboIndex = 0;

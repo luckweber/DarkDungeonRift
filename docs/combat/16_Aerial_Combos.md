@@ -77,7 +77,7 @@ O segredo do juggle é o alvo **não cair rápido**:
 | Variável | Valor inicial | Função |
 |---|---|---|
 | **Hang-time alvo por hit** | ~1.1 s (`TargetAirborneHoldSeconds`) | Timer renovado a cada hit |
-| **Co-altitude por hit** | ~60 cm (`JuggleTargetHeightAbovePlayer`) | Alvo fica **relativo ao `AirAnchorZ` do player**, não stack de +150 cm |
+| **Co-altitude por hit** | ~60 cm (`JuggleTargetHeightAbovePlayer`) — **aceita negativo** (alvo ABAIXO do player; ~-30 a -60 pros swings descendentes) | Alvo fica **relativo ao `AirAnchorZ` do player**, não stack de +150 cm |
 | **Nudge extra por hit** | ×0.15 (`AirPopVerticalNudgeScale`) | Pequeno bump com decay — anti-infinito sem subir ao céu |
 | **decayFactor** | 0.85 (`AirPopDecay`) | Nudge *= decay^hits |
 | **Cap de hits no ar** (`MaxJuggleHits`) | **7** | Teto anti-abuse (`UDDRCombatComponent`) |
@@ -129,14 +129,23 @@ GA_AirAttack (Ability.Attack.Air):
 Fecha o combo com **peso**:
 
 ```
-GA_AirSlam (Ability.Attack.AirSlam):
-  1. toca AM_Slam (golpe descendente)
-  2. RootMotionSource desce o PLAYER rápido até o chão
-  3. RootMotionSource arremessa o ALVO pro chão (posição final = chão, por colisão)
-  4. no impacto com o chão:
-       - HARD LAND (doc 13 §6): GameplayCue.Land.Hard (poeira + shake forte)
-       - dano em ÁREA (sphere overlap) nos inimigos próximos
-       - remove tags airborne (alvo "cai" do juggle)
+GA_AirSlam (Ability.Attack.AirSlam) — como implementado:
+  1. toca AM_AirSlam seção "Start"; C++ liga Start→Loop e self-loopa o Loop
+       (Montage_SetNextSection — queda de qualquer altura, sem segurar botão)
+  2. ExitAirCombat(slam): sai do hold aéreo + ESTENDE o hold do ALVO juggleado (~2s)
+       → e o slam FORÇA Falling + velZ -3500 INCONDICIONALMENTE (mesmo se R cortou
+       o launcher no meio da montage, quando o hold aéreo nem começou)
+       (a descida é VELOCITY, não root motion — o slam força IgnoreRootMotion
+        no AnimInstance durante a queda e restaura no fim)
+  2b. homing: velocity XY mira o alvo do soft-lock (cap 350cm — whiff honesto)
+  2c. APEX (coreografia): o golpe da ativação JÁ arremessa o alvo a -4500
+       (mais rápido que o player -3500 → ele esmaga no chão PRIMEIRO)
+       + hit-stop 2f ("agarrão") + GameplayCue.Hit.Light no alvo
+  3. no pouso (LandedDelegate):
+       - Montage_JumpToSection("End") + GameplayCue.Slam (poeira + shake forte)
+       - AoE em COLUNA vertical (raio 250 × altura 450): dano em área
+       - bSlamDownTargets: todo Airborne na coluna → EndAirborne(slam) → despenca
+         (coluna, não esfera — o alvo juggleado está ~300cm ACIMA do ponto de pouso)
 ```
 
 > 💥 O slam é o **clímax** — onde todo o juice se concentra (hitstop maior, shake forte, AoE). Reusa o **Hard Land** do [doc 13 §6](../locomotion/13_Jump_Fall_Landing.md): o sistema de pouso por altura serve diretamente aqui. É por isso que "Height-Based Fall to Landing" é P1 e não P2.

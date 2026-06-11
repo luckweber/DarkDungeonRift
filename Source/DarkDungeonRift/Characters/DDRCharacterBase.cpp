@@ -7,6 +7,7 @@
 #include "DDRCharacterMovementComponent.h"
 #include "DDRCombatComponent.h"
 #include "DDRGameplayTags.h"
+#include "DDRLog.h"
 #include "Components/StaticMeshComponent.h"
 #include "MotionWarpingComponent.h"
 #include "TimerManager.h"
@@ -97,6 +98,9 @@ void ADDRCharacterBase::StartAirborne(float RiseHeight, float HoldSeconds)
 	}
 
 	RestartAirborneHoldTimer(HoldSeconds);
+
+	UE_LOG(LogDDR, Log, TEXT("[AIRBORNE] %s StartAirborne rise=%.0f hold=%.2f targetZ=%.0f t=%.2f"),
+		*GetName(), RiseHeight, HoldSeconds, AirborneTargetZ, GetWorld()->GetTimeSeconds());
 }
 
 void ADDRCharacterBase::ApplyAirPop(float PopHeight, float HoldSeconds)
@@ -121,6 +125,9 @@ void ADDRCharacterBase::SetAirborneTargetZ(const float NewTargetZ, const float H
 	++AirborneHitCount;
 	AirborneTargetZ = NewTargetZ;
 	RestartAirborneHoldTimer(HoldSeconds);
+
+	UE_LOG(LogDDR, Log, TEXT("[AIRBORNE] %s SetTargetZ=%.0f hits=%d hold=%.2f t=%.2f"),
+		*GetName(), NewTargetZ, AirborneHitCount, HoldSeconds, GetWorld()->GetTimeSeconds());
 }
 
 void ADDRCharacterBase::OverrideAirborneTargetZ(const float NewTargetZ)
@@ -133,12 +140,33 @@ void ADDRCharacterBase::OverrideAirborneTargetZ(const float NewTargetZ)
 	AirborneTargetZ = NewTargetZ;
 }
 
+void ADDRCharacterBase::ExtendAirborneHold(const float HoldSeconds)
+{
+	if (!bAirborneActive)
+	{
+		UE_LOG(LogDDR, Warning, TEXT("[AIRBORNE] %s ExtendAirborneHold IGNORADO (nao esta airborne) t=%.2f"),
+			*GetName(), GetWorld()->GetTimeSeconds());
+		return;
+	}
+
+	RestartAirborneHoldTimer(HoldSeconds);
+
+	UE_LOG(LogDDR, Log, TEXT("[AIRBORNE] %s hold ESTENDIDO %.2fs (slam) t=%.2f"),
+		*GetName(), HoldSeconds, GetWorld()->GetTimeSeconds());
+}
+
 void ADDRCharacterBase::EndAirborne(bool bSlammed)
 {
 	if (!bAirborneActive)
 	{
+		UE_LOG(LogDDR, Warning, TEXT("[AIRBORNE] %s EndAirborne IGNORADO (ja nao esta airborne) slammed=%d t=%.2f"),
+			*GetName(), bSlammed ? 1 : 0, GetWorld()->GetTimeSeconds());
 		return;
 	}
+
+	UE_LOG(LogDDR, Log, TEXT("[AIRBORNE] %s EndAirborne slammed=%d z=%.0f vel=%.0f t=%.2f"),
+		*GetName(), bSlammed ? 1 : 0, GetActorLocation().Z,
+		bSlammed ? SlammedFallVelocity : 0.f, GetWorld()->GetTimeSeconds());
 
 	bAirborneActive = false;
 	AirborneHitCount = 0;
@@ -174,6 +202,8 @@ void ADDRCharacterBase::RestartAirborneHoldTimer(float HoldSeconds)
 
 void ADDRCharacterBase::OnAirborneHoldExpired()
 {
+	UE_LOG(LogDDR, Log, TEXT("[AIRBORNE] %s hold EXPIROU (queda natural) t=%.2f"),
+		*GetName(), GetWorld()->GetTimeSeconds());
 	EndAirborne(/*bSlammed=*/false);
 }
 

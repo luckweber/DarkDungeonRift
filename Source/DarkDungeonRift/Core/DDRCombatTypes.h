@@ -45,7 +45,8 @@ struct FDDRMeleeSweepParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air", meta = (EditCondition = "bCarryAirborneTargets", ClampMin = "0"))
 	float AirCarryForwardOffset = 90.f;
 
-	// Sweep vira AoE esférico centrado no dono (slam): ignora lâmina/forward.
+	// Sweep vira AoE no dono (slam): COLUNA vertical — esfera de SweepRadius varrida do
+	// dono para cima por SweepReach cm (alcança o alvo juggleado no alto). Ignora lâmina/forward.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air")
 	bool bAoEAtOwner = false;
 

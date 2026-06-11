@@ -1,8 +1,8 @@
 # 60 — M2 Editor Setup (passo a passo) · 🟢 P0 ★ O PILAR
 
-> **O que fazer no Unreal Editor** depois de compilar o C++ do **M2 — VOAR** (launcher → juggle → slam). O código entrega tudo; **você** cria 3 montages, 2 inputs, BPs filhos e a **sombra no chão**. Inclui o **run-attack** e a resposta sobre **editor de combo com nodes** (§8).
+> **O que fazer no Unreal Editor** depois de compilar o C++ do **M2 — VOAR** (launcher → juggle → slam). O código entrega tudo; **você** cria 3 montages, 2 inputs, BPs filhos e a **sombra no chão**. Inclui o **dash-attack** (estilo Hades) e a resposta sobre **editor de combo com nodes** (§8).
 
-> **Pré-req:** M1 completo ([55](55_M1_Editor_Setup.md)). **Classes C++ novas:** `UGA_Launcher` · `UGA_AirAttack` · `UGA_AirSlam` · `UGE_DDRCooldownLauncher` + API airborne em `ADDRCharacterBase` (StartAirborne/ApplyAirPop/EndAirborne) + estado aéreo no `UDDRCombatComponent` (EnterAirCombat/RefreshAirHold/ExitAirCombat) + flags novos no `ANS_DDRHitbox` (`bLaunchTargets`/`bAirPop`/`bAoEAtOwner`/`bSlamDownTargets`) + **run-attack opener** no `GA_AttackLight` + **soft-lock + Motion Warping** (`UMotionWarpingComponent`, `FaceAndSetupMotionWarp`, perfis por ability).
+> **Pré-req:** M1 completo ([55](55_M1_Editor_Setup.md)). **Classes C++ novas:** `UGA_Launcher` · `UGA_AirAttack` · `UGA_AirSlam` · `UGE_DDRCooldownLauncher` + API airborne em `ADDRCharacterBase` (StartAirborne/ApplyAirPop/EndAirborne) + estado aéreo no `UDDRCombatComponent` (EnterAirCombat/RefreshAirHold/ExitAirCombat) + flags novos no `ANS_DDRHitbox` (`bLaunchTargets`/`bAirPop`/`bAoEAtOwner`/`bSlamDownTargets`) + **dash-attack opener** (estilo Hades) no `GA_AttackLight` + **soft-lock + Motion Warping** (`UMotionWarpingComponent`, `FaceAndSetupMotionWarp`, perfis por ability).
 
 > **Docs:** [16 Combos Aéreos](../combat/16_Aerial_Combos.md) · [18 Combate Profundo §6](../combat/18_Combat_System_Deep.md) · [19 Abilities](../combat/19_Abilities_Deep.md) · [17 Roadmap M2](../17_Implementation_Roadmap.md)
 
@@ -49,8 +49,8 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 > | Ability BP | Campo | Uso |
 > |---|---|---|
 > | `BP_GA_Launcher` | **Launch Rise Height** | altura do inimigo no uppercut (250–350) |
-> | `BP_GA_Launcher` | **Juggle Target Height Above Player** | co-altitude ao *entrar* no ar |
-> | `BP_GA_AirAttack` | **Juggle Target Height Above Player** | co-altitude a cada hit (`bAirPop`) |
+> | `BP_GA_Launcher` | **Juggle Target Height Above Player** | co-altitude ao *entrar* no ar — **negativo = alvo abaixo do player** |
+> | `BP_GA_AirAttack` | **Juggle Target Height Above Player** | co-altitude a cada hit (`bAirPop`) — negativo (~-30 a -60) "assenta" o alvo na lâmina dos swings descendentes |
 > | `BP_GA_AirAttack` | **Air Pop Vertical Nudge Scale** | nudge extra por hit (~0.15) |
 >
 > O **Combat Component** no player guarda só **fallback** global — as abilities copiam os valores ao ativar.
@@ -81,13 +81,19 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 
 ---
 
-## 4. `AM_AirSlam` — o finisher
+## 4. `AM_AirSlam` — o finisher (3 fases: Start → Loop → End)
 
-**Clips:** `Attack_Air_To_Floor_Start_01_Seq` + `Attack_Air_To_Floor_End_01_Seq` (o `_Loop_01` fica de fora no MVP — a descida é rápida; vira seção "Loop" P1 pra quedas altas).
+**Clips:** `Attack_Air_To_Floor_Start_01_Seq` + `Attack_Air_To_Floor_Loop_01_Seq` + `Attack_Air_To_Floor_End_01_Seq` (pasta `08_Attack_Air_to_Floor_01`).
 
-1. Montage **`AM_AirSlam`** com **2 seções**: `Start` e `End`. **Clear!**
-2. **`EnableRootMotion = ❌ FALSE`** — a descida real é o código (velocity -3500).
-3. **NÃO** precisa de hitbox notify: o **AoE do impacto é o código** (raio 250, dano 25, hit-stop 6 frames, derruba todos os Airborne) — dispara no **pouso** (LandedDelegate → pula pra seção `End` + `GameplayCue.Slam`).
+1. Montage **`AM_AirSlam`** com **3 seções**: `Start`, `Loop`, `End` (nomes **exatos**). ⚠️ **Montage Sections → Clear** como sempre — quem encadeia é o **C++**: na ativação ele liga `Start→Loop` e **self-loopa** o `Loop` (`Montage_SetNextSection`); o **pouso** (`LandedDelegate`) pula pra `End`. A queda dura o que durar — o Loop dá quantas voltas precisar.
+2. **Root Motion:** `Start`/`Loop` = **❌ OFF** (clareza) — mas o código agora **força `IgnoreRootMotion` durante o slam** (restaurado no fim): mesmo com RM ON no clip, a descida é sempre a velocity -3500. *(Antes, RM ON fazia a anim dirigir a cápsula e matar a queda — player "boiando".)*
+3. **NÃO** precisa de hitbox notify: o **AoE do impacto é o código** — uma **COLUNA vertical** (raio 250 × altura `Slam Vertical Reach` 450, tunável no `BP_GA_AirSlam`): dano 25, hit-stop 6 frames, **derruba todos os Airborne** — inclusive o alvo juggleado lá no alto — + `GameplayCue.Slam`.
+4. **Alvo seguro + homing (código, nada a configurar):** ao ativar, o slam **(a)** estende o hold do alvo juggleado (`Slam Target Hold Seconds` = 2s no Combat Component); **(b)** **mira o XY do alvo** na descida (`bHomeToTarget`; cap `Slam Homing Max Distance` 350cm = whiff honesto; vel. máx 1800) — a coluna **sempre conecta** no alvo perseguido. ⚠️ Motion warping de engine **não** serve aqui: warp é *root motion*, e a descida é *velocity*.
+5. **Coreografia do impacto (feel, código):** o golpe do **apex** (frame da ativação, o swing do `Start`) **já arremessa o alvo** — ele cai a `SlammedFallVelocity` **-4500** (na base do personagem; mais rápido que o player a -3500) e **esmaga no chão PRIMEIRO**. Beats de juice: **hit-stop 2 frames no apex** (`Slam Grab Hit Stop Frames`) + **hit-stop 6 no impacto** (AoE) + `GameplayCue.Hit.Light` no apex e `GameplayCue.Slam` no pouso — os cues são os **ganchos pro juice visual** (shake/poeira/trail = BP, [21](../feel/21_Juice_FX.md)). Toggle: `bSlamClaimedTargetOnActivate` (OFF = alvo só cai com o AoE do pouso, comportamento antigo).
+
+> 🎮 **"Segurar R pra loopar?" NÃO.** O `Loop` existe pra **distância de queda variável** (anchor mais alto, desnível de arena) — quem decide quantas voltas ele dá é o **tempo de queda**, não o input. Slam é **comprometido** ([15 §6](../combat/15_Combat_Overview.md)): apertou R, desce até o impacto. Pairar segurando botão conflitaria com o auto-drop do juggle e tiraria o peso do finisher.
+
+> 🧷 **MVP 2 seções ainda vale:** sem a seção `Loop`, se o clip `Start` acabar antes do pouso o código **segura a ability** até o `LandedDelegate` — o AoE nunca se perde (build antiga encerrava cedo e o slam "secava").
 
 ---
 
@@ -100,7 +106,7 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 | `BP_GA_AirAttack` (← `GA_AirAttack`) | Combo Montage | `AM_AirCombo` |
 | `BP_GA_AirAttack` | **Juggle Target Height Above Player** · **Air Pop Vertical Nudge Scale** | tuning do juggle (§3) |
 | `BP_GA_AirSlam` (← `GA_AirSlam`) | Slam Montage | `AM_AirSlam` |
-| `BP_GA_AttackLight` (já existe) | **Run Attack Montage** | `AM_RunAttack` (§6) |
+| `BP_GA_AttackLight` (já existe) | **Dash Attack Montage** | `AM_RunAttack` (§6 — dash-attack) |
 
 No `BP_DDRPlayer` → **Startup Abilities** (5 entradas): troque as classes C++ pelos BPs:
 `BP_GA_AttackLight`(Attack) · `BP_GA_AirAttack`(**Attack** — mesmo botão!) · `BP_GA_Dash`(Dash) · `BP_GA_Launcher`(Launcher) · `BP_GA_AirSlam`(AirSlam).
@@ -109,15 +115,17 @@ No `BP_DDRPlayer` → **Startup Abilities** (5 entradas): troque as classes C++ 
 
 ---
 
-## 6. ⚔️ Run-Attack (sua pergunta: SIM, é barato!)
+## 6. ⚔️ Dash-Attack (estilo Hades)
 
-**Clip:** `Run_Attack_01_Seq` (pasta `12_Run_Attact`).
+**Clip:** `Run_Attack_01_Seq` (pasta `12_Run_Attact`) — a estocada já parece "dash + golpe": é exatamente o que ela vira aqui.
 
 1. Montage **`AM_RunAttack`** (sem seções; `EnableRootMotion = TRUE` — o avanço da estocada é autorado).
 2. Notifies: **`ANS_DDRHitbox`** normal (Damage ~14) + **`ANS_DDRComboWindow`** na recovery.
-3. Assign no `BP_GA_AttackLight` → **Run Attack Montage** (threshold: `Run Attack Min Speed = 450`).
+3. Assign no `BP_GA_AttackLight` → **Dash Attack Montage** (grace: `Dash Attack Grace Seconds = 0.15`).
 
-**Como funciona (código):** apertou ataque **correndo ≥450 u/s** → toca o run-attack como **OPENER**; input na janela dele → **encadeia direto no Atk1** do combo normal. Parado/andando → combo normal direto. Zero botão novo.
+**Como funciona (código):** apertou ataque **durante o dash** (ou até **0.15s** depois — grace) → o código **cancela o dodge** e toca a estocada como **OPENER**; input na janela dela → **encadeia direto no Atk1** do combo normal. Parado/andando/correndo → combo normal direto. Zero botão novo.
+
+> 🎯 **Por que dash+attack (e não correr+attack):** o gatilho por velocidade (versão antiga, ≥450 u/s) disparava sozinho em qualquer ataque em movimento — o jogador não *pedia* a estocada. **Dash→LMB é input deliberado** (Hades): o dash já orientou o corpo, a estocada completa o gap. Detecção: **ability do dash ativa** (cobre a recovery do dodge) — *não* a tag `State.Movement.Dashing`, que é a janela de **i-frame** (0.25s do GE) e tem outra semântica de propósito.
 
 ---
 
@@ -158,7 +166,7 @@ Warp target name canônico: **`AttackWarp`** (não mude).
 | Ability | Perfil | Max warp | O que faz |
 |---|---|---|---|
 | `GA_AttackLight` | **Ground** | 200 cm | lunge horizontal no swing |
-| Run-attack opener | **RunAttack** | 200 cm | mesma lógica, alcance maior na estocada |
+| Dash-attack opener | **RunAttack** | 200 cm | mesma lógica, alcance maior na estocada |
 | `GA_AirAttack` | **Air** | 120 cm | ajuste fino — alvo já está perto no juggle |
 | `GA_Launcher` | **Launcher** | 180 cm | fecha gap **horizontal**; subida = RM do clip |
 | `GA_AirSlam` | **Slam** | — | só **encara** o alvo; descida = velocity do código |
@@ -177,7 +185,7 @@ Tune no **Combat Component** do `BP_DDRPlayer`:
 
 ### 7.3 Montage — adicionar janela Motion Warping (EDITOR)
 
-Em **cada** montage que avança o corpo (combo chão, run-attack, launcher — **não** nos clips aéreos puros):
+Em **cada** montage que avança o corpo (combo chão, dash-attack, launcher — **não** nos clips aéreos puros):
 
 #### Combo seccionado (`AM_Combo`) — **uma janela por seção**
 
@@ -273,13 +281,28 @@ Sua intuição (grafo com conectores + regras "se está no ar") está **correta*
 | **E** acertando o dummy | dummy sobe 300cm e **segura**; player **sobe junto** (RM do clip) e **trava no ar** |
 | **LMB no ar** | air combo (Air1→Air2); cada hit **re-flutua** o dummy (cada vez menos — decay) |
 | Parar de atacar no ar ~1.4s | player **cai** sozinho (auto-drop) |
-| **R no ar** | desce em slam → **AoE no impacto** (dano + hit-stop pesado) + dummy **despenca** |
+| **R no ar** | desce em slam (Start→Loop) → no pouso pula pra End + **AoE coluna** (dano + hit-stop pesado) + dummy juggleado **despenca** |
 | 7+ hits aéreos | dummy cai (cap do juggle) |
-| LMB **correndo** (≥450) | **run-attack** avança; janela → encadeia no combo |
+| **Dash → LMB** (durante o dodge ou ≤0.15s após) | dash cancela → **estocada** avança; janela → encadeia no combo |
 | `ddr.CombatDebug 1` | sweeps + soft-lock (ciano) + warp point (magenta) + AoE slam |
 | Acertar dummy ~2m de frente | soft-lock + warp | §7 — sem isso = swing no vazio |
 
 **✅ M2 pronto quando:** lançar → combar → slam **é divertido e você LÊ a altura** (sombra!). Mostre pra alguém sem explicar — se entender "o inimigo subiu", o pilar está provado ([17 §4](../17_Implementation_Roadmap.md)). 🎯
+
+### 10b. 🔬 Logs de refino (Output Log, filtre `LogDDR`)
+
+Toda a cadeia de combate loga com prefixo + timestamp — é a régua pra tunar feel (cadência, janela, buffer):
+
+| Prefixo | Cobre | Use para tunar |
+|---|---|---|
+| `[ATK]` | ativação (combo vs dash-attack), janela ABRE/FECHA, input na janela/buffer, buffer consumido, avanço de seção, fim/interrupção | **janela de combo** (notify cedo/tarde), `InputBufferSeconds`, cadência Atk1→Atk4 (Δt entre "avanca") |
+| `[ATK-AIR]` | roteamento InAir, tuning do juggle, hold renovado | co-altitude/nudge, auto-drop |
+| `[DASH]` | direção, seção 8-way, modo (RM/força), fim (cancelled=1 = dash-attack cortou) | `DashDistance/Duration`, grace do dash-attack |
+| `[HIT]` | cada hit: alvo, seção, dano, blade sweep | dano por seção, hits fantasma |
+| `[WARP]` | perfil, alvo, aplicado ou "fora do cap" | `MaxWarpDistance*`, soft-lock errando alvo |
+| `[SLAM]` / `[AIRBORNE]` | ciclo do slam e do juggle do alvo | ver §4 |
+
+**Como medir a cadência:** os `t=` são segundos de jogo — Δt entre `janela ABRE` e o `input na JANELA` mostra quão apertada a janela está; Δt entre dois `[ATK] avanca` é o ritmo real do combo.
 
 ---
 
@@ -293,7 +316,7 @@ Sua intuição (grafo com conectores + regras "se está no ar") está **correta*
 | Player flutua após whiff/cancel do launcher | build antiga (sem restauração de Falling) | recompile — `EndAbility` restaura |
 | Alvo não sobe | `bLaunchTargets` desmarcado no notify | §2 passo 3 |
 | Alvo cai rápido demais | hold/pop baixos | `TargetAirborneHoldSeconds` no Combat Component (BP) |
-| **Inimigo sobe muito acima do player** (no combo) | `AirPop` stackava +150cm/hit | tune **`BP_GA_AirAttack`** → Juggle Target Height (~60) + Air Pop Nudge (~0.15) |
+| **Inimigo sobe muito acima do player** (no combo) | `AirPop` stackava +150cm/hit | tune **`BP_GA_AirAttack`** → Juggle Target Height (~60; **aceita negativo** = alvo abaixo do player) + Air Pop Nudge (~0.15) |
 | **Soft-lock no inimigo no céu** (você no chão) | sem filtro de ΔZ | `SoftLockMaxVerticalGap` (~220) no Combat Component (fallback global) |
 | **Player teleporta para baixo** após launcher | `AirAnchorZ` puxava pro Z do inimigo | recompile — ancora no **pulo do player**; inimigo alinha depois (§2) |
 | Launcher: inimigo sobe pouco / player muito alto | `LaunchRiseHeight` ≠ ΔZ do clip RM | tune **Launch Rise Height** no `BP_GA_Launcher` (§2) |
@@ -305,11 +328,17 @@ Sua intuição (grafo com conectores + regras "se está no ar") está **correta*
 | AirAttack não ativa | `BP_GA_AirAttack` sem **Combo Montage** = `AM_AirCombo` | §5 · seções `Air1`–`Air4` |
 | AirAttack não ativa | falta `BP_GA_AirAttack` no Startup Abilities (Input **Attack**) | §5 — **duas** abilities no mesmo InputID |
 | **Crash em `GetDDRCombatComponent` / air combo** | build antiga chamava `InputPressed` manual no ASC | recompile — roteamento InAir usa só `TryActivate` + `Super` |
-| Slam não muda pra "End" | nomes das seções (`Start`/`End` exatos) | §4 |
-| Slam sem dano | — (AoE é código; confira `ddr.CombatDebug 1`) | raio 250 alcança? |
+| Slam não muda pra "End" | nomes das seções (`Start`/`Loop`/`End` exatos) | §4 |
+| **Dummy fica PENDURADO no ar pra sempre** (slam e hold expirado não derrubam) | dummy **sem Controller**: o CMC pula `PerformMovement` (gate `bRunPhysicsWithNoController`, default false) — `EndAirborne` setava Falling -3000 e **nada acontecia**. A subida funcionava (é `SetActorLocation` da base), só a QUEDA dependia do CMC | recompile — `bRunPhysicsWithNoController = true` no `ADDRTrainingDummy`. ⚠️ Vale pra **qualquer** alvo juggleável sem AIController |
+| **Slam: dummy juggleado não cai nem toma dano** | (a) AoE antigo era **esfera no pouso** — alvo a ~300cm ficava fora · (b) hold do alvo (1.1s) **expirava na descida** e ele já estava no chão no impacto | recompile — AoE virou **coluna** (250 × 450) + slam **estende o hold do alvo** (2s); confira com `ddr.CombatDebug 1` (esferas vermelhas = hit) |
+| Player desce devagar / "boiando" no slam | **RM ON** no clip `Start`/`Loop` dirigia a cápsula e anulava a velocity -3500 | recompile — código força `IgnoreRootMotion` no slam (§4); mantenha RM OFF por clareza |
+| Slam desce reto e erra alvo distante | além do cap de homing (350cm) | design (whiff honesto) — tune `Slam Homing Max Distance` no `BP_GA_AirSlam` |
+| **Slam "boia" num arco longo preso no Loop** (dummy já no chão) | **R durante a montage do launcher**: a tag `InAir` entra no hit mas o hold aéreo só começa no fim da montage → `ExitAirCombat` era no-op e sobrava a **velocity de SUBIDA** do launcher (log: `velZ` positivo + `ExitAirCombat IGNORADO`) | recompile — a descida virou **incondicional** na ativação (`Slam Fall Velocity` -3500 no `BP_GA_AirSlam`) |
+| Slam "seca" (sem AoE) em queda alta | montage sem `Loop` acabava antes do pouso (build antiga encerrava a ability cedo) | recompile · adicione a seção `Loop` (§4) |
 | Air combo toca as 2 seções de uma vez | seções linkadas | **Clear** ([57 §0](../combat/57_M1_Combo_Editor_Setup.md)) |
 | Não leio a altura | sem sombra blob | §7 — P0! |
-| Run-attack nunca sai | velocidade < 450 / montage não setada | §6 |
+| Dash-attack nunca sai | LMB fora do dash/grace (0.15s) / montage não setada no slot **Dash Attack Montage** | §6 |
+| **Depois do 1º juggle:** LMB no chão toca air combo / E não lança mais | tag `InAir` presa (count duplo — build antiga) | recompile — `SetLooseGameplayTagCount` zera no exit/whiff |
 | **Bate no vazio** perto do dummy | sem Motion Warp / warp name errado | §7.3 — target **`AttackWarp`** (não `None`) |
 | Personagem não avança no swing | falta notify Motion Warping na montage | §7.3 |
 | Olha pro alvo, esfera magenta, **zero lunge** | `Warp Target Name` = `None` ou typo | §7.3 — digite **`AttackWarp`** exato |

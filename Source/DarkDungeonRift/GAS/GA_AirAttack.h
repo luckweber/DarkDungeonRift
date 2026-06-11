@@ -39,8 +39,10 @@ protected:
 
 	virtual EDDRMotionWarpProfile GetMotionWarpProfile() const override { return EDDRMotionWarpProfile::Air; }
 
-	/** Co-altitude por hit do juggle (ANS_DDRHitbox com bAirPop). */
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|AirAttack|Juggle", meta = (ClampMin = "0"))
+	/** Co-altitude por hit do juggle (ANS_DDRHitbox com bAirPop).
+	 *  Negativo = alvo fica ABAIXO do player — os swings aereos costumam cortar pra baixo,
+	 *  entao um valor ~-30 a -60 pode "assentar" o alvo na lamina. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|AirAttack|Juggle", meta = (UIMin = "-150", UIMax = "300"))
 	float JuggleTargetHeightAbovePlayer = 60.f;
 
 	/** Nudge vertical extra por hit (× decay) — pequeno, não stack infinito. */

@@ -4,6 +4,7 @@
 
 #include "DDRAbilityInput.h"
 #include "DDRGameplayTags.h"
+#include "DDRLog.h"
 #include "GA_AirAttack.h"
 
 void UDDRAbilitySystemComponent::AbilityLocalInputPressed(int32 InputID)
@@ -21,7 +22,10 @@ void UDDRAbilitySystemComponent::AbilityLocalInputPressed(int32 InputID)
 				continue;
 			}
 
-			if (TryActivateAbility(Spec.Handle))
+			const bool bActivated = TryActivateAbility(Spec.Handle);
+			UE_LOG(LogDDR, Log, TEXT("[ATK-AIR] roteamento InAir: TryActivate(AirAttack) -> %s"),
+				bActivated ? TEXT("OK") : TEXT("FALHOU (gate/montage?)"));
+			if (bActivated)
 			{
 				return;
 			}

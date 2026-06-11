@@ -101,13 +101,13 @@ Formato de **ficha padronizada** (mesma ordem em todas, skimmable). Custos são 
 | **Owned** | `State.Combat.Attacking` |
 | **Req** | — |
 | **Block** | — (encadeia consigo via janela, não bloqueia) |
-| **Cancel** | — (é cancelada por Dash/Launcher, não cancela ninguém) |
+| **Cancel** | — no slot; **em código** cancela o `GA_Dash` quando ativa durante o dash (**dash-attack**, [60 §6](../systems/60_M2_Editor_Setup.md)). Fora isso é cancelada por Dash/Launcher |
 | **Custo** | nenhum (MVP) |
 | **Cooldown** | nenhum (governado pela montage) |
 | **Montage** | `AM_Combo` (seções Atk1→Atk4), Slot `DefaultSlot` |
 | **Instancing** | `InstancedPerActor`, **Retrigger = false** (avança seção, não re-ativa) |
 
-**Targeting (soft-lock + warp):** `FaceAndSetupMotionWarp(Ground)` no startup de **cada** golpe (Atk1 e a cada `AdvanceCombo`) — soft-lock → face → warp target `AttackWarp` (cap ~200 cm). Run-attack opener usa perfil `RunAttack`. A montage `AM_Combo` precisa de notify **Motion Warping** **em cada seção** (Atk1–4) — o C++ atualiza o alvo, mas o lunge só ocorre na seção que tem a janela. [57 §2b](57_M1_Combo_Editor_Setup.md) · [60 §7](../systems/60_M2_Editor_Setup.md) · spec [18 §6](18_Combat_System_Deep.md).
+**Targeting (soft-lock + warp):** `FaceAndSetupMotionWarp(Ground)` no startup de **cada** golpe (Atk1 e a cada `AdvanceCombo`) — soft-lock → face → warp target `AttackWarp` (cap ~200 cm). O **dash-attack opener** (LMB durante o dash ou grace 0.15s, [60 §6](../systems/60_M2_Editor_Setup.md)) usa perfil `RunAttack`. A montage `AM_Combo` precisa de notify **Motion Warping** **em cada seção** (Atk1–4) — o C++ atualiza o alvo, mas o lunge só ocorre na seção que tem a janela. [57 §2b](57_M1_Combo_Editor_Setup.md) · [60 §7](../systems/60_M2_Editor_Setup.md) · spec [18 §6](18_Combat_System_Deep.md).
 
 **Fluxo de Ability Tasks:**
 ```
@@ -220,7 +220,7 @@ ActivateAbility:
 
 | Propriedade | Default | Uso |
 |---|---|---|
-| `JuggleTargetHeightAbovePlayer` | 60 cm | Co-altitude por hit (`bAirPop` → `SetAirborneTargetZ`) |
+| `JuggleTargetHeightAbovePlayer` | 60 cm | Co-altitude por hit (`bAirPop` → `SetAirborneTargetZ`). **Aceita negativo** — alvo ABAIXO do player (~-30 a -60 assenta o alvo na lâmina dos swings descendentes) |
 | `AirPopVerticalNudgeScale` | 0.15 | Nudge extra × decay por hit |
 
 Ao ativar, `ApplyAirAttackJuggleTuning` copia para o `UDDRCombatComponent`. Cada golpe também chama `RefreshAirHold` (anti auto-drop do player).
@@ -245,30 +245,38 @@ Ao ativar, `ApplyAirAttackJuggleTuning` copia para o `UDDRCombatComponent`. Cada
 | **Cancel** | `Ability.Attack.Air` (corta o juggle pra fechar) |
 | **Custo** | nenhum |
 | **Cooldown** | nenhum (custo é "encerra o combo") |
-| **Montage** | `AM_Slam` (golpe descendente) |
+| **Montage** | `AM_AirSlam` — seções **`Start` → `Loop` (self-loop) → `End`**; encadeamento é do C++ (`Montage_SetNextSection`), seções SEM link no editor — [60 §4](../systems/60_M2_Editor_Setup.md) |
 | **Instancing** | `InstancedPerActor` |
 
 **Targeting:** `FaceAndSetupMotionWarp(Slam)` — só **face** (`bPreferAirborne`); **sem** lunge horizontal. **Sem** janela Motion Warp em `AM_AirSlam` — [60 §7.2](../systems/60_M2_Editor_Setup.md).
 
-**Fluxo de Ability Tasks:**
+**Fluxo de Ability Tasks (como implementado):**
 ```
 ActivateAbility:
-  1. CommitAbility
-  1b. FaceSoftLockTarget(bPreferAirborne=true)  // perfil Slam — sem warp
-  2. Task PlayMontageAndWait(AM_Slam)
-  3. No notify "Combat.SlamDown":
-       - player desce rápido (RootMotionSource down forte)
-       - alvo arremessado ao chão (RootMotionSource down no alvo)
-  4. No impacto com o chão (notify "Combat.SlamLand"):
-       - HARD LAND (doc 13 §6): GameplayCue.Land.Hard (poeira+shake) → doc 21
-       - dano em ÁREA (sphere overlap) → doc 18
-       - REMOVE State.Combat.InAir (player) + State.Combat.Airborne (alvo)
-  5. EndAbility → ambos voltam ao fluxo de chão
+  1. CommitAbility + bind LandedDelegate
+  1b. FaceAndSetupMotionWarp(Slam, bPreferAirborne=true)  // só face — sem warp
+  2. Task PlayMontageAndWait(AM_AirSlam, "Start")
+  2b. Montage_SetNextSection: Start→Loop e Loop→Loop (se a seção existir)
+  3. ExitAirCombat(bSlam=true) estende o hold do alvo (SlamTargetHoldSeconds 2s);
+       o slam FORÇA Falling + SlamFallVelocity (-3500) INCONDICIONALMENTE —
+       cobre R no meio da montage do launcher (hold aéreo ainda não existia;
+       sem isso sobrava a velocity de subida → arco balístico preso no Loop).
+       Descida é VELOCITY: o slam força IgnoreRootMotion no AnimInstance
+       (clip com RM ON não "boia" mais) e restaura no EndAbility
+  3b. Homing: velocity XY mira o alvo (SlamHomingMaxDistance 350 — whiff honesto;
+       motion warp de engine não serve: warp é root motion, descida é velocity)
+  3c. APEX: arremessa o alvo na ativação (EndAirborne slam, -4500 > player -3500
+       → alvo esmaga PRIMEIRO) + hit-stop 2f + Cue.Hit.Light (bSlamClaimedTargetOnActivate)
+  4. LandedDelegate (impacto):
+       - Montage_JumpToSection("End") + GameplayCue.Slam (poeira+shake → doc 21)
+       - AoE em COLUNA (SlamRadius 250 × SlamVerticalReach 450): dano → doc 18
+       - bSlamDownTargets: Airborne na coluna → EndAirborne(slam) → despenca
+  5. End da montage → EndAbility (sem Loop e pouso tardio: o pouso encerra)
 ```
 
-**Concede/dispara:** **remove** as tags aéreas (encerra o combo de ambos os lados) e dispara o Hard Land + AoE. É o **clímax** — todo o juice se concentra aqui ([16 §5](16_Aerial_Combos.md)), mas o juice em si é do [21](../feel/21_Juice_FX.md).
+**Concede/dispara:** `ExitAirCombat` **remove** `State.Combat.InAir` na ativação (o juggle do alvo morre no impacto via `bSlamDownTargets`). É o **clímax** — todo o juice se concentra aqui ([16 §5](16_Aerial_Combos.md)), mas o juice em si é do [21](../feel/21_Juice_FX.md).
 
-> 🔒 **Single-player:** o slam usa `RootMotionSource` *descendente* (não o force ancorado da subida) — aqui a posição final é o chão (determinada por colisão), então um impulso forte serve. Sem rede, sem reconciliação de pouso.
+> 🔒 **Single-player:** descida por **velocity** no CMC (posição final = chão, por colisão) — mais simples que `RootMotionSource` e suficiente sem rede. O `LandedDelegate` é a única "verdade" do impacto: anim, AoE e cue derivam dele.
 
 ---
 
@@ -278,7 +286,7 @@ ActivateAbility:
 |---|---|
 | **Input** | `IA_Dash` (Started) → InputID `Dash` |
 | **AbilityTag** | `Ability.Dash` |
-| **Owned** | `State.Movement.Dashing` |
+| **Owned** | — (a tag `State.Movement.Dashing` vem do **GE de i-frames**, 0.25s — não de `ActivationOwnedTags`; amarrá-la à vida da ability estenderia o i-frame pra recovery toda do dodge) |
 | **Req** | — |
 | **Block** | `Cooldown.Dash` |
 | **Cancel** | **`Ability.Attack`** ← dash-cancel **sempre** (escape + fluidez, âncora nº 1) |

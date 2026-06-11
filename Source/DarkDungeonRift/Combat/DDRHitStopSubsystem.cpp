@@ -21,7 +21,9 @@ void UDDRHitStopSubsystem::RequestHitStop(int32 Frames)
 	const float Duration = static_cast<float>(Frames) / 60.f;
 	FreezeEndRealTimeSeconds = FPlatformTime::Seconds() + Duration;
 	bHitStopActive = true;
-	UGameplayStatics::SetGlobalTimeDilation(World, 0.f);
+	// 0.0001 = MinGlobalTimeDilation da engine. Passar 0 dava clamp + WARNING por hit
+	// ("Time Dilation must be between...") — mesmo efeito, sem spam no log.
+	UGameplayStatics::SetGlobalTimeDilation(World, 0.0001f);
 }
 
 void UDDRHitStopSubsystem::Tick(float DeltaTime)

@@ -3,6 +3,7 @@
 #include "GA_Launcher.h"
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "AbilitySystemComponent.h"
 #include "DDRCombatComponent.h"
 #include "DDRMotionWarpTypes.h"
 #include "DDRGameplayTags.h"
@@ -124,6 +125,13 @@ void UGA_Launcher::EndAbility(
 						MoveComp->SetMovementMode(MOVE_Falling);
 					}
 				}
+			}
+
+			// Cancel POS-hit: LaunchTarget ja tinha posto a tag InAir, mas EnterAirCombat
+			// nao rodou — sem isto a tag ficaria presa (ExitAirCombat early-returns).
+			if (UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr)
+			{
+				ASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 0);
 			}
 		}
 	}

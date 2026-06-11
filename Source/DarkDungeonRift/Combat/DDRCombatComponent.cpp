@@ -74,6 +74,24 @@ void UDDRCombatComponent::ApplyAirAttackJuggleTuning(
 	AirPopVerticalNudgeScale = InAirPopVerticalNudgeScale;
 }
 
+void UDDRCombatComponent::NotifyDashEnded()
+{
+	if (const UWorld* World = GetWorld())
+	{
+		LastDashEndTimeSeconds = World->GetTimeSeconds();
+	}
+}
+
+float UDDRCombatComponent::GetTimeSinceDashEnded() const
+{
+	const UWorld* World = GetWorld();
+	if (!World || LastDashEndTimeSeconds < 0.f)
+	{
+		return FLT_MAX;
+	}
+	return World->GetTimeSeconds() - LastDashEndTimeSeconds;
+}
+
 void UDDRCombatComponent::SetAirCarryActive(const bool bActive, const float ForwardOffset)
 {
 	bAirCarryActive = bActive;
@@ -142,11 +160,13 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 	FVector End;
 	bool bBladeSweep = false;
 
-	// AoE do slam (doc 16 par.5): esfera centrada no dono, ignora lamina/forward.
+	// AoE do slam (doc 16 par.5): COLUNA vertical no dono — esfera varrida do ponto de
+	// pouso para cima (SweepReach = altura). Esfera pura no chao NAO alcancava o alvo
+	// juggleado ~300cm acima (gap vertical > raio) — o slam "errava" o proprio juggle.
 	if (Params.bAoEAtOwner)
 	{
 		Start = OwnerActor->GetActorLocation();
-		End = Start;
+		End = Start + FVector(0.f, 0.f, FMath::Max(Params.SweepReach, 0.f));
 	}
 	else if (const ADDRCharacterBase* OwnerChar = Cast<ADDRCharacterBase>(OwnerActor))
 	{
@@ -184,12 +204,22 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		FCollisionShape::MakeSphere(Params.SweepRadius),
 		QueryParams);
 
+	if (Params.bAoEAtOwner)
+	{
+		UE_LOG(LogDDR, Log, TEXT("[SLAM] AoE coluna r=%.0f z=%.0f ate %.0f | candidatos no sweep=%d"),
+			Params.SweepRadius, Start.Z, End.Z + Params.SweepRadius, Hits.Num());
+	}
+
 	int32 NewHits = 0;
 	for (const FHitResult& Hit : Hits)
 	{
 		AActor* HitActor = Hit.GetActor();
 		if (!HitActor || !CanHitActor(HitActor))
 		{
+			if (Params.bAoEAtOwner)
+			{
+				UE_LOG(LogDDR, Log, TEXT("[SLAM] AoE ignorou %s (self/morto/invalido)"), *GetNameSafe(HitActor));
+			}
 			continue;
 		}
 
@@ -218,24 +248,26 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 		}
 		else if (Params.bSlamDownTargets)
 		{
-			if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(HitActor))
+			ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(HitActor);
+			const bool bTargetAirborne = TargetChar && TargetChar->IsAirborne();
+			UE_LOG(LogDDR, Log, TEXT("[SLAM] AoE acertou %s | castBase=%d airborne=%d -> slamdown=%d"),
+				*GetNameSafe(HitActor), TargetChar ? 1 : 0, bTargetAirborne ? 1 : 0, bTargetAirborne ? 1 : 0);
+			if (bTargetAirborne)
 			{
-				if (TargetChar->IsAirborne())
-				{
-					TargetChar->EndAirborne(/*bSlammed=*/true);
-				}
+				TargetChar->EndAirborne(/*bSlammed=*/true);
 			}
 		}
 
-		if (CVarCombatDebug.GetValueOnGameThread() > 0)
-		{
-			UE_LOG(LogDDR, Log, TEXT("Combat hit %s section=%d damage=%.1f blade=%d"),
-				*GetNameSafe(HitActor), Params.ComboSectionIndex, Params.BaseDamage, bBladeSweep ? 1 : 0);
+		UE_LOG(LogDDR, Log, TEXT("[HIT] %s secao=%d dano=%.1f blade=%d t=%.2f"),
+			*GetNameSafe(HitActor), Params.ComboSectionIndex, Params.BaseDamage,
+			bBladeSweep ? 1 : 0, GetWorld()->GetTimeSeconds());
 
 #if ENABLE_DRAW_DEBUG
+		if (CVarCombatDebug.GetValueOnGameThread() > 0)
+		{
 			DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 8, FColor::Yellow, false, 0.8f);
-#endif
 		}
+#endif
 	}
 
 #if ENABLE_DRAW_DEBUG
@@ -252,27 +284,26 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 void UDDRCombatComponent::OpenComboWindow()
 {
 	bComboWindowOpen = true;
-
-	if (CVarCombatDebug.GetValueOnGameThread() > 0)
-	{
-		UE_LOG(LogDDR, Log, TEXT("Combo window OPEN on %s"), *GetNameSafe(GetOwner()));
-	}
+	UE_LOG(LogDDR, Log, TEXT("[ATK] janela ABRE (secao %d) t=%.2f"),
+		ActiveComboSection, GetWorld()->GetTimeSeconds());
 }
 
 void UDDRCombatComponent::CloseComboWindow()
 {
-	bComboWindowOpen = false;
-
-	if (CVarCombatDebug.GetValueOnGameThread() > 0)
+	if (bComboWindowOpen)
 	{
-		UE_LOG(LogDDR, Log, TEXT("Combo window CLOSE on %s"), *GetNameSafe(GetOwner()));
+		UE_LOG(LogDDR, Log, TEXT("[ATK] janela FECHA (secao %d) t=%.2f"),
+			ActiveComboSection, GetWorld()->GetTimeSeconds());
 	}
+	bComboWindowOpen = false;
 }
 
 void UDDRCombatComponent::BufferAttackInput(float BufferSeconds)
 {
 	bBufferedAttack = true;
 	BufferedAttackTimeRemaining = BufferSeconds;
+	UE_LOG(LogDDR, Log, TEXT("[ATK] buffer armado %.2fs t=%.2f"),
+		BufferSeconds, GetWorld()->GetTimeSeconds());
 }
 
 void UDDRCombatComponent::ClearBufferedAttack()
@@ -305,9 +336,11 @@ void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
 
 		// Gate de abilities: assim que alguem foi lancado, LMB vira AirAttack (nao espera
 		// o fim da montage do launcher — senao AttackLight dispara no meio do uppercut).
+		// SetLooseGameplayTagCount (nao Add): loose tags sao ref-counted; Add aqui + Add no
+		// EnterAirCombat deixaria count 2 e o Remove unico do ExitAirCombat vazaria a tag.
 		if (UAbilitySystemComponent* SourceASC = GetOwnerASC())
 		{
-			SourceASC->AddLooseGameplayTag(DDRTags::State_Combat_InAir);
+			SourceASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 1);
 
 			FGameplayCueParameters CueParams;
 			CueParams.Instigator = GetOwner();
@@ -380,7 +413,8 @@ void UDDRCombatComponent::EnterAirCombat()
 
 	if (UAbilitySystemComponent* ASC = GetOwnerASC())
 	{
-		ASC->AddLooseGameplayTag(DDRTags::State_Combat_InAir);
+		// Idempotente — LaunchTarget ja pode ter posto a tag no hit (count fica 1, nunca 2).
+		ASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 1);
 	}
 
 	RefreshAirHold();
@@ -405,7 +439,35 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 {
 	if (!bInAirCombat)
 	{
+		UE_LOG(LogDDR, Warning, TEXT("[SLAM] ExitAirCombat(bSlam=%d) IGNORADO — bInAirCombat ja era false (player nao estava no hold aereo)"),
+			bSlam ? 1 : 0);
 		return;
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] ExitAirCombat bSlam=%d juggleTarget=%s t=%.2f"),
+		bSlam ? 1 : 0, *GetNameSafe(ActiveJuggleTarget.Get()), GetWorld()->GetTimeSeconds());
+
+	// Slam reivindica o alvo: estende o hold pra ele AINDA estar no ar quando o impacto
+	// chegar (sem isto o hold de 1.1s expirava na descida e o bSlamDownTargets no-opava
+	// — o dummy "descia de leve" antes do slam conectar).
+	if (bSlam && ActiveJuggleTarget.IsValid())
+	{
+		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get()))
+		{
+			if (TargetChar->IsAirborne())
+			{
+				TargetChar->ExtendAirborneHold(SlamTargetHoldSeconds);
+			}
+			else
+			{
+				UE_LOG(LogDDR, Warning, TEXT("[SLAM] juggleTarget %s JA NAO esta airborne no inicio do slam (hold expirou cedo?)"),
+					*GetNameSafe(TargetChar));
+			}
+		}
+	}
+	else if (bSlam)
+	{
+		UE_LOG(LogDDR, Warning, TEXT("[SLAM] sem juggleTarget valido no inicio do slam (nada para segurar no ar)"));
 	}
 
 	bInAirCombat = false;
@@ -416,7 +478,9 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 
 	if (UAbilitySystemComponent* ASC = GetOwnerASC())
 	{
-		ASC->RemoveLooseGameplayTag(DDRTags::State_Combat_InAir);
+		// Zera o count (nao decrementa) — garante que a tag SAI mesmo se algum caminho
+		// futuro adicionar de novo; o gate do juggle e binario, nao empilhavel.
+		ASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 0);
 	}
 
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
@@ -588,11 +652,9 @@ AActor* UDDRCombatComponent::FaceAndSetupMotionWarp(const EDDRMotionWarpProfile 
 				MaxWarpDistanceAir,
 				MaxWarpDistanceLauncher);
 
-			if (CVarCombatDebug.GetValueOnGameThread() > 0)
-			{
-				UE_LOG(LogDDR, Log, TEXT("MotionWarp profile=%d target=%s applied=%d"),
-					static_cast<int32>(Profile), *GetNameSafe(Target), bWarped ? 1 : 0);
-			}
+			UE_LOG(LogDDR, Log, TEXT("[WARP] perfil=%d alvo=%s aplicado=%d%s"),
+				static_cast<int32>(Profile), *GetNameSafe(Target), bWarped ? 1 : 0,
+				(Target && !bWarped) ? TEXT(" (fora do cap — whiff honesto)") : TEXT(""));
 		}
 	}
 

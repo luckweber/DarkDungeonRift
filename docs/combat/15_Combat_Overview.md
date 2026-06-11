@@ -135,6 +135,7 @@ A regra: cada golpe tem uma **janela de cancelamento** (AnimNotifyState, como a 
 |---|:---:|:---:|:---:|:---:|
 | **Atk1 / Atk2 (golpe ativo)** | ✅ sempre (escape) | ⏳ só na janela de combo | ✅ na janela | ❌ |
 | **Recovery do ataque** | ✅ sempre | ✅ (encadeia) | ✅ | ⏳ |
+| **Dash (dodge ativo/recovery)** | — (cooldown) | ✅ **dash-attack** → estocada opener ([60 §6](../systems/60_M2_Editor_Setup.md)) | ✅ (corta o dodge) | ❌ |
 | **AirAttack (no ar)** | ⏳ air-dash (se houver) | ⏳ janela aérea | — | ✅ **jump-cancel → re-sobe** (extiende juggle) |
 | **Slam (descida)** | ❌ (comprometido) | ❌ | ❌ | ❌ |
 
@@ -142,6 +143,7 @@ Legenda: ✅ permitido · ⏳ permitido só na janela · ❌ bloqueado · — n/
 
 > 🔑 **Cancelamentos-âncora do MVP (mínimo pra sentir "character-action"):**
 > 1. **Dash-cancel** do ataque (sempre) → responsividade + escape.
+> 1b. **Dash-attack** (a volta do nº 1): LMB **durante** o dash cancela o dodge e vira a **estocada** opener ([60 §6](../systems/60_M2_Editor_Setup.md)) — o par dash↔attack fecha nos dois sentidos, estilo Hades.
 > 2. **Attack→Launcher** na janela → a ponte chão↔ar (alimenta o pilar).
 > 3. **Jump-cancel do AirAttack** → re-sobe o player no juggle (o "truque" do combo aéreo profundo).
 
@@ -172,7 +174,7 @@ Pipeline de 4 camadas ([18 §6](18_Combat_System_Deep.md)): **soft-lock** → **
 - Cap de distância (`MaxWarpDistance` ~200 cm) = whiff honesto fora do alcance.
 - **`AM_Combo`:** uma janela Motion Warp **por seção** (Atk1–4) — C++ recalcula o alvo a cada golpe; sem notify na seção = encara mas não avança ([57 §2b](57_M1_Combo_Editor_Setup.md)).
 
-> 🛠️ **Setup no editor:** [60 — M2 Editor Setup §7](../systems/60_M2_Editor_Setup.md) (combo chão, run-attack, launcher). Regras por ability (ground/air/launcher/slam) na mesma seção.
+> 🛠️ **Setup no editor:** [60 — M2 Editor Setup §7](../systems/60_M2_Editor_Setup.md) (combo chão, dash-attack, launcher). Regras por ability (ground/air/launcher/slam) na mesma seção.
 
 ---
 

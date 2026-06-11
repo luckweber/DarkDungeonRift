@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "DDRCombatComponent.h"
 #include "DDRGameplayTags.h"
+#include "DDRLog.h"
 
 UGA_AirAttack::UGA_AirAttack()
 {
@@ -73,6 +74,8 @@ void UGA_AirAttack::ActivateAbility(
 		{
 			Combat->ApplyAirAttackJuggleTuning(JuggleTargetHeightAbovePlayer, AirPopVerticalNudgeScale);
 			Combat->RefreshAirHold();
+			UE_LOG(LogDDR, Log, TEXT("[ATK-AIR] juggle tuning (coAlt=%.0f nudge=%.2f) + hold do player renovado"),
+				JuggleTargetHeightAbovePlayer, AirPopVerticalNudgeScale);
 		}
 	}
 }

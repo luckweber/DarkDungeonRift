@@ -16,6 +16,12 @@ ADDRTrainingDummy::ADDRTrainingDummy()
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
 		MoveComp->DisableMovement();
+
+		// SEM Controller o CMC pula PerformMovement (gate interno) — a subida do juggle
+		// funciona (SetActorLocation na base), mas a QUEDA (EndAirborne: Falling -3000)
+		// e PhysFalling: sem este flag o dummy ficava PENDURADO no ar para sempre.
+		// Inimigos do M3 terao AIController e nao precisam disto.
+		MoveComp->bRunPhysicsWithNoController = true;
 	}
 
 	DummyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DummyMesh"));

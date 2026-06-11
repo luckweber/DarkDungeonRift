@@ -47,8 +47,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher|Air", meta = (ClampMin = "0"))
 	float LaunchRiseHeight = 300.f;
 
-	/** Co-altitude ao entrar no ar (fim da montage): alvo fica este valor acima do player. */
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher|Air", meta = (ClampMin = "0"))
+	/** Co-altitude ao entrar no ar (fim da montage): alvo fica este valor acima do player.
+	 *  Negativo = alvo ABAIXO do player (melhor leitura em golpes aereos descendentes). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Launcher|Air", meta = (UIMin = "-150", UIMax = "300"))
 	float JuggleTargetHeightAbovePlayer = 60.f;
 
 private:

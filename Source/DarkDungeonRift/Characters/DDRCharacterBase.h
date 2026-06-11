@@ -51,6 +51,10 @@ public:
 	/** Ajusta Z-alvo sem incrementar hit count (launcher / snap inicial). */
 	void OverrideAirborneTargetZ(float NewTargetZ);
 
+	/** Re-arma só o hold (sem pop/hit count) — slam segura o alvo no ar até o impacto. */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
+	void ExtendAirborneHold(float HoldSeconds);
+
 	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
 	void EndAirborne(bool bSlammed);
 
@@ -101,9 +105,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Airborne")
 	float AirborneInterpSpeed = 10.f;
 
-	// Queda forçada pelo slam (negativa = pra baixo, rápida).
+	// Queda forçada pelo slam (negativa = pra baixo). MAIS rápida que a descida do
+	// player (-3500): o alvo arremessado no apex esmaga no chão PRIMEIRO (coreografia).
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Airborne")
-	float SlammedFallVelocity = -3000.f;
+	float SlammedFallVelocity = -4500.f;
 
 	bool bAbilitySystemInitialized = false;
 
