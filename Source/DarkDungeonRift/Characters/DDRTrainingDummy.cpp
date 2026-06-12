@@ -5,9 +5,13 @@
 #include "DDRAbilitySystemComponent.h"
 #include "DDRAttributeSet.h"
 #include "DDRGameplayTags.h"
+#include "DDRLog.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "PhysicsEngine/PhysicsAsset.h"
+#include "UObject/SoftObjectPath.h"
 
 ADDRTrainingDummy::ADDRTrainingDummy()
 {
@@ -33,6 +37,27 @@ ADDRTrainingDummy::ADDRTrainingDummy()
 void ADDRTrainingDummy::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (USkeletalMeshComponent* SkelMesh = GetMesh())
+	{
+		if (!SkelMesh->GetPhysicsAsset())
+		{
+			static const FSoftObjectPath DefaultPAPath(
+				TEXT("/Game/Characters/Mannequins/Rigs/PA_Manny.PA_Manny"));
+			if (UPhysicsAsset* PA = Cast<UPhysicsAsset>(DefaultPAPath.TryLoad()))
+			{
+				SkelMesh->SetPhysicsAsset(PA);
+				UE_LOG(LogDDR, Log, TEXT("[RAGDOLL] %s Physics Asset atribuido (%s)"),
+					*GetName(), *PA->GetName());
+			}
+			else
+			{
+				UE_LOG(LogDDR, Warning,
+					TEXT("[RAGDOLL] %s sem Physics Asset — assigne PA_Manny no BP (Skeletal Mesh → Physics Asset)"),
+					*GetName());
+			}
+		}
+	}
 
 	if (UDDRAbilitySystemComponent* ASC = Cast<UDDRAbilitySystemComponent>(GetAbilitySystemComponent()))
 	{

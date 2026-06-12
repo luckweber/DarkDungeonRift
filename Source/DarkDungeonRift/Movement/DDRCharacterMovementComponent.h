@@ -18,6 +18,7 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual float GetMaxSpeed() const override;
 	virtual float GetGravityZ() const override;
+	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 
 	UFUNCTION(BlueprintCallable, Category = "DDR|Gait")
 	void SetGait(EDDRGait NewGait);
@@ -39,6 +40,10 @@ public:
 	void SetLocomotionInputBlocked(bool bBlocked);
 	bool IsLocomotionInputBlocked() const { return bBlockLocomotionInput; }
 
+	/** Pulo de combate 4-way + double jump (doc 59). Retorna false se bloqueado/cheio. */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Jump")
+	bool TryCombatJump(class ACharacter* Character);
+
 	UPROPERTY(EditAnywhere, Category = "DDR|Gait")
 	float WalkSpeed = 200.f;
 
@@ -52,9 +57,27 @@ public:
 	UPROPERTY(EditAnywhere, Category = "DDR|Jump", meta = (ClampMin = "1.0"))
 	float FallingGravityMultiplier = 1.25f;
 
+	/** Total de pulos por arco aéreo (1 chão + 1 ar = 2). */
+	UPROPERTY(EditAnywhere, Category = "DDR|Jump", meta = (ClampMin = "1", ClampMax = "4"))
+	int32 MaxAirJumps = 2;
+
+	UPROPERTY(EditAnywhere, Category = "DDR|Jump", meta = (ClampMin = "100"))
+	float DoubleJumpZVelocity = 550.f;
+
+	/** |WASD| abaixo disto → pulo neutro (Jump_Combat_0). */
+	UPROPERTY(EditAnywhere, Category = "DDR|Jump", meta = (ClampMin = "0.01", ClampMax = "0.5"))
+	float JumpDirectionInputDeadzone = 0.15f;
+
 protected:
 	void UpdateGaitFromInput();
 	void UpdateLocomotionState();
+	void ResetAirJumpState();
+	EDDRJumpDirection ComputeJumpDirection(const ACharacter* Character) const;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Jump")
+	int32 AirJumpCount = 0;
+
+	bool bDoubleJumpJustTriggered = false;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Gait")
 	EDDRGait CurrentGait = EDDRGait::Run;

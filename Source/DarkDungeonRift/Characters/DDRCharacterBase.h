@@ -145,11 +145,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll", meta = (ClampMin = "10"))
 	float RagdollPelvisGroundClearance = 55.f;
 
+	/** Velocity Z aplicada ao ragdoll no pouso do slam (corpo ja no chao — impacto visual). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Ragdoll", meta = (ClampMin = "50"))
+	float SlamRagdollImpactSpeed = 350.f;
+
 	bool bAbilitySystemInitialized = false;
 
 private:
 	float GetSlamFallSpeed() const;
 	bool TraceFloorBelow(const FVector& QueryLoc, FHitResult& OutHit) const;
+	bool SweepCapsuleToFloor(const FVector& From, const FVector& To, FHitResult& OutHit) const;
+	void BeginSlamKnockdown(float SlamFallSpeed);
 	void FinishGuidedSlamFall();
 	void TickGuidedSlamFall(float DeltaSeconds);
 	void TickRagdollFollow();
@@ -169,6 +175,7 @@ private:
 
 	bool bRagdolled = false;
 	bool bGuidedSlamFall = false;
+	bool bPendingRagdollOnSlamLand = false;
 	FTimerHandle RagdollRecoverTimerHandle;
 	// Capturados no BeginPlay pra restaurar EXATAMENTE no recover (BP pode ter ajustado).
 	FTransform DefaultMeshRelativeTransform;

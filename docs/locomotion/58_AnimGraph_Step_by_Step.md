@@ -39,6 +39,10 @@ O que fica de **fora** (de propósito): start/stop transitions e distance match 
 | `bIsFalling` | Bool | `LocomotionState.bIsFalling` |
 | `bIsDashing` | Bool | `LocomotionState.bIsDashing` |
 | `bIsCombatFalling` | Bool | `LocomotionState.bIsCombatFalling` (`State.Combat.SlamFall` durante `GA_AirSlam`) |
+| `JumpDirection` | `EDDRJumpDirection` | `LocomotionState.JumpDirection` ([59 §3](59_Combat_Jump_4Way_DoubleJump.md)) |
+| `LandDirection` | `EDDRJumpDirection` | `LocomotionState.LandDirection` |
+| `bIsDoubleJump` | Bool | `LocomotionState.bIsDoubleJump` (pulso 1 frame) |
+| `AirJumpIndex` | Integer | `LocomotionState.AirJumpIndex` |
 
 ### 1.2 Event Graph (MVP — game thread, ok p/ 1 player)
 
@@ -50,6 +54,7 @@ Event Blueprint Update Animation:
   Player (válido?) → Get DDR Movement → Get Locomotion State
     → Break DDRLocomotionState
     → SET Speed / Direction / Gait / bIsMoving / bIsFalling / bIsDashing / bIsCombatFalling
+    → SET JumpDirection / LandDirection / bIsDoubleJump / AirJumpIndex
 ```
 
 ### 1.3 Queda de combate (slam) — `Jump_Combat_*`
@@ -95,6 +100,8 @@ Quando `bIsCombatFalling && bIsFalling` (tag `State.Combat.SlamFall` ligada pelo
 
 ## 3. AnimGraph — State Machine "Locomotion"
 
+> 🛠️ **Setup completo (4 direções + double jump + clips `Jump_Combat_*`):** **[59 — Jump 4-Way + Double Jump](59_Combat_Jump_4Way_DoubleJump.md)**. Este §3 é o MVP genérico; o doc 59 alinha com a SM `Main States` do seu ABP.
+
 No **AnimGraph**: clique direito → **State Machine** → nome `Locomotion` → ligue (por enquanto) direto no Output. Dentro dela:
 
 ### 3.1 Estados
@@ -103,9 +110,9 @@ No **AnimGraph**: clique direito → **State Machine** → nome `Locomotion` →
 |---|---|
 | **Idle** | clip `Idle` (loop) — *use o Idle normal; o combat-idle entra via tag depois ([08 §6](08_Locomotion_Overview.md))* |
 | **Move** | **`BS_Locomotion`** com pinos: `Direction` ← var Direction, `Speed` ← var Speed |
-| **JumpStart** | clip de impulso do Jump (não-loop) |
-| **Fall** | clip/pose de queda (loop) — do seu "Jump 4-way", o trecho aéreo |
-| **Land** | clip de pouso (não-loop) |
+| **JumpStart** | clip de impulso do Jump (não-loop) — ver [59](59_Combat_Jump_4Way_DoubleJump.md) para Start 4-way + double |
+| **Fall** | clip/pose de queda (loop) — `Jump_Combat_Loop` neutro ([59 §4.2](59_Combat_Jump_4Way_DoubleJump.md)) |
+| **Land** | clip de pouso (não-loop) — `Jump_Combat_End_*` por direção ([59 §4.3](59_Combat_Jump_4Way_DoubleJump.md)) |
 
 ### 3.2 Transições (a tabela que importa)
 
@@ -189,4 +196,4 @@ Sem este nó, **as montages do combo (`AM_Combo`) não tocam no jogo** — esse 
 
 ## 9. Próximo passo
 
-→ Com o graph pronto e o Slot funcionando, o **M1 fecha o ciclo**: [57 — Combo no Editor](../combat/57_M1_Combo_Editor_Setup.md) · [55 — M1 Setup](../systems/55_M1_Editor_Setup.md). Polish de locomoção (start/stop): [10](10_Start_Stop_DistanceMatch.md) **depois** do combate gostoso.
+→ **[59 — Jump 4-Way + Double Jump](59_Combat_Jump_4Way_DoubleJump.md)** (clips de combate, double jump, SM `Main States`) · Com o graph pronto e o Slot funcionando, o **M1 fecha o ciclo**: [57 — Combo no Editor](../combat/57_M1_Combo_Editor_Setup.md) · [55 — M1 Setup](../systems/55_M1_Editor_Setup.md). Polish de locomoção (start/stop): [10](10_Start_Stop_DistanceMatch.md) **depois** do combate gostoso.

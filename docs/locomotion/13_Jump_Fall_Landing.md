@@ -165,4 +165,4 @@ BrakingDecelerationWalking aplicado; opcional "landing retain" (0.4) por X frame
 
 ## 10. Próximo passo
 
-→ [14 — Foot & Leg IK](14_Foot_Leg_IK.md) (P2), ou pule direto pro combate: [15 — Combat Overview](../combat/15_Combat_Overview.md).
+→ **[59 — Jump 4-Way + Double Jump](59_Combat_Jump_4Way_DoubleJump.md)** (clips `Jump_Combat_*`, SM `Main States`, double jump) · [14 — Foot & Leg IK](14_Foot_Leg_IK.md) (P2), ou combate: [15 — Combat Overview](../combat/15_Combat_Overview.md).

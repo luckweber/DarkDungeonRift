@@ -95,8 +95,8 @@ void ADDRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 		if (JumpAction)
 		{
-			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ADDRPlayerCharacter::OnJumpPressed);
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ADDRPlayerCharacter::OnJumpReleased);
 		}
 
 		if (SprintAction)
@@ -202,4 +202,17 @@ void ADDRPlayerCharacter::OnAirSlamPressed()
 	{
 		AbilitySystemComponent->AbilityLocalInputPressed(static_cast<int32>(EDDRAbilityInputID::AirSlam));
 	}
+}
+
+void ADDRPlayerCharacter::OnJumpPressed()
+{
+	if (UDDRCharacterMovementComponent* DDRMove = GetDDRMovement())
+	{
+		DDRMove->TryCombatJump(this);
+	}
+}
+
+void ADDRPlayerCharacter::OnJumpReleased()
+{
+	StopJumping();
 }

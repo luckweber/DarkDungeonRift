@@ -190,7 +190,6 @@ void ADDRCharacterBase::EndAirborne(bool bSlammed)
 	AirborneHitCount = 0;
 	bAirborneFollowEnabled = false;
 	AirborneFollowAttacker.Reset();
-	SetActorTickEnabled(false);
 	GetWorldTimerManager().ClearTimer(AirborneHoldTimerHandle);
 
 	if (AbilitySystemComponent)
@@ -198,31 +197,39 @@ void ADDRCharacterBase::EndAirborne(bool bSlammed)
 		AbilitySystemComponent->RemoveLooseGameplayTag(DDRTags::State_Combat_Airborne);
 	}
 
-	// Knockdown AAA: ragdoll fisico (cap de velocidade + CCD). Sem PA -> queda guiada com sweep
-	// (nao usa -4500 na capsula — tunelava o chao em 1-2 frames).
-	if (bSlammed && bRagdollOnSlammed && StartRagdoll(FVector(0.f, 0.f, -SlamFallSpeed)))
+	// Slam: queda guiada com sweep ate o chao; ragdoll so no POUSO (nao do ar — tunelava).
+	if (bSlammed)
 	{
+		BeginSlamKnockdown(SlamFallSpeed);
 		return;
 	}
 
-	if (bSlammed)
-	{
-		bGuidedSlamFall = true;
-		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-		{
-			MoveComp->SetMovementMode(MOVE_Falling);
-			MoveComp->Velocity = FVector(0.f, 0.f, -SlamFallSpeed);
-		}
-		SetActorTickEnabled(true);
-		UE_LOG(LogDDR, Log, TEXT("[SLAM] %s queda guiada ON velZ=-%.0f t=%.2f"),
-			*GetName(), SlamFallSpeed, GetWorld()->GetTimeSeconds());
-		return;
-	}
+	SetActorTickEnabled(false);
 
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
 		MoveComp->SetMovementMode(MOVE_Falling);
 	}
+}
+
+void ADDRCharacterBase::BeginSlamKnockdown(const float SlamFallSpeed)
+{
+	bGuidedSlamFall = true;
+	bPendingRagdollOnSlamLand = bRagdollOnSlammed;
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->StopMovementImmediately();
+		MoveComp->SetMovementMode(MOVE_Falling);
+		MoveComp->Velocity = FVector::ZeroVector;
+	}
+
+	SetActorTickEnabled(true);
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] %s knockdown guiada ON%s velZ=-%.0f z=%.0f t=%.2f"),
+		*GetName(),
+		bPendingRagdollOnSlamLand ? TEXT(" -> ragdoll no pouso") : TEXT(""),
+		SlamFallSpeed, GetActorLocation().Z, GetWorld()->GetTimeSeconds());
 }
 
 float ADDRCharacterBase::GetSlamFallSpeed() const
@@ -256,9 +263,53 @@ bool ADDRCharacterBase::TraceFloorBelow(const FVector& QueryLoc, FHitResult& Out
 	return false;
 }
 
+bool ADDRCharacterBase::SweepCapsuleToFloor(const FVector& From, const FVector& To, FHitResult& OutHit) const
+{
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	const UWorld* World = GetWorld();
+	if (!Capsule || !World)
+	{
+		return false;
+	}
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(DDRGuidedSlamFall), false, this);
+	const FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(
+		Capsule->GetScaledCapsuleRadius(),
+		Capsule->GetScaledCapsuleHalfHeight());
+
+	static const ECollisionChannel SweepChannels[] = { ECC_WorldStatic, ECC_Visibility, ECC_WorldDynamic };
+	for (const ECollisionChannel Channel : SweepChannels)
+	{
+		if (World->SweepSingleByChannel(OutHit, From, To, FQuat::Identity, Channel, CapsuleShape, Params)
+			&& OutHit.bBlockingHit
+			&& OutHit.ImpactNormal.Z > 0.5f)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void ADDRCharacterBase::FinishGuidedSlamFall()
 {
+	const bool bWantRagdoll = bPendingRagdollOnSlamLand;
 	bGuidedSlamFall = false;
+	bPendingRagdollOnSlamLand = false;
+
+	if (bWantRagdoll && bRagdollOnSlammed)
+	{
+		const FVector ImpactVel(0.f, 0.f, -SlamRagdollImpactSpeed);
+		if (StartRagdoll(ImpactVel))
+		{
+			UE_LOG(LogDDR, Log, TEXT("[SLAM] %s knockdown POUSO -> ragdoll impacto z=%.0f t=%.2f"),
+				*GetName(), GetActorLocation().Z, GetWorld()->GetTimeSeconds());
+			return;
+		}
+
+		UE_LOG(LogDDR, Warning, TEXT("[SLAM] %s ragdoll falhou no pouso — fica em pe t=%.2f"),
+			*GetName(), GetWorld()->GetTimeSeconds());
+	}
 
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
@@ -268,7 +319,7 @@ void ADDRCharacterBase::FinishGuidedSlamFall()
 
 	SetActorTickEnabled(false);
 
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] %s queda guiada POUSO z=%.0f t=%.2f"),
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] %s knockdown POUSO z=%.0f t=%.2f"),
 		*GetName(), GetActorLocation().Z, GetWorld()->GetTimeSeconds());
 }
 
@@ -285,16 +336,8 @@ void ADDRCharacterBase::TickGuidedSlamFall(float DeltaSeconds)
 	const float FallStep = GetSlamFallSpeed() * DeltaSeconds;
 	const FVector Next = Loc - FVector(0.f, 0.f, FallStep);
 
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(DDRGuidedSlamFall), false, this);
-	const FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(
-		Capsule->GetScaledCapsuleRadius(),
-		Capsule->GetScaledCapsuleHalfHeight());
-
 	FHitResult Hit;
-	if (GetWorld()->SweepSingleByChannel(
-		Hit, Loc, Next, FQuat::Identity, ECC_WorldStatic, CapsuleShape, Params)
-		&& Hit.bBlockingHit
-		&& Hit.ImpactNormal.Z > 0.5f)
+	if (SweepCapsuleToFloor(Loc, Next, Hit))
 	{
 		const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
 		SetActorLocation(
@@ -343,13 +386,9 @@ void ADDRCharacterBase::TickRagdollFollow()
 				false,
 				RagdollFollowBone);
 
-			// Tunelou fundo demais: recover imediato em vez de ficar no void.
-			if (BoneLoc.Z < Floor.ImpactPoint.Z + 25.f)
+			if (Vel.SizeSquared() < 250000.f)
 			{
-				UE_LOG(LogDDR, Warning, TEXT("[RAGDOLL] %s pelvis abaixo do chao — recover antecipado t=%.2f"),
-					*GetName(), GetWorld()->GetTimeSeconds());
-				RecoverFromRagdoll();
-				return;
+				MeshComp->SetAllPhysicsLinearVelocity(FVector::ZeroVector, false);
 			}
 		}
 	}
@@ -361,7 +400,7 @@ bool ADDRCharacterBase::StartRagdoll(const FVector& InitialVelocity)
 {
 	if (bRagdolled)
 	{
-		return true;
+		RecoverFromRagdoll();
 	}
 
 	USkeletalMeshComponent* MeshComp = GetMesh();

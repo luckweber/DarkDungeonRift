@@ -74,6 +74,7 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 13 | [Jump / Fall / Landing](locomotion/13_Jump_Fall_Landing.md) | **Jumping** · **Gait-Selected Jumping** · **Height-Based Fall to Landing** | 🟢 P0 (base p/ combo aéreo) |
 | 14 | [Foot & Leg IK](locomotion/14_Foot_Leg_IK.md) | **Foot & Leg IK** | 🔵 P2 (só vale em rampas/escadas) |
 | 58 | [AnimGraph: Passo a Passo](locomotion/58_AnimGraph_Step_by_Step.md) 🆕 | **Editor, clique a clique:** vars←CMC, BS_Locomotion, SM Idle/Move/Jump/Fall/Land, **Slot do combo** | 🟢 P0 (M0/M1) |
+| 59 | [Jump 4-Way + Double Jump](locomotion/59_Combat_Jump_4Way_DoubleJump.md) 🆕 | **`Jump_Combat_*` + `Double_Jump_Combat_*`:** direção F/B/L/R, Loop neutro, SM `Main States`, extensão CMC | 🟢 P0 (M2 polish) |
 
 ### ⚔️ Combate (Hack'n'Slash)
 | # | Doc | Prioridade | Conteúdo |

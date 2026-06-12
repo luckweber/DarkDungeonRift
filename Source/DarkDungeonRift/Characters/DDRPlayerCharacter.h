@@ -31,6 +31,8 @@ protected:
 	void OnDashPressed();
 	void OnLauncherPressed();
 	void OnAirSlamPressed();
+	void OnJumpPressed();
+	void OnJumpReleased();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USpringArmComponent> CameraBoom;
