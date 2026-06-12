@@ -119,6 +119,19 @@ Adicione ao `IMC_DDR_Default` e assigne nos slots **Launcher Action** / **Air Sl
 
 > 🧷 **MVP 2 seções ainda vale:** sem a seção `Loop`, se o clip `Start` acabar antes do pouso o código **segura a ability** até o `LandedDelegate` — o hitbox da seção `End` dispara quando a anim tocar.
 
+### 4.1 ⚠️ Dummy cai "de pé em 90°"? → falta o **Physics Asset** (passo a passo)
+
+O ragdoll **já está no C++** (`StartRagdoll` na base). Se o dummy cai **rígido, de pé**, é porque a skeletal mesh dele **não tem Physics Asset** → o código cai no **fallback de cápsula** (a cápsula é sempre vertical = corpo de pé). O log confirma: `Warning: [RAGDOLL] ... SEM Physics Asset`. Como resolver **de uma vez**:
+
+1. **Descubra a mesh do dummy:** abra `BP_TrainingDummy` → componente **Mesh** (Skeletal Mesh, não o `DummyMesh` cilindro) → veja o asset em **Skeletal Mesh Asset** (ex.: `SKM_Manny` / `SK_Mannequin`).
+2. **Tem PA?** Abra esse asset → painel **Asset Details** → seção **Physics** → campo **Physics Asset**. Se estiver **None**, é a causa.
+3. **Assignar um PA existente:** se a engine já trouxe um (`SKM_Manny_PhysicsAsset` / `PA_Mannequin`), selecione-o nesse campo → **Save**.
+4. **Não tem nenhum?** Content Browser → clique-direito na **Skeletal Mesh** → **Create → Physics Asset → Create and Assign** → no diálogo, deixe os defaults (Minimum Bone Size ~20) → **OK**. A UE gera cápsulas por osso e já assigna. **Save**.
+5. **Confirme:** o esqueleto importado precisa ter a hierarquia de ossos (o `weapon_r` etc. não importam; o que importa é `pelvis`, `spine`, pernas/braços). Se o esqueleto for o Manny padrão, o PA gerado funciona direto.
+6. **Teste:** E → LMB → R. Log deve mostrar `[RAGDOLL] ... ON vel=(0,0,-1200)` **sem** o warning, e o dummy **desaba como boneco** (tomba, deita), não de pé.
+
+> 🎯 **O ângulo "natural" da queda = a própria física do ragdoll.** Não há ângulo a configurar: com PA, o corpo tomba sozinho conforme os impulsos. O `Ragdoll Follow Bone` (pelvis) só faz a **cápsula** seguir o corpo (pra sombra/lock-on); a **pose** é 100% física. Mais drama na queda = `SlammedFallVelocity` mais negativo no `BP_TrainingDummy` (o cap `Ragdoll Max Initial Speed` limita o tunneling).
+
 ---
 
 ## 5. BPs filhos + Startup Abilities
@@ -405,4 +418,4 @@ Toda a cadeia de combate loga com prefixo + timestamp — é a régua pra tunar 
 
 ## 13. Próximo passo
 
-→ **M3 — Lutar:** inimigos com IA ([30-33](../enemies/30_AI_Overview.md)) + o atirador ([37](../combat/37_Projectiles.md)). O dummy já "herda" o juggle — os inimigos do M3 também (API na base).
+→ **M3 — Lutar:** **[61 — M3 Editor Setup](61_M3_Editor_Setup.md)** (passo a passo, irmão deste doc) — inimigos com IA ([30-33](../enemies/30_AI_Overview.md)) + o atirador ([37](../combat/37_Projectiles.md)). O dummy já "herda" o juggle — os inimigos do M3 também (API na base, ragdoll incluso).

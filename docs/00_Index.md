@@ -86,6 +86,8 @@ Este é o índice mestre. Cada doc é autocontido e segue o mesmo formato: **o q
 | 57 | [M1: Combo no Editor](combat/57_M1_Combo_Editor_Setup.md) 🆕 | **Setup real** da `AM_Combo` + `BP_GA_AttackLight`: seções **SEM link**, combo window, buffer 0.25s, **Motion Warp por seção** (§2b) |
 | 59 | [Dodge Direcional 8-Way](combat/59_Directional_Dodge.md) 🆕 | **8 direções: sim, pelo motivo certo** (dash-cancel mantém facing); `AM_Dodge` por seções + trava de rotação no `GA_Dash` |
 | 60 | [M2 Editor Setup ★](systems/60_M2_Editor_Setup.md) 🆕 | **O PILAR no editor:** launcher/juggle/slam, **soft-lock + Motion Warping** (§7), sombra blob, dash-attack, combo nodes (§9) |
+| 61 | [M3 Editor Setup](systems/61_M3_Editor_Setup.md) 🆕 | **LUTAR no editor:** contrato C++ (§1), NavMesh, BT/Blackboard com **pausa no Airborne**, Grunt + Atirador (DataAssets), telegrafe no chão, projétil, arena com ondas + token |
+| 62 | [Auditoria de Combate M2](combat/62_M2_Combat_Audit.md) 🆕 | **Auditoria multi-agente (2026-06-12):** 6 bugs ALTA com fixes, gaps p/ AAA priorizados (jump-cancel, clímax do slam, dano escalado), riscos M3 (mono-alvo), drift código↔doc, plano de ação |
 
 ### 🔬 Deep Dives — Combate · Habilidades · Feel · Juice 🆕
 > Aprofundamentos escritos pela *writers' room* (4 agentes-autores). Leia após os overviews (15/16). Jogo **single-player** (local-authoritative) → combate agressivo, slow-mo livre.

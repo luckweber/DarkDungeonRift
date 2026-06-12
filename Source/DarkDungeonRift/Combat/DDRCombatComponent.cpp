@@ -17,6 +17,7 @@
 #include "EngineUtils.h"
 #include "GA_AirSlam.h"
 #include "GE_DDRDamage.h"
+#include "GE_DDRPoiseDamage.h"
 #include "DDRCharacterMovementComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -35,6 +36,7 @@ UDDRCombatComponent::UDDRCombatComponent()
 	// Depois do CMC/root motion — corrige Z do juggle no mesmo frame.
 	PrimaryComponentTick.TickGroup = TG_PostPhysics;
 	DamageEffectClass = UGE_DDRDamage::StaticClass();
+	PoiseEffectClass = UGE_DDRPoiseDamage::StaticClass();
 }
 
 void UDDRCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -68,6 +70,56 @@ void UDDRCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	if (bAirInputLocked)
 	{
 		MaintainAirInputLock();
+	}
+
+	SanitizeGroundLocomotionAfterAir();
+
+	if (UAbilitySystemComponent* OwnerASC = GetOwnerASC())
+	{
+		if (const UDDRAttributeSet* AttrSet = OwnerASC->GetSet<UDDRAttributeSet>())
+		{
+			const_cast<UDDRAttributeSet*>(AttrSet)->TickPoiseRegen(DeltaTime);
+		}
+	}
+}
+
+void UDDRCombatComponent::SanitizeGroundLocomotionAfterAir()
+{
+	if (bInAirCombat || bSlamAirPinActive)
+	{
+		return;
+	}
+
+	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
+	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
+	if (!OwnerChar || !MoveComp || !MoveComp->IsMovingOnGround())
+	{
+		return;
+	}
+
+	if (bAirInputLocked)
+	{
+		UE_LOG(LogDDR, Warning, TEXT("[AIR] sanitize: input ainda travado no chao — liberando t=%.2f"),
+			GetWorld()->GetTimeSeconds());
+		UnlockAirHorizontalInput();
+	}
+
+	if (UDDRCharacterMovementComponent* DDRMove = Cast<UDDRCharacterMovementComponent>(MoveComp))
+	{
+		if (DDRMove->IsLocomotionInputBlocked())
+		{
+			DDRMove->SetLocomotionInputBlocked(false);
+		}
+	}
+
+	if (MoveComp->MovementMode == MOVE_Flying)
+	{
+		MoveComp->SetMovementMode(MOVE_Walking);
+	}
+
+	if (!MoveComp->bOrientRotationToMovement)
+	{
+		MoveComp->bOrientRotationToMovement = true;
 	}
 }
 
@@ -669,6 +721,12 @@ void UDDRCombatComponent::ResetHitTracking()
 
 void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
 {
+	if (!CanLaunchActor(TargetActor))
+	{
+		UE_LOG(LogDDR, Log, TEXT("[LAUNCH] bloqueado — poise nao quebrou em %s"), *GetNameSafe(TargetActor));
+		return;
+	}
+
 	if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(TargetActor))
 	{
 		// Altura inicial do alvo: LaunchRiseHeight (tune no BP para combinar com o RM do clip
@@ -823,6 +881,20 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 	bAirCarryActive = false;
 	if (!bSlam)
 	{
+		// Auto-drop (timeout do player): o ALVO cai JUNTO. Sem isto o player descia e o
+		// dummy ficava flutuando sozinho até o timer próprio dele expirar (feio).
+		if (ActiveJuggleTarget.IsValid())
+		{
+			if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get()))
+			{
+				if (TargetChar->IsAirborne())
+				{
+					UE_LOG(LogDDR, Log, TEXT("[AIR] auto-drop: derrubando alvo junto com o player t=%.2f"),
+						GetWorld()->GetTimeSeconds());
+					TargetChar->EndAirborne(/*bSlammed=*/false);
+				}
+			}
+		}
 		ActiveJuggleTarget.Reset();
 	}
 	GetWorld()->GetTimerManager().ClearTimer(AirHoldTimerHandle);
@@ -839,10 +911,18 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
 	if (UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr)
 	{
-		MoveComp->SetMovementMode(MOVE_Falling);
 		if (bSlam)
 		{
+			MoveComp->SetMovementMode(MOVE_Falling);
 			MoveComp->Velocity = FVector(0.f, 0.f, -3500.f);
+		}
+		else if (MoveComp->IsMovingOnGround())
+		{
+			MoveComp->SetMovementMode(MOVE_Walking);
+		}
+		else
+		{
+			MoveComp->SetMovementMode(MOVE_Falling);
 		}
 	}
 }
@@ -1105,9 +1185,59 @@ float UDDRCombatComponent::GetHealthPercent() const
 	return 1.f;
 }
 
+bool UDDRCombatComponent::SharesFactionWithOwner(AActor* OtherActor) const
+{
+	const UAbilitySystemComponent* SourceASC = GetOwnerASC();
+	const UAbilitySystemComponent* TargetASC = OtherActor
+		? OtherActor->FindComponentByClass<UAbilitySystemComponent>()
+		: nullptr;
+
+	if (!SourceASC || !TargetASC)
+	{
+		return false;
+	}
+
+	const bool bSourceEnemy = SourceASC->HasMatchingGameplayTag(DDRTags::Faction_Enemy);
+	const bool bTargetEnemy = TargetASC->HasMatchingGameplayTag(DDRTags::Faction_Enemy);
+	return bSourceEnemy && bTargetEnemy;
+}
+
+bool UDDRCombatComponent::CanLaunchActor(const AActor* TargetActor)
+{
+	if (!TargetActor)
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* TargetASC = TargetActor->FindComponentByClass<UAbilitySystemComponent>();
+	if (!TargetASC)
+	{
+		return true;
+	}
+
+	const float PoiseMax = TargetASC->GetNumericAttribute(UDDRAttributeSet::GetPoiseMaxAttribute());
+	if (PoiseMax <= KINDA_SMALL_NUMBER)
+	{
+		return true;
+	}
+
+	if (TargetASC->HasMatchingGameplayTag(DDRTags::State_Combat_Stagger))
+	{
+		return true;
+	}
+
+	const float Poise = TargetASC->GetNumericAttribute(UDDRAttributeSet::GetPoiseAttribute());
+	return Poise <= KINDA_SMALL_NUMBER;
+}
+
 bool UDDRCombatComponent::CanHitActor(AActor* OtherActor) const
 {
 	if (!OtherActor || OtherActor == GetOwner())
+	{
+		return false;
+	}
+
+	if (SharesFactionWithOwner(OtherActor))
 	{
 		return false;
 	}
@@ -1160,6 +1290,11 @@ void UDDRCombatComponent::ApplyDamageToTarget(AActor* TargetActor, const FDDRMel
 	SpecHandle.Data->SetSetByCallerMagnitude(DDRTags::Data_Damage, Damage);
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 
+	if (Params.PoiseDamage > 0.f)
+	{
+		ApplyPoiseToTarget(TargetActor, Params.PoiseDamage);
+	}
+
 	if (UWorld* World = GetWorld())
 	{
 		if (UDDRHitStopSubsystem* HitStop = World->GetSubsystem<UDDRHitStopSubsystem>())
@@ -1176,6 +1311,35 @@ void UDDRCombatComponent::ApplyDamageToTarget(AActor* TargetActor, const FDDRMel
 		CueParams.Location = TargetActor->GetActorLocation();
 		SourceASC->ExecuteGameplayCue(DDRTags::Cue_Hit_Light, CueParams);
 	}
+}
+
+void UDDRCombatComponent::ApplyPoiseToTarget(AActor* TargetActor, const float PoiseDamage)
+{
+	UAbilitySystemComponent* SourceASC = GetOwnerASC();
+	UAbilitySystemComponent* TargetASC = TargetActor ? TargetActor->FindComponentByClass<UAbilitySystemComponent>() : nullptr;
+	if (!SourceASC || !TargetASC || !PoiseEffectClass || PoiseDamage <= 0.f)
+	{
+		return;
+	}
+
+	const float TargetPoiseMax = TargetASC->GetNumericAttribute(UDDRAttributeSet::GetPoiseMaxAttribute());
+	if (TargetPoiseMax <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddSourceObject(GetOwner());
+	Context.AddInstigator(GetOwner(), GetOwner());
+
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(PoiseEffectClass, 1.f, Context);
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(DDRTags::Data_PoiseDamage, PoiseDamage);
+	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
 void UDDRCombatComponent::SendHitEvent(AActor* HitActor) const

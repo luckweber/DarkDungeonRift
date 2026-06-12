@@ -78,11 +78,18 @@ O segredo do juggle é o alvo **não cair rápido**:
 
 | Variável | Valor inicial | Função |
 |---|---|---|
-| **Hang-time alvo por hit** | ~1.1 s (`TargetAirborneHoldSeconds`) | Timer renovado a cada hit |
+| **Hang-time alvo por hit** | ~1.1 s (`TargetAirborneHoldSeconds`) | Timer do ALVO renovado a cada hit — sem hit por isto, o alvo **cai sozinho** |
+| **Hold do PLAYER no ar** | ~1.4 s (`PlayerAirHoldSeconds`) | Auto-drop do player se **não atacar** por isto — renovado a cada air attack |
 | **Co-altitude por hit** | ~60 cm (`JuggleTargetHeightAbovePlayer`) — **aceita negativo** (alvo ABAIXO do player; ~-30 a -60 pros swings descendentes) | Alvo fica **relativo ao `AirAnchorZ` do player**, não stack de +150 cm |
 | **Nudge extra por hit** | ×0.15 (`AirPopVerticalNudgeScale`) | Pequeno bump com decay — anti-infinito sem subir ao céu |
 | **decayFactor** | 0.85 (`AirPopDecay`) | Nudge *= decay^hits |
 | **Cap de hits no ar** (`MaxJuggleHits`) | **7** | Teto anti-abuse (`UDDRCombatComponent`) |
+
+> ⏱️ **"Quanto tempo ficam no ar sem fazer nada?"** Dois relógios, ambos no **Combat Component** do `BP_DDRPlayer` (`DDR|Combat|Air`):
+> - **`TargetAirborneHoldSeconds`** (1.1s) — o **inimigo** cai se não tomar hit.
+> - **`PlayerAirHoldSeconds`** (1.4s) — o **player** cai se não atacar (nem slam).
+>
+> **Caem juntos:** quando o player auto-dropa (timeout), o C++ **derruba o alvo junto** (`ExitAirCombat` → `EndAirborne`) — não fica mais inimigo flutuando sozinho com o player no chão. Para o player ser sempre o gatilho, deixe `TargetAirborneHoldSeconds` ≥ `PlayerAirHoldSeconds`. Whiff no ar **renova só o player** (o inimigo escapa se você erra os golpes — design intencional). O **slam (R)** ou continuar o **combo (LMB)** resetam os relógios: é a "janela" pra decidir finalizar ou seguir o juggle.
 
 **Tuning no editor (preferido):** `BP_GA_AirAttack` → **Juggle Target Height Above Player** · **Air Pop Vertical Nudge Scale** (copiados ao ativar; fallback no Combat Component).
 

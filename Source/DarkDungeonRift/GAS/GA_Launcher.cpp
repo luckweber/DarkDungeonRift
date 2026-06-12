@@ -58,6 +58,11 @@ bool UGA_Launcher::CanActivateAbility(
 		return false;
 	}
 
+	if (!UDDRCombatComponent::CanLaunchActor(Target))
+	{
+		return false;
+	}
+
 	const float Dist2D = FVector::Dist2D(Target->GetActorLocation(), Avatar->GetActorLocation());
 	return Dist2D <= LauncherMaxActivationDistance;
 }

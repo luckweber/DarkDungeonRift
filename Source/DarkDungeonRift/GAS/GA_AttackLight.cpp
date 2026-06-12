@@ -126,13 +126,21 @@ void UGA_AttackLight::ActivateAbility(
 	}
 
 	// Trava orient-to-movement durante o ataque (corpo não gira com WASD no meio do swing).
-	if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+	// No juggle aéreo o CombatComponent já trava orient + input — não empilhar aqui: o EndAbility
+	// restauraria false DEPOIS do UnlockAirHorizontalInput e o chão ficava "foado".
+	const UDDRCombatComponent* CombatForOrient = GetDDRCombatComponent();
+	const bool bAirInputOwnedByCombat = CombatForOrient && CombatForOrient->IsAirHorizontalInputLocked();
+
+	if (!bAirInputOwnedByCombat)
 	{
-		if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
+		if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
 		{
-			bSavedOrientToMovement = MoveComp->bOrientRotationToMovement;
-			MoveComp->bOrientRotationToMovement = false;
-			bRotationLocked = true;
+			if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
+			{
+				bSavedOrientToMovement = MoveComp->bOrientRotationToMovement;
+				MoveComp->bOrientRotationToMovement = false;
+				bRotationLocked = true;
+			}
 		}
 	}
 
@@ -190,7 +198,17 @@ void UGA_AttackLight::EndAbility(
 		{
 			if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
 			{
-				MoveComp->bOrientRotationToMovement = bSavedOrientToMovement;
+				bool bRestoreOrient = bSavedOrientToMovement;
+				// Se o juggle já liberou orient (true) mas salvamos false durante o lock aéreo,
+				// nao re-aplicar false — causa walk "foado" ao pousar.
+				if (const UDDRCombatComponent* Combat = GetDDRCombatComponent())
+				{
+					if (!Combat->IsAirHorizontalInputLocked() && !Combat->IsInAirCombat() && !bRestoreOrient)
+					{
+						bRestoreOrient = true;
+					}
+				}
+				MoveComp->bOrientRotationToMovement = bRestoreOrient;
 			}
 		}
 	}

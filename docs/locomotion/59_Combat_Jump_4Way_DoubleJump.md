@@ -97,6 +97,7 @@ O snapshot [`FDDRLocomotionState`](../../Source/DarkDungeonRift/Animation/DDRLoc
 | `LandDirection` | `EDDRJumpDirection` | qual clip End no pouso |
 | `bIsDoubleJump` | bool | **pulso 1 frame** — SÓ na **transição** Fall Loop → Jump |
 | `bJumpFromAir` | bool | **persistente** — **conteúdo** do estado Jump (Blend by Bool: true → `Double_Jump_Combat_*`) |
+| `bIsAirCombat` | bool | flutuar no juggle (hold aéreo, Flying) — entra/permanece no **Fall Loop** (§4.2) |
 | `AirJumpIndex` | int32 | 0 / 1 / 2 (debug) |
 
 > ⚠️ **`bIsDoubleJump` (pulso) ≠ `bJumpFromAir` (persistente) — não confunda:** o pulso vive **1 frame** (acorda a transição e morre). O conteúdo do estado Jump avalia **1 frame depois** que a transição completa — aí o pulso já é `false` e o Blend by Bool **sempre cairia no Start normal**. Por isso o conteúdo usa o flag **persistente** `bJumpFromAir`, que só zera no pouso. (Era exatamente o bug "double jump sempre toca anim normal".)
@@ -228,12 +229,17 @@ Mapa de referência:
 
 ### 4.2 Estado **Fall Loop**
 
-| Condição | Clip |
-|---|---|
-| `bIsCombatFalling && bIsFalling` | `Jump_Combat_Loop` (slam — [58 §1.3](58_AnimGraph_Step_by_Step.md)) |
-| default | `Jump_Combat_Loop` (mesmo clip neutro) |
+Conteúdo: um Sequence Player com `Jump_Combat_Loop_0_Seq` (**Loop ON**). Subida e descida compartilham o Loop neutro; opcional P1: Rising vs Falling por `Velocity.Z > 0`.
 
-> Subida e descida compartilham o Loop neutro; opcional P1: trocar para Rising vs Falling por `Velocity.Z > 0`.
+> 🪂 **CRÍTICO — flutuar no juggle:** durante o hold aéreo o player está em **`MOVE_Flying`**, então **`bIsFalling = false`** — sem tratamento, ele fica **parado sem anim no ar** (o sintoma que você viu). A entrada do Fall Loop precisa do flag `bIsAirCombat`:
+
+| Transição (entra/permanece no Fall Loop) | Condição |
+|---|---|
+| Locomotion / To Falling → Fall Loop | `bIsFalling` **OU** `bIsAirCombat` |
+| Jump → Fall Loop | Automatic (Start terminou) |
+| Fall Loop → Land | `NOT bIsFalling` **AND** `NOT bIsAirCombat` |
+
+> Assim: launcher sobe → montage acaba → `bIsAirCombat=true` (flutua no Loop) → você ataca (montage por slot sobrepõe) → para de atacar → após `PlayerAirHoldSeconds` o C++ solta `Falling` (`bIsAirCombat→false`, `bIsFalling→true`, segue no Loop) → pousa → Land. **Nunca** parado sem anim.
 
 ### 4.3 Estado **Land**
 
@@ -329,6 +335,8 @@ Console: `ddr.LocomotionDebug 1` — confira `Fall=1` e gait durante o ar.
 | 2º pulo no chão | falta check `IsFalling()` | §3.2 |
 | Atravessa loop Start→End | transição automática longa demais | Automatic Rule < 0.05 no Start |
 | Preso no Fall | falta `NOT bIsFalling` → Land | §4.4 |
+| **Player PARADO sem anim no ar** (juggle/launcher) | Flying → `bIsFalling=false`; Fall Loop não entra | §4.2 — condição do Fall Loop = `bIsFalling OR bIsAirCombat` (recompile) |
+| Player não pousa (preso no Loop após juggle) | falta `NOT bIsAirCombat` na saída pro Land | §4.2 — `Fall Loop → Land = NOT bIsFalling AND NOT bIsAirCombat` |
 | Pulo durante juggle move player | lock aéreo off | `IsAirHorizontalInputLocked()` |
 | Slam usa End traversal | `bIsCombatFalling` false | tag `State.Combat.SlamFall` + [60 §8](../systems/60_M2_Editor_Setup.md) |
 | **Space no MERGULHO do slam subia o player** (anulava o -3500) | `TryCombatJump` não checava `SlamFall` | ✅ corrigido — pulo bloqueado pela tag (recompile) |

@@ -70,6 +70,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DDR|Combat")
 	float GetHealthPercent() const;
 
+	/** Alvo pode ser lançado? Sem poise = sempre (dummy M2); senão exige stagger (doc 18 §5.4). */
+	UFUNCTION(BlueprintPure, Category = "DDR|Combat|Poise")
+	static bool CanLaunchActor(const AActor* TargetActor);
+
 	/** Copia tuning do GA_Launcher ao ativar (fallback = valores no Combat Component). */
 	void ApplyLauncherAirTuning(float InLaunchRiseHeight, float InJuggleTargetHeightAbovePlayer);
 
@@ -99,18 +103,24 @@ public:
 	void UnlockAirHorizontalInput();
 	bool IsAirHorizontalInputLocked() const { return bAirInputLocked; }
 
+	bool CanHitActor(AActor* OtherActor) const;
+
 private:
 	void ApplySlamPlayerFollow(const FDDRMeleeSweepParams& Params, AActor* HitActor);
 	void MaintainSlamAirPin();
 	void MaintainAirInputLock();
 	bool IsTargetInAttackArc(const AActor* Target) const;
-	bool CanHitActor(AActor* OtherActor) const;
+	bool SharesFactionWithOwner(AActor* OtherActor) const;
 	void ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params);
+	void ApplyPoiseToTarget(AActor* TargetActor, float PoiseDamage);
 	void SendHitEvent(AActor* HitActor) const;
 	UAbilitySystemComponent* GetOwnerASC() const;
 
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat")
 	TSubclassOf<UGE_DDRDamage> DamageEffectClass;
+
+	UPROPERTY(EditAnywhere, Category = "DDR|Combat")
+	TSubclassOf<class UGE_DDRPoiseDamage> PoiseEffectClass;
 
 	UPROPERTY(EditAnywhere, Category = "DDR|Combat")
 	float DamageAttackPowerScale = 0.01f;
@@ -217,6 +227,7 @@ private:
 	void AirPopTarget(AActor* TargetActor);
 	void OnPlayerAirHoldExpired();
 	void MaintainAirAltitude();
+	void SanitizeGroundLocomotionAfterAir();
 
 	bool bSlamAirPinActive = false;
 	float SlamPinZ = 0.f;

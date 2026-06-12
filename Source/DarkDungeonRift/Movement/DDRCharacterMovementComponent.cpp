@@ -304,6 +304,7 @@ void UDDRCharacterMovementComponent::UpdateLocomotionState()
 		{
 			LocomotionState.bIsDashing = ASC->HasMatchingGameplayTag(DDRTags::State_Movement_Dashing);
 			LocomotionState.bIsCombatFalling = ASC->HasMatchingGameplayTag(DDRTags::State_Combat_SlamFall);
+			LocomotionState.bIsAirCombat = ASC->HasMatchingGameplayTag(DDRTags::State_Combat_InAir);
 		}
 	}
 

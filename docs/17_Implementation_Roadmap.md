@@ -111,7 +111,7 @@ M⁻¹ SPIKE ─→ M0 Esqueleto ─→ M1 Bater ─→ M2 VOAR ─→ M3 Lutar 
 
 ## 5. M3 — Lutar (IA + arena) · 🟡
 
-**Meta:** 2 tipos de inimigo com IA básica numa arena com ondas.
+**Meta:** 2 tipos de inimigo com IA básica numa arena com ondas. **Setup passo a passo: [61 — M3 Editor Setup](systems/61_M3_Editor_Setup.md)** (contrato C++ no §1 + editor §2-8).
 
 > ⚠️ **Orce a IA de verdade (revisão de design — Sofia).** Inimigo que **persegue + telegrafa + recua + pausa no `Airborne`** é mais trabalho do que uma linha de tabela sugere — é pré-requisito do "jogo de verdade". Agora documentado no cluster **[Inimigos & IA (30-34)](enemies/30_AI_Overview.md)**. Reserve tempo de M3.
 

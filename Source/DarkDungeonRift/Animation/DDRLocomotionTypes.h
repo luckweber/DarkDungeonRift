@@ -69,6 +69,12 @@ struct FDDRLocomotionState
 	UPROPERTY(BlueprintReadOnly, Category = "DDR|Locomotion")
 	bool bIsCombatFalling = false;
 
+	/** true enquanto o player FLUTUA no juggle (hold aéreo, MOVE_Flying — não é Falling!).
+	 *  AnimBP: entre no Fall Loop (Jump_Combat_Loop) por esta condição também. Sem isso o
+	 *  player fica PARADO sem anim no ar (Flying não dispara bIsFalling). Doc 59 §4.2. */
+	UPROPERTY(BlueprintReadOnly, Category = "DDR|Locomotion")
+	bool bIsAirCombat = false;
+
 	/** Direção do takeoff (Start / Double anim). */
 	UPROPERTY(BlueprintReadOnly, Category = "DDR|Locomotion")
 	EDDRJumpDirection JumpDirection = EDDRJumpDirection::Neutral;

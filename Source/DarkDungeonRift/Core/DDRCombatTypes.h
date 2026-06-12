@@ -26,6 +26,9 @@ struct FDDRMeleeSweepParams
 	float BaseDamage = 15.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float PoiseDamage = 20.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float SweepRadius = 45.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
