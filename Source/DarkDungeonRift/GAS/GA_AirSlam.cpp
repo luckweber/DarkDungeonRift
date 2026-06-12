@@ -126,8 +126,9 @@ void UGA_AirSlam::ActivateAbility(
 		}
 	}
 
-	// Sai do hold aereo e DESCE com forca (16 par.5). O alvo juggleado fica SEGURO no ar
-	// (ExitAirCombat estende o hold dele) ate o impacto derrubar.
+	// MARCO T3 (doc 16 §5): sai do hold aéreo do player; alvo fica no ar (ExtendAirborneHold).
+	// Perfil Slam = só encara (sem warp XY). ExitAirCombat exige bInAirCombat — se R cortou o
+	// launcher antes do T1, o no-op abaixo é normal; a velocity abaixo ainda inicia a queda.
 	AActor* SlamTarget = nullptr;
 	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 	{
@@ -135,7 +136,7 @@ void UGA_AirSlam::ActivateAbility(
 		Combat->ExitAirCombat(/*bSlam=*/true);
 	}
 
-	// A descida e DO SLAM, incondicional. Confiar so no ExitAirCombat deixava um buraco:
+	// Descida incondicional (não delegar só ao ExitAirCombat). Buraco histórico:
 	// R DURANTE a montage do launcher (tag InAir entra no hit; EnterAirCombat so no fim)
 	// -> ExitAirCombat no-op -> player ficava com a velocity de SUBIDA do launcher e
 	// fazia um arco balistico de ~1.2s preso no Loop (dummy ja no chao).
@@ -154,37 +155,6 @@ void UGA_AirSlam::ActivateAbility(
 			(TargetChar && TargetChar->IsAirborne()) ? 1 : 0,
 			SlamTarget ? FVector::Dist2D(SlamTarget->GetActorLocation(), Character->GetActorLocation()) : -1.f,
 			SlamTarget ? SlamTarget->GetActorLocation().Z - Character->GetActorLocation().Z : 0.f);
-	}
-
-	// Golpe do APEX: arremessa o alvo JA na ativacao — ele desce mais rapido (-4500) que
-	// o player (-3500) e esmaga no chao primeiro. Beat de hit-stop vende o "agarrao".
-	if (bSlamClaimedTargetOnActivate)
-	{
-		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(SlamTarget))
-		{
-			if (TargetChar->IsAirborne())
-			{
-				UE_LOG(LogDDR, Log, TEXT("[SLAM] APEX: arremessando %s pro chao (antes do player)"),
-					*GetNameSafe(TargetChar));
-				TargetChar->EndAirborne(/*bSlammed=*/true);
-
-				if (SlamGrabHitStopFrames > 0)
-				{
-					if (UDDRHitStopSubsystem* HitStop = GetWorld()->GetSubsystem<UDDRHitStopSubsystem>())
-					{
-						HitStop->RequestHitStop(SlamGrabHitStopFrames);
-					}
-				}
-
-				if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
-				{
-					FGameplayCueParameters CueParams;
-					CueParams.Instigator = Character;
-					CueParams.Location = TargetChar->GetActorLocation();
-					ASC->ExecuteGameplayCue(DDRTags::Cue_Hit_Light, CueParams);
-				}
-			}
-		}
 	}
 
 	// Homing: mira o XY do alvo pra coluna do impacto SEMPRE conectar (cap = whiff honesto).
@@ -313,6 +283,8 @@ void UGA_AirSlam::NotifySlamHitboxJumpToEnd()
 
 void UGA_AirSlam::TryJumpToEndSection(const TCHAR* Reason)
 {
+	// Único lugar que chama BeginSlamAirPin (audit S-08). NÃO mover para ANS_DDRHitbox::
+	// NotifyBegin — o pin no início do hitbox chega depois do pouso físico (-3500 em ~1 frame).
 	if (bEndSectionStarted)
 	{
 		return;
@@ -339,7 +311,28 @@ void UGA_AirSlam::TryJumpToEndSection(const TCHAR* Reason)
 	}
 
 	JumpToMontageSection(LandSection);
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] End via %s"), Reason);
+
+	if (!bImpactTriggered)
+	{
+		bImpactTriggered = true;
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Instigator = GetAvatarActorFromActorInfo();
+			if (const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
+			{
+				CueParams.Location = Character->GetActorLocation();
+			}
+			ASC->ExecuteGameplayCue(DDRTags::Cue_Slam, CueParams);
+		}
+
+		if (UDDRHitStopSubsystem* HitStop = GetWorld()->GetSubsystem<UDDRHitStopSubsystem>())
+		{
+			HitStop->RequestHitStop(SlamHitStopFrames);
+		}
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] End via %s (impacto declarado)"), Reason);
 }
 
 void UGA_AirSlam::CheckSlamEndProximity()

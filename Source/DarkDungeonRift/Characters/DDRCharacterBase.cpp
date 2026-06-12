@@ -106,6 +106,7 @@ void ADDRCharacterBase::StartAirborne(float RiseHeight, float HoldSeconds)
 	}
 
 	bAirborneActive = true;
+	PrimaryActorTick.TickGroup = TG_PostPhysics;
 	SetActorTickEnabled(true);
 
 	if (AbilitySystemComponent)
@@ -216,6 +217,8 @@ void ADDRCharacterBase::BeginSlamKnockdown(const float SlamFallSpeed)
 {
 	bGuidedSlamFall = true;
 	bPendingRagdollOnSlamLand = bRagdollOnSlammed;
+	GuidedSlamFallStartTime = GetWorld()->GetTimeSeconds();
+	PrimaryActorTick.TickGroup = TG_PostPhysics;
 
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
@@ -325,6 +328,30 @@ void ADDRCharacterBase::FinishGuidedSlamFall()
 
 void ADDRCharacterBase::TickGuidedSlamFall(float DeltaSeconds)
 {
+	if (bRagdolled)
+	{
+		bGuidedSlamFall = false;
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(DDRTags::State_Dead))
+	{
+		FinishGuidedSlamFall();
+		return;
+	}
+
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->GetTimeSeconds() - GuidedSlamFallStartTime > GuidedSlamFallTimeoutSeconds)
+		{
+			UE_LOG(LogDDR, Warning, TEXT("[SLAM] %s queda guiada TIMEOUT — forçando pouso t=%.2f"),
+				*GetName(), World->GetTimeSeconds());
+			FinishGuidedSlamFall();
+			return;
+		}
+	}
+
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (!Capsule)
 	{

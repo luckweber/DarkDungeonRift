@@ -193,7 +193,7 @@ void UDDRCombatComponent::LockAirHorizontalInput()
 		GetWorld()->GetTimeSeconds());
 }
 
-void UDDRCombatComponent::UnlockAirHorizontalInput()
+void UDDRCombatComponent::UnlockAirHorizontalInput(const bool bForce)
 {
 	if (!bAirInputLocked)
 	{
@@ -250,7 +250,6 @@ void UDDRCombatComponent::UnregisterSlamAbility()
 	bSlamAirPinActive = false;
 	bSlamEndJumpedThisSwing = false;
 	bSlamPinSweepParamsSet = false;
-	ActiveJuggleTarget.Reset();
 	// Safety net: se o slam morreu com o pin/hold ainda travando input, libera.
 	if (!bInAirCombat)
 	{
@@ -260,6 +259,8 @@ void UDDRCombatComponent::UnregisterSlamAbility()
 
 void UDDRCombatComponent::BeginSlamAirPin()
 {
+	// Chamado por GA_AirSlam::TryJumpToEndSection (proximidade do chão / hitbox), NÃO pelo
+	// ANS_DDRHitbox::NotifyBegin — pin cedo congela antes da velocity -3500 pousar (audit S-08).
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
 	if (!OwnerChar)
 	{
@@ -335,7 +336,7 @@ void UDDRCombatComponent::EndSlamAirPin(const FDDRMeleeSweepParams& Params)
 	{
 		if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
 		{
-			if (MoveComp->MovementMode == MOVE_Flying && !MoveComp->IsFalling())
+			if (MoveComp->IsMovingOnGround())
 			{
 				MoveComp->SetMovementMode(MOVE_Walking);
 			}
@@ -386,7 +387,7 @@ void UDDRCombatComponent::SnapSlamEndToJuggleTarget()
 		return;
 	}
 
-	AActor* Target = ActiveJuggleTarget.Get();
+	AActor* Target = GetPrimaryJuggleTarget();
 	if (!Target)
 	{
 		Target = FindSoftLockTarget(/*bPreferAirborne=*/true);
@@ -453,20 +454,9 @@ void UDDRCombatComponent::ApplySlamPlayerFollow(const FDDRMeleeSweepParams& Para
 {
 	if (Params.SlamPlayerFollow == EDDRSlamPlayerFollow::FollowToGround)
 	{
-		if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
-		{
-			if (UCharacterMovementComponent* MoveComp = OwnerChar->GetCharacterMovement())
-			{
-				bSlamAirPinActive = false;
-				UnlockAirHorizontalInput();
-				MoveComp->SetMovementMode(MOVE_Falling);
-				FVector Vel = MoveComp->Velocity;
-				Vel.Z = Params.SlamFollowFallVelocity;
-				MoveComp->Velocity = Vel;
-				UE_LOG(LogDDR, Log, TEXT("[SLAM] FollowToGround velZ=%.0f t=%.2f"),
-					Params.SlamFollowFallVelocity, GetWorld()->GetTimeSeconds());
-			}
-		}
+		ReleaseSlamAirPinForLanding(Params.SlamFollowFallVelocity);
+		UE_LOG(LogDDR, Log, TEXT("[SLAM] FollowToGround velZ=%.0f t=%.2f"),
+			Params.SlamFollowFallVelocity, GetWorld()->GetTimeSeconds());
 	}
 }
 
@@ -483,12 +473,12 @@ void UDDRCombatComponent::SetAirCarryActive(const bool bActive, const float Forw
 void UDDRCombatComponent::SyncJuggleTargetFollow()
 {
 	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor || !ActiveJuggleTarget.IsValid())
+	if (!OwnerActor || !GetPrimaryJuggleTarget())
 	{
 		return;
 	}
 
-	ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get());
+	ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(GetPrimaryJuggleTarget());
 	if (!TargetChar || !TargetChar->IsAirborne())
 	{
 		return;
@@ -521,6 +511,19 @@ void UDDRCombatComponent::MaintainAirAltitude()
 		FVector Pinned = Loc;
 		Pinned.Z = AirAnchorZ;
 		OwnerChar->SetActorLocation(Pinned, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+
+	// Re-sincroniza alvos após fixar o Z do player (audit A-01).
+	PruneInvalidJuggleTargets();
+	for (const TWeakObjectPtr<AActor>& WeakTarget : ActiveJuggleTargets)
+	{
+		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(WeakTarget.Get()))
+		{
+			if (TargetChar->IsAirborne())
+			{
+				TargetChar->OverrideAirborneTargetZ(AirAnchorZ + JuggleTargetHeightAbovePlayer);
+			}
+		}
 	}
 }
 
@@ -621,7 +624,7 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 			AirPopTarget(HitActor);
 			if (Params.bCarryAirborneTargets)
 			{
-				ActiveJuggleTarget = HitActor;
+				AddJuggleTarget(HitActor);
 				SetAirCarryActive(true, Params.AirCarryForwardOffset);
 			}
 		}
@@ -719,6 +722,77 @@ void UDDRCombatComponent::ResetHitTracking()
 	bLaunchedTargetThisSwing = false;
 }
 
+void UDDRCombatComponent::PruneInvalidJuggleTargets()
+{
+	ActiveJuggleTargets.RemoveAll([](const TWeakObjectPtr<AActor>& Entry)
+	{
+		return !Entry.IsValid();
+	});
+}
+
+void UDDRCombatComponent::AddJuggleTarget(AActor* TargetActor)
+{
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	PruneInvalidJuggleTargets();
+
+	for (const TWeakObjectPtr<AActor>& Existing : ActiveJuggleTargets)
+	{
+		if (Existing.Get() == TargetActor)
+		{
+			return;
+		}
+	}
+
+	while (ActiveJuggleTargets.Num() >= MaxActiveJuggleTargets)
+	{
+		if (ADDRCharacterBase* Evicted = Cast<ADDRCharacterBase>(ActiveJuggleTargets[0].Get()))
+		{
+			if (Evicted->IsAirborne())
+			{
+				Evicted->EndAirborne(/*bSlammed=*/false);
+			}
+		}
+		ActiveJuggleTargets.RemoveAt(0);
+	}
+
+	ActiveJuggleTargets.Add(TargetActor);
+}
+
+AActor* UDDRCombatComponent::GetPrimaryJuggleTarget() const
+{
+	for (int32 Index = ActiveJuggleTargets.Num() - 1; Index >= 0; --Index)
+	{
+		if (ActiveJuggleTargets[Index].IsValid())
+		{
+			return ActiveJuggleTargets[Index].Get();
+		}
+	}
+	return nullptr;
+}
+
+void UDDRCombatComponent::EndAllJuggleTargets(const bool bSlammed)
+{
+	PruneInvalidJuggleTargets();
+	for (const TWeakObjectPtr<AActor>& WeakTarget : ActiveJuggleTargets)
+	{
+		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(WeakTarget.Get()))
+		{
+			if (TargetChar->IsAirborne())
+			{
+				TargetChar->EndAirborne(bSlammed);
+			}
+		}
+	}
+	if (!bSlammed)
+	{
+		ActiveJuggleTargets.Reset();
+	}
+}
+
 void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
 {
 	if (!CanLaunchActor(TargetActor))
@@ -733,9 +807,15 @@ void UDDRCombatComponent::LaunchTarget(AActor* TargetActor)
 		// Attack_Up_Floor_To_Air). Co-altitude fina acontece em EnterAirCombat, após o player
 		// terminar o pulo — nunca puxa o player para baixo.
 		TargetChar->StartAirborne(LaunchRiseHeight, TargetAirborneHoldSeconds);
-		ActiveJuggleTarget = TargetActor;
+		AddJuggleTarget(TargetActor);
 		bLaunchedTargetThisSwing = true;
 		LockAirHorizontalInput();
+
+		// AUDITORIA — proibido neste ponto (ver timeline em DDRCombatComponent.h):
+		// · RefreshAirHold / AirAnchorZ / pin de Z no tick (MaintainLaunchWindowAltitude)
+		// · ExitAirCombat ou OnPlayerAirHoldExpired especial para "janela de launch"
+		// Motivo: a montage do launcher ainda está em RM; o hold do player só começa em
+		// EnterAirCombat (fim da montage). Timer cedo = dummy+player caem juntos ~1.1s.
 
 		// Gate de abilities: assim que alguem foi lancado, LMB vira AirAttack (nao espera
 		// o fim da montage do launcher — senao AttackLight dispara no meio do uppercut).
@@ -782,6 +862,8 @@ void UDDRCombatComponent::AirPopTarget(AActor* TargetActor)
 
 void UDDRCombatComponent::EnterAirCombat()
 {
+	// Único lugar que liga bInAirCombat e ancora o Z do juggle (chamado por GA_Launcher
+	// OnMontageCompleted quando DidLaunchTargetThisSwing). Whiff no launcher nunca chega aqui.
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
 	UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr;
 	if (!MoveComp)
@@ -795,14 +877,16 @@ void UDDRCombatComponent::EnterAirCombat()
 	}
 
 	bInAirCombat = true;
+	bLaunchedTargetThisSwing = false;
 	// Ancora na altitude do PULO do player (fim do RM do launcher) — não no inimigo.
 	AirAnchorZ = OwnerChar->GetActorLocation().Z;
 	bHasAirAnchor = true;
 
-	// Alinha o alvo à co-altitude depois que o player subiu (doc 16 §2).
-	if (ActiveJuggleTarget.IsValid())
+	// Alinha os alvos à co-altitude depois que o player subiu (doc 16 §2).
+	PruneInvalidJuggleTargets();
+	for (const TWeakObjectPtr<AActor>& WeakTarget : ActiveJuggleTargets)
 	{
-		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get()))
+		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(WeakTarget.Get()))
 		{
 			if (TargetChar->IsAirborne())
 			{
@@ -823,11 +907,15 @@ void UDDRCombatComponent::EnterAirCombat()
 		ASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 1);
 	}
 
+	// Hold do player so comeca apos o RM do launcher (nao no hit).
+	GetWorld()->GetTimerManager().ClearTimer(AirHoldTimerHandle);
 	RefreshAirHold();
 }
 
 void UDDRCombatComponent::RefreshAirHold()
 {
+	// Guard intencional: NÃO aceitar bLaunchedTargetThisSwing — o hit do launcher não conta
+	// como "no ar" para o timer do player (ver LaunchTarget / regressão audit 62 A-02).
 	if (!bInAirCombat)
 	{
 		return;
@@ -843,6 +931,8 @@ void UDDRCombatComponent::RefreshAirHold()
 
 void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 {
+	// Early-return é esperado se R durante a montage do launcher (tag InAir do hit, mas
+	// EnterAirCombat ainda não rodou). GA_AirSlam aplica a queda com velocity própria nesse caso.
 	if (!bInAirCombat)
 	{
 		UE_LOG(LogDDR, Warning, TEXT("[SLAM] ExitAirCombat(bSlam=%d) IGNORADO — bInAirCombat ja era false (player nao estava no hold aereo)"),
@@ -850,30 +940,32 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 		return;
 	}
 
-	UE_LOG(LogDDR, Log, TEXT("[SLAM] ExitAirCombat bSlam=%d juggleTarget=%s t=%.2f"),
-		bSlam ? 1 : 0, *GetNameSafe(ActiveJuggleTarget.Get()), GetWorld()->GetTimeSeconds());
+	UE_LOG(LogDDR, Log, TEXT("[SLAM] ExitAirCombat bSlam=%d juggleTargets=%d t=%.2f"),
+		bSlam ? 1 : 0, ActiveJuggleTargets.Num(), GetWorld()->GetTimeSeconds());
 
-	// Slam reivindica o alvo: estende o hold pra ele AINDA estar no ar quando o impacto
-	// chegar (sem isto o hold de 1.1s expirava na descida e o bSlamDownTargets no-opava
-	// — o dummy "descia de leve" antes do slam conectar).
-	if (bSlam && ActiveJuggleTarget.IsValid())
+	// Slam reivindica os alvos: estende o hold pra ainda estarem no ar quando o impacto chegar.
+	if (bSlam)
 	{
-		if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get()))
+		PruneInvalidJuggleTargets();
+		if (ActiveJuggleTargets.Num() == 0)
 		{
-			if (TargetChar->IsAirborne())
+			UE_LOG(LogDDR, Warning, TEXT("[SLAM] sem juggleTarget valido no inicio do slam (nada para segurar no ar)"));
+		}
+		for (const TWeakObjectPtr<AActor>& WeakTarget : ActiveJuggleTargets)
+		{
+			if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(WeakTarget.Get()))
 			{
-				TargetChar->ExtendAirborneHold(SlamTargetHoldSeconds);
-			}
-			else
-			{
-				UE_LOG(LogDDR, Warning, TEXT("[SLAM] juggleTarget %s JA NAO esta airborne no inicio do slam (hold expirou cedo?)"),
-					*GetNameSafe(TargetChar));
+				if (TargetChar->IsAirborne())
+				{
+					TargetChar->ExtendAirborneHold(SlamTargetHoldSeconds);
+				}
+				else
+				{
+					UE_LOG(LogDDR, Warning, TEXT("[SLAM] juggleTarget %s JA NAO esta airborne no inicio do slam (hold expirou cedo?)"),
+						*GetNameSafe(TargetChar));
+				}
 			}
 		}
-	}
-	else if (bSlam)
-	{
-		UE_LOG(LogDDR, Warning, TEXT("[SLAM] sem juggleTarget valido no inicio do slam (nada para segurar no ar)"));
 	}
 
 	bInAirCombat = false;
@@ -881,21 +973,9 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 	bAirCarryActive = false;
 	if (!bSlam)
 	{
-		// Auto-drop (timeout do player): o ALVO cai JUNTO. Sem isto o player descia e o
-		// dummy ficava flutuando sozinho até o timer próprio dele expirar (feio).
-		if (ActiveJuggleTarget.IsValid())
-		{
-			if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(ActiveJuggleTarget.Get()))
-			{
-				if (TargetChar->IsAirborne())
-				{
-					UE_LOG(LogDDR, Log, TEXT("[AIR] auto-drop: derrubando alvo junto com o player t=%.2f"),
-						GetWorld()->GetTimeSeconds());
-					TargetChar->EndAirborne(/*bSlammed=*/false);
-				}
-			}
-		}
-		ActiveJuggleTarget.Reset();
+		UE_LOG(LogDDR, Log, TEXT("[AIR] auto-drop: derrubando alvos junto com o player t=%.2f"),
+			GetWorld()->GetTimeSeconds());
+		EndAllJuggleTargets(/*bSlammed=*/false);
 	}
 	GetWorld()->GetTimerManager().ClearTimer(AirHoldTimerHandle);
 
@@ -906,7 +986,7 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 		ASC->SetLooseGameplayTagCount(DDRTags::State_Combat_InAir, 0);
 	}
 
-	UnlockAirHorizontalInput();
+	UnlockAirHorizontalInput(/*bForce=*/true);
 
 	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
 	if (UCharacterMovementComponent* MoveComp = OwnerChar ? OwnerChar->GetCharacterMovement() : nullptr)
@@ -929,6 +1009,7 @@ void UDDRCombatComponent::ExitAirCombat(bool bSlam)
 
 void UDDRCombatComponent::OnPlayerAirHoldExpired()
 {
+	// Sem ramo especial para bLaunchedTargetThisSwing — timeout só com bInAirCombat ativo.
 	ExitAirCombat(/*bSlam=*/false);
 }
 
@@ -956,15 +1037,19 @@ AActor* UDDRCombatComponent::FindSoftLockTarget(bool bPreferAirborne) const
 		return FMath::Abs(Candidate->GetActorLocation().Z - OwnerLoc.Z) <= SoftLockMaxVerticalGap;
 	};
 
-	// Juggle ativo: prioriza o alvo que já está no ar (se ainda na mesma faixa de altura).
-	if (bPreferAirborne && ActiveJuggleTarget.IsValid() && CanHitActor(ActiveJuggleTarget.Get()))
+	// Juggle ativo: prioriza alvos no ar (mais recente primeiro).
+	if (bPreferAirborne)
 	{
-		if (IsWithinVerticalGap(ActiveJuggleTarget.Get()))
+		for (int32 Index = ActiveJuggleTargets.Num() - 1; Index >= 0; --Index)
 		{
-			const FVector To = ActiveJuggleTarget->GetActorLocation() - OwnerLoc;
-			if (To.Size2D() <= SoftLockRadius)
+			AActor* JuggleTarget = ActiveJuggleTargets[Index].Get();
+			if (JuggleTarget && CanHitActor(JuggleTarget) && IsWithinVerticalGap(JuggleTarget))
 			{
-				return ActiveJuggleTarget.Get();
+				const FVector To = JuggleTarget->GetActorLocation() - OwnerLoc;
+				if (To.Size2D() <= SoftLockRadius)
+				{
+					return JuggleTarget;
+				}
 			}
 		}
 	}

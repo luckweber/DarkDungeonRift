@@ -2,6 +2,7 @@
 
 #include "GA_AttackLight.h"
 
+#include "DDRMotionWarpTypes.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "AbilitySystemComponent.h"
@@ -148,8 +149,14 @@ void UGA_AttackLight::ActivateAbility(
 	{
 		Combat->ResetHitTracking();
 		Combat->SetActiveComboSection(ComboIndex);
-		// Dash-attack: estocada reta — sem warp (só montage forward).
-		if (!bDashAttackOpener)
+		if (bDashAttackOpener)
+		{
+			// AUDITORIA G-01 revertido: dash-attack NÃO usa FaceAndSetupMotionWarp/RunAttack.
+			// Hades = estocada reta na direção do dodge (GA_Dash já orientou); avanço = RM de
+			// AM_RunAttack. Warp no opener snapava o player pro dummy longe — anti-natural.
+			Combat->ClearAttackMotionWarp();
+		}
+		else
 		{
 			Combat->FaceAndSetupMotionWarp(GetMotionWarpProfile(), ShouldPreferAirborneTargets());
 		}

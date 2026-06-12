@@ -25,10 +25,8 @@ void UANS_DDRHitbox::NotifyBegin(
 		if (SweepParams.bSlamDownTargets)
 		{
 			Combat->SetSlamPinSweepParams(SweepParams);
-			if (SweepParams.SlamPlayerFollow == EDDRSlamPlayerFollow::PinInAir)
-			{
-				Combat->BeginSlamAirPin();
-			}
+			// BeginSlamAirPin fica em GA_AirSlam::TryJumpToEndSection (antes do pouso).
+			// NotifyBegin aqui era tarde demais e quebrava a coreografia do slam (audit S-08).
 		}
 	}
 }

@@ -121,6 +121,8 @@ void UGA_Launcher::ActivateAbility(
 
 void UGA_Launcher::OnMontageCompleted()
 {
+	// MARCO T1 (doc 16 §2): EnterAirCombat SOMENTE aqui — após o root motion do uppercut.
+	// Não antecipar para o hit (LaunchTarget): RefreshAirHold/AirAnchor no hit quebram juggle+slam.
 	// Follow launch (16 par.2): so entra no ar se LANCOU alguem (whiff = fica no chao).
 	if (UDDRCombatComponent* Combat = GetDDRCombatComponent())
 	{
@@ -157,7 +159,7 @@ void UGA_Launcher::EndAbility(
 		{
 			if (UDDRCombatComponent* CombatForUnlock = GetDDRCombatComponent())
 			{
-				CombatForUnlock->UnlockAirHorizontalInput();
+				CombatForUnlock->UnlockAirHorizontalInput(/*bForce=*/true);
 			}
 
 			if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))

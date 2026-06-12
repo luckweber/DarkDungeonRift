@@ -34,12 +34,33 @@ public:
 	void ResetHitTracking();
 	void SetActiveComboSection(int32 SectionIndex);
 
-	// ===== Estado aéreo do PLAYER (doc 16 §2: follow launch + hold) =====
+	// ===== Estado aéreo do PLAYER (doc 16 §2, 60 §2–§4) =====
+	//
+	// TIMELINE CANÔNICA (auditoria — não mover marcos sem reler o fluxo inteiro):
+	//
+	//   T0  LaunchTarget (hit do launcher, montage AINDA em root motion):
+	//       StartAirborne no alvo · tag InAir (gate AirAttack) · LockAirHorizontalInput
+	//       · bLaunchedTargetThisSwing = true
+	//       NÃO aqui: RefreshAirHold · AirAnchorZ/bHasAirAnchor · ExitAirCombat
+	//       (regressão 62 audit A-02: timer no hit derrubava player+alvo ~1.1s antes do juggle)
+	//
+	//   T1  GA_Launcher::OnMontageCompleted → EnterAirCombat (fim do RM do uppercut):
+	//       bInAirCombat = true · ancora Z · co-altitude dos alvos · ClearTimer + RefreshAirHold
+	//
+	//   T2  Air attacks → RefreshAirHold renova PlayerAirHoldSeconds a cada golpe
+	//
+	//   T3  GA_AirSlam::ActivateAbility:
+	//       FaceAndSetupMotionWarp(Slam) só encara · ExitAirCombat(bSlam=true) estende hold do alvo
+	//       · velocity Z do slam SEMPRE aplicada depois (mesmo se tag InAir veio do T0 sem T1)
+	//       BeginSlamAirPin só em TryJumpToEndSection — NÃO em ANS_DDRHitbox::NotifyBegin
+	//
+	//   T4  OnPlayerAirHoldExpired → ExitAirCombat(bSlam=false) + auto-drop dos alvos
+	//
 	// Trava o dono no ar (Flying, tag State.Combat.InAir) com auto-drop se ficar ocioso.
 	void EnterAirCombat();
-	// Re-arma o auto-drop (chame a cada air attack).
+	// Re-arma o auto-drop — SOMENTE com bInAirCombat (nunca no hit do launcher).
 	void RefreshAirHold();
-	// Sai do ar (Falling). bSlam = descida forte (slam).
+	// Sai do ar (Falling). bSlam=true: estende hold do alvo e inicia descida forte do player.
 	void ExitAirCombat(bool bSlam);
 	bool IsInAirCombat() const { return bInAirCombat; }
 	// Lançou alguém no último sweep com bLaunchTargets? (launcher só sobe se acertou)
@@ -100,7 +121,7 @@ public:
 
 	// MOVE_Flying (hold aereo/pin) aceita WASD — bloqueia input + orient + MaxFlySpeed.
 	void LockAirHorizontalInput();
-	void UnlockAirHorizontalInput();
+	void UnlockAirHorizontalInput(bool bForce = false);
 	bool IsAirHorizontalInputLocked() const { return bAirInputLocked; }
 
 	bool CanHitActor(AActor* OtherActor) const;
@@ -215,6 +236,7 @@ private:
 	UPROPERTY(VisibleInstanceOnly, Category = "DDR|Combat|Air")
 	bool bInAirCombat = false;
 
+	/** Hit do launcher neste swing (GA_Launcher usa no fim da montage). Não confundir com bInAirCombat. */
 	bool bLaunchedTargetThisSwing = false;
 	uint8 SavedMovementMode = 0;
 	FTimerHandle AirHoldTimerHandle;
@@ -228,6 +250,10 @@ private:
 	void OnPlayerAirHoldExpired();
 	void MaintainAirAltitude();
 	void SanitizeGroundLocomotionAfterAir();
+	void AddJuggleTarget(AActor* TargetActor);
+	AActor* GetPrimaryJuggleTarget() const;
+	void PruneInvalidJuggleTargets();
+	void EndAllJuggleTargets(bool bSlammed);
 
 	bool bSlamAirPinActive = false;
 	float SlamPinZ = 0.f;
@@ -242,7 +268,9 @@ private:
 
 	bool bAirCarryActive = false;
 	float AirCarryForwardOffset = 90.f;
-	TWeakObjectPtr<AActor> ActiveJuggleTarget;
+
+	static constexpr int32 MaxActiveJuggleTargets = 4;
+	TArray<TWeakObjectPtr<AActor>> ActiveJuggleTargets;
 
 	/** World time do fim do último dash (grace do dash-attack). */
 	float LastDashEndTimeSeconds = -1.f;

@@ -24,23 +24,23 @@
 
 | ID | Sistema | Onde | Sintoma | Fix sugerido | Status |
 |---|---|---|---|---|---|
-| **A-02** | Launcher/Air | `DDRCombatComponent::RefreshAirHold` | Entre o **hit** do launcher (tag InAir já posta) e o **fim da montage** (`EnterAirCombat`), `RefreshAirHold` early-returna (`!bInAirCombat`) — ataque aéreo rápido nessa janela **não arma o hold** → player despenca cedo | `if (!bInAirCombat && !bLaunchedTargetThisSwing) return;` | 🔴 aberto |
-| **A-04** | Launcher/Air | `LaunchTarget` (`ActiveJuggleTarget = TargetActor` incondicional) | **Multi-alvo**: 2º inimigo lançado descarta o 1º — pop/carry/exit operam só no 2º; o 1º fica `Airborne` órfão. Latente no M2, **garantido no M3** | `ActiveJuggleTarget` vira `TArray` (cap 3-4) com `EndAirborne` para todos no exit; ou no mínimo `EndAirborne(false)` no anterior ao sobrescrever | 🔴 aberto |
-| **A-05** | Slam/pin | `EndSlamAirPin` (bloco final) | `if (MOVE_Flying && !IsFalling())` é quase sempre true em Flying → seta **MOVE_Walking no ar** | trocar por `IsMovingOnGround()` (como `ExitAirCombat` já faz) | 🔴 aberto |
-| **S-03** | Slam | `OnSlamLanded` ignora pouso com pin ativo; `bImpactTriggered` nunca seta no fluxo pinado | **`Cue_Slam` NUNCA dispara no caminho canônico** (BeforeGroundProximity + PinInAir) — o clímax é mudo (confirma `impacto=0` nos logs de PIE) | disparar `Cue_Slam` + `bImpactTriggered=true` + hit-stop pesado em `TryJumpToEndSection` (o momento do "contato declarado") | 🔴 aberto |
-| **S-08** | Slam | `ANS_DDRHitbox::NotifyBegin` chama `BeginSlamAirPin` ANTES do `SnapSlamEndToJuggleTarget` | Com `SlamEndTrigger=OnSlamHit` + hitbox no Start com `bJumpToSlamEndSection`: **pin fixa o Z errado** (antes do snap de co-altitude) | NotifyBegin só configura SweepParams; `BeginSlamAirPin` SÓ dentro de `TryJumpToEndSection`, após o snap | 🔴 aberto |
-| **G-01** | Chão/Dash | `GA_AttackLight::PlayRunAttackOpener` | Condição de warp invertida (`!bDashAttackOpener`) — **a estocada do dash-attack sai sem o lunge** do perfil RunAttack | inverter a condição | 🔴 aberto (validar linha na build atual) |
+| **A-02** | Launcher/Air | `DDRCombatComponent::RefreshAirHold` | ~~Hold no hit~~ — **revertido**: `RefreshAirHold` só com `bInAirCombat` (T1). Timer/AirAnchor no hit quebrava juggle+slam | manter guard `!bInAirCombat` return; ver §7 T0/T1 | ↩️ revertido 2026-06-12 |
+| **A-04** | Launcher/Air | `LaunchTarget` (`ActiveJuggleTarget = TargetActor` incondicional) | **Multi-alvo**: 2º inimigo lançado descarta o 1º — pop/carry/exit operam só no 2º; o 1º fica `Airborne` órfão. Latente no M2, **garantido no M3** | `ActiveJuggleTargets` (cap 4) + `EndAirborne` no evicted | ✅ 2026-06-12 |
+| **A-05** | Slam/pin | `EndSlamAirPin` (bloco final) | `if (MOVE_Flying && !IsFalling())` é quase sempre true em Flying → seta **MOVE_Walking no ar** | trocar por `IsMovingOnGround()` (como `ExitAirCombat` já faz) | ✅ 2026-06-12 |
+| **S-03** | Slam | `OnSlamLanded` ignora pouso com pin ativo; `bImpactTriggered` nunca seta no fluxo pinado | **`Cue_Slam` NUNCA dispara no caminho canônico** (BeforeGroundProximity + PinInAir) — o clímax é mudo (confirma `impacto=0` nos logs de PIE) | disparar `Cue_Slam` + `bImpactTriggered=true` + hit-stop pesado em `TryJumpToEndSection` (o momento do "contato declarado") | ✅ 2026-06-12 |
+| **S-08** | Slam | `ANS_DDRHitbox::NotifyBegin` chama `BeginSlamAirPin` ANTES do `SnapSlamEndToJuggleTarget` | Com `SlamEndTrigger=OnSlamHit` + hitbox no Start com `bJumpToSlamEndSection`: **pin fixa o Z errado** (antes do snap de co-altitude) | NotifyBegin só configura SweepParams; `BeginSlamAirPin` SÓ dentro de `TryJumpToEndSection`, após o snap | ✅ 2026-06-12 |
+| **G-01** | Chão/Dash | `GA_AttackLight::PlayRunAttackOpener` | ~~Condição de warp invertida~~ — **revertido**: dash-attack **não** usa warp (estocada reta estilo Hades; snap anti-natural). Avanço = root motion de `AM_RunAttack` | manter `ClearAttackMotionWarp` no opener | ↩️ revertido 2026-06-12 |
 
 ### 🟡 MÉDIA
 
 | ID | Sistema | Onde | Sintoma | Fix | Status |
 |---|---|---|---|---|---|
-| A-01 | Launcher/Air | `ADDRCharacterBase::Tick` (alvo, PrePhysics) vs `MaintainAirAltitude` (player, PostPhysics) | Alvo interpola Z com dados do frame anterior → **micro-flutuação visível** em -55° | Tick do alvo em TG_PostPhysics, ou re-push do `AirborneTargetZ` após fixar `AirAnchorZ` | 🔴 aberto |
-| A-03 | Locks | `UnlockAirHorizontalInput` não checa `bInAirCombat` | Pin solto no meio de um juggle ativo libera WASD no ar | ref-count do lock ou guard `if (bInAirCombat) return` | 🔴 aberto |
-| A-06 | Ragdoll | `TickGuidedSlamFall` sem checagem de morte | Alvo que morre na queda guiada "levanta e cai de novo" | early-out se `State.Dead`/`bRagdolled` | 🔴 aberto |
-| S-04 | Slam | `ApplySlamPlayerFollow(FollowToGround)` solta o pin "na mão" | Não zera `bSlamPinSweepParamsSet` → janela de estado inconsistente no path não-canônico | rotear por `ReleaseSlamAirPinForLanding` | 🔴 aberto |
-| S-05 | Ragdoll | `TickGuidedSlamFall` sem timeout | Arena com buraco/void → queda guiada **infinita** (tick eterno, ator some) | timeout 3s ou cap de distância → `FinishGuidedSlamFall` | 🔴 aberto |
-| G-03 | Notifies | `ANS_DDRHitbox::NotifyBegin` sem null-check de `GetOwner()` | Crash potencial em preview/ator destruído | mesmo guard do `ANS_DDRComboWindow` | 🔴 aberto |
+| A-01 | Launcher/Air | `ADDRCharacterBase::Tick` (alvo, PrePhysics) vs `MaintainAirAltitude` (player, PostPhysics) | Alvo interpola Z com dados do frame anterior → **micro-flutuação visível** em -55° | Tick do alvo em TG_PostPhysics, ou re-push do `AirborneTargetZ` após fixar `AirAnchorZ` | ✅ 2026-06-12 |
+| A-03 | Locks | `UnlockAirHorizontalInput` não checa `bInAirCombat` | Pin solto no meio de um juggle ativo libera WASD no ar | guard `bInAirCombat \|\| bLaunchedTargetThisSwing` + `Unlock(bForce)` no cleanup | ✅ 2026-06-12 |
+| A-06 | Ragdoll | `TickGuidedSlamFall` sem checagem de morte | Alvo que morre na queda guiada "levanta e cai de novo" | early-out se `State.Dead`/`bRagdolled` | ✅ 2026-06-12 |
+| S-04 | Slam | `ApplySlamPlayerFollow(FollowToGround)` solta o pin "na mão" | Não zera `bSlamPinSweepParamsSet` → janela de estado inconsistente no path não-canônico | rotear por `ReleaseSlamAirPinForLanding` | ✅ 2026-06-12 |
+| S-05 | Ragdoll | `TickGuidedSlamFall` sem timeout | Arena com buraco/void → queda guiada **infinita** (tick eterno, ator some) | timeout 3s ou cap de distância → `FinishGuidedSlamFall` | ✅ 2026-06-12 |
+| G-03 | Notifies | `ANS_DDRHitbox::NotifyBegin` sem null-check de `GetOwner()` | Crash potencial em preview/ator destruído | mesmo guard do `ANS_DDRComboWindow` | ✅ já estava |
 
 ### 🟢 BAIXA (lista curta)
 
@@ -52,7 +52,7 @@
 
 1. **🥇 Jump-cancel (âncora nº 3)** — documentado como pilar ([19 §3], [15 §6]) e ausente. É o que transforma "lança → 4 hits → slam" em sistema de expressão (DMC5/Bayonetta: `golpe → JC → golpe → JC → spike`). Implementação mínima: `GA_Jump` aéreo com `ActivationRequiredTags: InAir` + `CancelAbilitiesWithTag: Ability.Attack.Air` + pop vertical no player. Pode reusar `Double_Jump_Combat_*` (doc 59 §6 já previa).
 2. **🥈 O clímax mudo do slam** (= bug S-03 + juice): `Cue_Slam` no momento do contato + **camera shake** (perlin, amp ~6, 0.3s) no `GC_Slam` + hit-stop 6-10 frames cirúrgico no frame do contato. 3 linhas de C++ + 1 asset = o maior salto de feel disponível.
-3. **🥉 Queda pós-End lenta**: `PostSlamFallVelocity` default 0 (gravidade pura, ~0.7s) flutua no ritmo Hades — recomendado **-300 a -500** no `BP_GA_AirSlam`.
+3. **🥉 Queda pós-End lenta**: `PostSlamFallVelocity` default **-350** no C++ (`GA_AirSlam`) — tune no `BP_GA_AirSlam` se precisar.
 4. **Dano escalando no juggle**: hit 1 = hit 7 hoje. Multiplicador por `AirborneHitCount` (a infra `SetByCaller` + `ComboSectionIndex` já existe) incentiva manter o juggle vivo.
 5. **`ddr.JuggleDebug` (doc 16 §3 promete, não existe)**: HUD com altura do alvo, pop atual, decay, hit count, timers de hold — sem isso o tuning do feel é cego.
 6. **Feedback de "vai cair"**: holds de 1.4s/1.1s correm silenciosos — alvo deveria "afundar" levemente/piscar perto de expirar (DMC faz; vira leitura, não relógio interno).
@@ -77,7 +77,7 @@
 
 ## 4. 🧹 Simplificação (dívida do slam)
 
-- `bSlamClaimedTargetOnActivate` + `SlamGrabHitStopFrames`: **legado morto** — remover.
+- `bSlamClaimedTargetOnActivate` + `SlamGrabHitStopFrames`: **removidos** ✅.
 - `SlamDamage/Radius/VerticalReach/HitStopFrames` "(doc only)": dead weight de runtime — virar comentário/preset.
 - `FollowToGround`: não-canônico e com bug S-04 — deprecar ou marcar experimental; **caminho canônico = `BeforeGroundProximity` + `PinInAir`** (documentar como o único garantido — S-08 mostra por quê).
 - `SlamFollowFallVelocity` lido num path onde o EditCondition o esconde — renomear p/ `SlamResumeVelocityZ` com condição correta.
@@ -101,7 +101,7 @@
 
 ## 6. 🎯 Plano de ação recomendado (ordem de ROI)
 
-1. **Pacote de fixes ALTA** (~meio dia): S-03 (Cue_Slam no contato) · A-05 (Walking no ar) · A-02 (hold na janela do hit) · S-08 (ordem snap→pin) · G-01 (warp do opener) · G-03 (null-check).
+1. **Pacote de fixes ALTA** (~meio dia): S-03 · A-05 · S-08 · G-03. ~~A-02 (hold no hit)~~ e ~~G-01 (warp opener)~~ **revertidos** — ver §7.
 2. **Juice do slam** (gap #2/#3): shake no GC_Slam + `PostSlamFallVelocity=-350` + hit-stop cirúrgico.
 3. **A-04 multi-alvo** (lista de juggle targets) — **antes** de escrever a IA do M3.
 4. **Jump-cancel** (gap #1) + `ddr.JuggleDebug` (#5) — o salto de profundidade.
@@ -109,7 +109,23 @@
 
 ---
 
-## 7. Notas do auditor-chefe (revisões dos relatórios)
+## 7. Contrato de timing (C++ — não violar)
+
+> **Fonte canônica no código:** bloco `TIMELINE CANÔNICA` em `DDRCombatComponent.h` + comentários `AUDITORIA` / `MARCO T1|T3` em `LaunchTarget`, `GA_Launcher`, `GA_AirSlam`, `ANS_DDRHitbox`, `GA_AttackLight`.
+
+| Marco | Quando | O que faz | **Não fazer** |
+|-------|--------|-----------|----------------|
+| **T0** | Hit do launcher (`LaunchTarget`) | `StartAirborne`, tag `InAir`, lock input | `RefreshAirHold`, `AirAnchorZ`, pin de Z no tick, `ExitAirCombat` |
+| **T1** | Fim da montage (`OnMontageCompleted`) | `EnterAirCombat`, timer do player | Antecipar T1 para o hit |
+| **T2** | Cada air attack | `RefreshAirHold` | Timer no T0 |
+| **T3** | `GA_AirSlam::Activate` | `ExitAirCombat(bSlam=1)`, velocity queda, pin só em `TryJumpToEndSection` | `BeginSlamAirPin` no `ANS_DDRHitbox::NotifyBegin` |
+| **Dash-attack** | Opener durante/grace do dash | `ClearAttackMotionWarp` — estocada reta (Hades) | `FaceAndSetupMotionWarp(RunAttack)` |
+
+Regressões já vistas ao violar isto: **A-02** (timer no hit) · **G-01** (warp no dash-attack) · **S-08** (pin no notify errado).
+
+---
+
+## 8. Notas do auditor-chefe (revisões dos relatórios)
 
 - **Hit-stop "talvez não congele" (relatório ③, rec. 3): VERIFICADO — falso alarme.** `UDDRHitStopSubsystem` usa `SetGlobalTimeDilation(0.0001)` com restore por **tempo real** (`FPlatformTime`) — é freeze global correto. O que falta é o *timing* cirúrgico no slam (S-03), não o mecanismo.
 - **Filtro de facção e Poise**: relatórios anteriores apontavam ausência — **já implementados** na build atual (`SharesFactionWithOwner`, `GE_DDRPoiseDamage`, `CanLaunchActor`, `TickPoiseRegen`, gate de distância no launcher). O doc 61 §1 foi atualizado.

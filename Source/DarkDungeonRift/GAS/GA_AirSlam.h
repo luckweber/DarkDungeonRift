@@ -86,21 +86,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (ClampMin = "0", DisplayName = "Suggested Vertical Reach (doc only)"))
 	float SlamVerticalReach = 450.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|HitboxDefaults", meta = (DisplayName = "Suggested Hit Stop Frames (doc only)"))
-	int32 SlamHitStopFrames = 6;
+	/** Hit-stop no contato declarado (TryJumpToEndSection / fluxo pinado). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel", meta = (ClampMin = "0", ClampMax = "12"))
+	int32 SlamHitStopFrames = 8;
 
 	/** Queda PÓS-slam (End terminou pinado no ar): velocity Z inicial da soltura.
 	 *  0 = gravidade pura — o player cai no Fall Loop da locomoção e pousa com a anim
 	 *  de land (AAA). Valores tipo -200 deixam a queda mais seca. NUNCA teleporta. */
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel", meta = (ClampMax = "0"))
-	float PostSlamFallVelocity = 0.f;
-
-	/** LEGADO: derruba o alvo no frame 0 sem hitbox — deixe OFF (use ANS_DDRHitbox). */
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel")
-	bool bSlamClaimedTargetOnActivate = false;
-
-	UPROPERTY(EditDefaultsOnly, Category = "DDR|Slam|Feel", meta = (ClampMin = "0", ClampMax = "10", EditCondition = "bSlamClaimedTargetOnActivate"))
-	int32 SlamGrabHitStopFrames = 2;
+	float PostSlamFallVelocity = -350.f;
 
 	// Homing por VELOCITY (motion warp nao serve aqui: warp e root motion, e a descida
 	// e velocity sem RM): desce mirando o XY do alvo do soft-lock, com cap honesto.

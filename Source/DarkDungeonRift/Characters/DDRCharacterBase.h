@@ -176,6 +176,8 @@ private:
 	bool bRagdolled = false;
 	bool bGuidedSlamFall = false;
 	bool bPendingRagdollOnSlamLand = false;
+	float GuidedSlamFallStartTime = 0.f;
+	static constexpr float GuidedSlamFallTimeoutSeconds = 3.f;
 	FTimerHandle RagdollRecoverTimerHandle;
 	// Capturados no BeginPlay pra restaurar EXATAMENTE no recover (BP pode ter ajustado).
 	FTransform DefaultMeshRelativeTransform;
