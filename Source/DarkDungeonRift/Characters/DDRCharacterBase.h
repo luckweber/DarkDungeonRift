@@ -68,6 +68,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DDR|Airborne")
 	void SetAirborneFollow(AActor* Attacker, float ForwardOffset, bool bEnable);
 
+	// ===== Reações a hit (doc 63): flinch 4-way + knockdown animado + getup =====
+	/** Toca o flinch correto (chão/ar, leve/pesado) na direção do atacante (seções F/B/L/R).
+	 *  Player e inimigo usam a MESMA função — quem decide é o estado + as montages do BP. */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Reactions")
+	void PlayHitReaction(const AActor* InstigatorActor, bool bHeavyHit);
+
+	/** Derrubado (queda do slam animada → deitado → getup). Inatingível até levantar. */
+	UFUNCTION(BlueprintCallable, Category = "DDR|Reactions")
+	bool IsKnockedDown() const { return bKnockedDown; }
+
 	// ===== Ragdoll knockdown (queda AAA do slam) =====
 	/** Vira ragdoll físico (exige Physics Asset na mesh). Retorna false sem PA (fallback cápsula). */
 	UFUNCTION(BlueprintCallable, Category = "DDR|Ragdoll")
@@ -122,6 +132,34 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "DDR|Airborne")
 	float SlammedFallVelocity = -4500.f;
 
+	// ===== Reações (doc 63) — montages por SEÇÃO, assignadas no BP =====
+	/** Flinch leve no chão — seções F/B/L/R (clips 02_Hit_Combat). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Reactions")
+	TObjectPtr<UAnimMontage> HitReactionMontage;
+
+	/** Flinch pesado no chão — seções F/B/L/R (clips 06_Hit_Large_Combat). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Reactions")
+	TObjectPtr<UAnimMontage> HitReactionHeavyMontage;
+
+	/** Flinch no AR (juggle) — seções F/B/L/R (clips 04_Hit_Combat_Air). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Reactions")
+	TObjectPtr<UAnimMontage> AirHitReactionMontage;
+
+	/** Knockdown ANIMADO do slam (canônico AAA; ragdoll vira fallback/morte) — seções:
+	 *  Fall_Start / Fall_Loop (self-link) / Fall_End (impacto) / Ground (deitado, self-link)
+	 *  / GetUp. Clips: 08_Hit_Combat_Air_Large_To_Floor_* + Knock_Down_Combat_Loop + Get_Up_Combat. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Reactions")
+	TObjectPtr<UAnimMontage> KnockdownMontage;
+
+	/** Tempo DEITADO (seção Ground) antes do getup. */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Reactions", meta = (ClampMin = "0"))
+	float KnockdownGroundSeconds = 1.0f;
+
+	/** OFF = flinch leve NÃO interrompe o próprio ataque (player usa false; inimigo true —
+	 *  trash interrompível é design, doc 32; hyperarmor protege os fortes em P1). */
+	UPROPERTY(EditDefaultsOnly, Category = "DDR|Reactions")
+	bool bLightHitReactionWhileAttacking = true;
+
 	// ===== Ragdoll (knockdown do slam) =====
 	/** Slam derruba com RAGDOLL (física real, AAA) em vez de queda de cápsula com pose
 	 *  congelada ("teleporte"). Exige Physics Asset na skeletal mesh (SK_Mannequin tem). */
@@ -160,6 +198,15 @@ private:
 	void TickGuidedSlamFall(float DeltaSeconds);
 	void TickRagdollFollow();
 
+	// Knockdown animado (doc 63): queda dirigida pela capsula (guided fall) + pose da montage.
+	bool StartAnimatedKnockdownFall();
+	void OnKnockdownLanded();
+	void OnKnockdownGroundExpired();
+	UFUNCTION()
+	void OnKnockdownMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void FinishKnockdown();
+	FName ComputeHitReactionSection(const AActor* InstigatorActor) const;
+
 	void RestartAirborneHoldTimer(float HoldSeconds);
 	void OnAirborneHoldExpired();
 	void OnRagdollRecoverExpired();
@@ -176,6 +223,8 @@ private:
 	bool bRagdolled = false;
 	bool bGuidedSlamFall = false;
 	bool bPendingRagdollOnSlamLand = false;
+	bool bKnockedDown = false;
+	FTimerHandle KnockdownGroundTimerHandle;
 	float GuidedSlamFallStartTime = 0.f;
 	static constexpr float GuidedSlamFallTimeoutSeconds = 3.f;
 	FTimerHandle RagdollRecoverTimerHandle;

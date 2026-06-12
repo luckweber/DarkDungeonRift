@@ -24,6 +24,9 @@ ADDRPlayerCharacter::ADDRPlayerCharacter()
 {
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 
+	// Flinch LEVE nao corta o combo do PLAYER (so heavy interrompe) — doc 63 §3.
+	bLightHitReactionWhileAttacking = false;
+
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;

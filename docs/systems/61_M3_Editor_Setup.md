@@ -111,7 +111,7 @@ Copie o BT do grunt e troque o miolo: "Perseguir" vira **manter `DesiredRange`**
    - **`ANS_DDRHitbox`** no swing: Damage **12** · HitStop **2** · sweep frontal (o inimigo não tem arma com sockets — fallback frontal já funciona).
    - **SEM** `ANS_DDRComboWindow` (inimigo não combina).
    - Windup ~**0.45s** ANTES do hitbox = a janela de leitura ([32 §1](../enemies/32_Enemy_Combat_Behavior.md)). O decal de telegrafe (§7) liga nesse trecho (cue da ability).
-7. **Reações** (o canvas do pilar, [31 §5](../enemies/31_Enemy_Archetypes.md)): no MVP o flinch usa os clips `Hit_*` do pack num montage tocado pelo pipeline de dano; knockdown pós-slam = **ragdoll herdado** ✅ (getup animado = P1, clips "Hit air large to floor + getup").
+7. **Reações** (o canvas do pilar, [31 §5](../enemies/31_Enemy_Archetypes.md)): sistema completo no **[63 — Reações](../combat/63_Hit_Reactions_Knockdown.md)** ✅ — flinch 4-way (leve/pesado/aéreo) automático no pipeline de dano + **knockdown ANIMADO do slam → get-up** (IA pausada via Stagger). Crie as 4 montages do [63 §4](../combat/63_Hit_Reactions_Knockdown.md) e assigne nos BPs de inimigo.
 
 ---
 

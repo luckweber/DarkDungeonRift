@@ -1327,10 +1327,10 @@ bool UDDRCombatComponent::CanHitActor(AActor* OtherActor) const
 		return false;
 	}
 
-	// Caido (ragdoll) = janela de respiro do knockdown — sem juggle/hit ate levantar.
+	// Caido (ragdoll OU knockdown animado) = janela de respiro — sem juggle/hit ate levantar.
 	if (const ADDRCharacterBase* CharBase = Cast<ADDRCharacterBase>(OtherActor))
 	{
-		if (CharBase->IsRagdolled())
+		if (CharBase->IsRagdolled() || CharBase->IsKnockedDown())
 		{
 			return false;
 		}
@@ -1386,6 +1386,14 @@ void UDDRCombatComponent::ApplyDamageToTarget(AActor* TargetActor, const FDDRMel
 		{
 			HitStop->RequestHitStop(Params.HitStopFrames);
 		}
+	}
+
+	// Reacao do alvo (doc 63): flinch 4-way por severidade; no ar usa o flinch aereo
+	// (vende o juggle hit a hit). Launch/slam contam como heavy.
+	if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(TargetActor))
+	{
+		const bool bHeavy = Params.bLaunchTargets || Params.bSlamDownTargets || Params.bHeavyHitReaction;
+		TargetChar->PlayHitReaction(GetOwner(), bHeavy);
 	}
 
 	if (SourceASC->IsValidLowLevel())

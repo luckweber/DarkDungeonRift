@@ -8,6 +8,8 @@
 #include "DDRCombatComponent.h"
 #include "DDRGameplayTags.h"
 #include "DDRLog.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -216,7 +218,10 @@ void ADDRCharacterBase::EndAirborne(bool bSlammed)
 void ADDRCharacterBase::BeginSlamKnockdown(const float SlamFallSpeed)
 {
 	bGuidedSlamFall = true;
-	bPendingRagdollOnSlamLand = bRagdollOnSlammed;
+	// Knockdown ANIMADO e o canonico (doc 63): a capsula dirige a queda (guided fall) e a
+	// MONTAGE da a pose (Fall_Start -> Fall_Loop). Ragdoll vira fallback (sem montage/anim).
+	const bool bAnimated = StartAnimatedKnockdownFall();
+	bPendingRagdollOnSlamLand = !bAnimated && bRagdollOnSlammed;
 	GuidedSlamFallStartTime = GetWorld()->GetTimeSeconds();
 	PrimaryActorTick.TickGroup = TG_PostPhysics;
 
@@ -299,6 +304,19 @@ void ADDRCharacterBase::FinishGuidedSlamFall()
 	const bool bWantRagdoll = bPendingRagdollOnSlamLand;
 	bGuidedSlamFall = false;
 	bPendingRagdollOnSlamLand = false;
+
+	// Knockdown animado: pousa -> seção de impacto (Fall_End) -> deitado (Ground) -> getup.
+	if (bKnockedDown)
+	{
+		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+		{
+			MoveComp->StopMovementImmediately();
+			MoveComp->SetMovementMode(MOVE_Walking);
+		}
+		SetActorTickEnabled(false);
+		OnKnockdownLanded();
+		return;
+	}
 
 	if (bWantRagdoll && bRagdollOnSlammed)
 	{
@@ -548,6 +566,233 @@ void ADDRCharacterBase::RecoverFromRagdoll()
 void ADDRCharacterBase::OnRagdollRecoverExpired()
 {
 	RecoverFromRagdoll();
+}
+
+// ===== Knockdown animado + hit reactions (doc 63) =====
+
+namespace DDRKnockdownSections
+{
+	static const FName FallStart(TEXT("Fall_Start"));
+	static const FName FallLoop(TEXT("Fall_Loop"));
+	static const FName FallEnd(TEXT("Fall_End"));
+	static const FName Ground(TEXT("Ground"));
+	static const FName GetUp(TEXT("GetUp"));
+}
+
+bool ADDRCharacterBase::StartAnimatedKnockdownFall()
+{
+	if (!KnockdownMontage)
+	{
+		return false;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr;
+	if (!AnimInstance)
+	{
+		UE_LOG(LogDDR, Warning, TEXT("[KNOCKDOWN] %s sem AnimInstance — fallback ragdoll/capsula"), *GetName());
+		return false;
+	}
+
+	const float PlayResult = AnimInstance->Montage_Play(KnockdownMontage, 1.f,
+		EMontagePlayReturnType::MontageLength, 0.f, /*bStopAllMontages=*/true);
+	if (PlayResult <= 0.f)
+	{
+		UE_LOG(LogDDR, Warning, TEXT("[KNOCKDOWN] %s Montage_Play falhou — fallback"), *GetName());
+		return false;
+	}
+
+	if (KnockdownMontage->GetSectionIndex(DDRKnockdownSections::FallStart) != INDEX_NONE)
+	{
+		AnimInstance->Montage_JumpToSection(DDRKnockdownSections::FallStart, KnockdownMontage);
+	}
+	if (KnockdownMontage->GetSectionIndex(DDRKnockdownSections::FallLoop) != INDEX_NONE)
+	{
+		AnimInstance->Montage_SetNextSection(DDRKnockdownSections::FallStart, DDRKnockdownSections::FallLoop, KnockdownMontage);
+		AnimInstance->Montage_SetNextSection(DDRKnockdownSections::FallLoop, DDRKnockdownSections::FallLoop, KnockdownMontage);
+	}
+
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &ADDRCharacterBase::OnKnockdownMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, KnockdownMontage);
+
+	bKnockedDown = true;
+
+	// IA pausada o knockdown inteiro: o decorator do BT le Airborne OU Stagger (doc 61 §4.1).
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(DDRTags::State_Combat_Stagger);
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[KNOCKDOWN] %s queda ANIMADA ON t=%.2f"),
+		*GetName(), GetWorld()->GetTimeSeconds());
+	return true;
+}
+
+void ADDRCharacterBase::OnKnockdownLanded()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AnimInstance->Montage_IsPlaying(KnockdownMontage))
+	{
+		// Montage morreu no caminho (interrompida): encerra limpo.
+		FinishKnockdown();
+		return;
+	}
+
+	if (KnockdownMontage->GetSectionIndex(DDRKnockdownSections::FallEnd) != INDEX_NONE)
+	{
+		AnimInstance->Montage_JumpToSection(DDRKnockdownSections::FallEnd, KnockdownMontage);
+
+		// Impacto -> deitado: Ground self-loopa ate o timer do getup.
+		if (KnockdownMontage->GetSectionIndex(DDRKnockdownSections::Ground) != INDEX_NONE)
+		{
+			AnimInstance->Montage_SetNextSection(DDRKnockdownSections::FallEnd, DDRKnockdownSections::Ground, KnockdownMontage);
+			AnimInstance->Montage_SetNextSection(DDRKnockdownSections::Ground, DDRKnockdownSections::Ground, KnockdownMontage);
+		}
+	}
+
+	GetWorldTimerManager().SetTimer(
+		KnockdownGroundTimerHandle,
+		this,
+		&ADDRCharacterBase::OnKnockdownGroundExpired,
+		FMath::Max(KnockdownGroundSeconds, 0.05f),
+		false);
+
+	UE_LOG(LogDDR, Log, TEXT("[KNOCKDOWN] %s POUSO -> Fall_End -> Ground (%.1fs ate getup) t=%.2f"),
+		*GetName(), KnockdownGroundSeconds, GetWorld()->GetTimeSeconds());
+}
+
+void ADDRCharacterBase::OnKnockdownGroundExpired()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr;
+	if (AnimInstance && AnimInstance->Montage_IsPlaying(KnockdownMontage)
+		&& KnockdownMontage->GetSectionIndex(DDRKnockdownSections::GetUp) != INDEX_NONE)
+	{
+		// GetUp NAO tem next section -> a montage termina sozinha -> OnKnockdownMontageEnded.
+		AnimInstance->Montage_JumpToSection(DDRKnockdownSections::GetUp, KnockdownMontage);
+		UE_LOG(LogDDR, Log, TEXT("[KNOCKDOWN] %s GetUp t=%.2f"), *GetName(), GetWorld()->GetTimeSeconds());
+		return;
+	}
+
+	FinishKnockdown();
+}
+
+void ADDRCharacterBase::OnKnockdownMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage != KnockdownMontage)
+	{
+		return;
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[KNOCKDOWN] %s montage fim (interrompida=%d) t=%.2f"),
+		*GetName(), bInterrupted ? 1 : 0, GetWorld()->GetTimeSeconds());
+	FinishKnockdown();
+}
+
+void ADDRCharacterBase::FinishKnockdown()
+{
+	if (!bKnockedDown)
+	{
+		return;
+	}
+
+	bKnockedDown = false;
+	GetWorldTimerManager().ClearTimer(KnockdownGroundTimerHandle);
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->RemoveLooseGameplayTag(DDRTags::State_Combat_Stagger);
+	}
+
+	UE_LOG(LogDDR, Log, TEXT("[KNOCKDOWN] %s LEVANTOU (IA retoma) t=%.2f"),
+		*GetName(), GetWorld()->GetTimeSeconds());
+}
+
+FName ADDRCharacterBase::ComputeHitReactionSection(const AActor* InstigatorActor) const
+{
+	static const FName SectionF(TEXT("F"));
+	static const FName SectionB(TEXT("B"));
+	static const FName SectionL(TEXT("L"));
+	static const FName SectionR(TEXT("R"));
+
+	if (!InstigatorActor)
+	{
+		return SectionF;
+	}
+
+	// Direcao DO GOLPE relativa ao MEU facing: atacante na frente = flinch F (recua).
+	const FVector ToInstigator = (InstigatorActor->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+	const FVector Forward = GetActorForwardVector().GetSafeNormal2D();
+	if (ToInstigator.IsNearlyZero() || Forward.IsNearlyZero())
+	{
+		return SectionF;
+	}
+
+	const float AngleDeg = FMath::RadiansToDegrees(FMath::Atan2(
+		FVector::CrossProduct(Forward, ToInstigator).Z,
+		FVector::DotProduct(Forward, ToInstigator)));
+
+	if (AngleDeg >= -45.f && AngleDeg <= 45.f)  return SectionF;
+	if (AngleDeg > 45.f && AngleDeg <= 135.f)   return SectionR;
+	if (AngleDeg < -45.f && AngleDeg >= -135.f) return SectionL;
+	return SectionB;
+}
+
+void ADDRCharacterBase::PlayHitReaction(const AActor* InstigatorActor, const bool bHeavyHit)
+{
+	// Estados que ja SAO a reacao (ou maiores que ela): nao sobrepoe.
+	if (bRagdolled || bKnockedDown || bGuidedSlamFall)
+	{
+		return;
+	}
+
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(DDRTags::State_Dead))
+	{
+		return;
+	}
+
+	// Flinch leve nao interrompe o proprio ataque (player OFF por default; inimigo ON —
+	// trash interrompivel e design, doc 32; hyperarmor protege os fortes em P1).
+	if (!bHeavyHit && !bLightHitReactionWhileAttacking
+		&& AbilitySystemComponent
+		&& AbilitySystemComponent->HasMatchingGameplayTag(DDRTags::State_Combat_Attacking))
+	{
+		return;
+	}
+
+	UAnimMontage* Montage = nullptr;
+	if (bAirborneActive)
+	{
+		Montage = AirHitReactionMontage;
+	}
+	else
+	{
+		Montage = bHeavyHit && HitReactionHeavyMontage ? HitReactionHeavyMontage : HitReactionMontage;
+	}
+
+	if (!Montage)
+	{
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr;
+	if (!AnimInstance)
+	{
+		return;
+	}
+
+	const FName Section = ComputeHitReactionSection(InstigatorActor);
+	if (AnimInstance->Montage_Play(Montage, 1.f) > 0.f
+		&& Montage->GetSectionIndex(Section) != INDEX_NONE)
+	{
+		AnimInstance->Montage_JumpToSection(Section, Montage);
+	}
+
+	UE_LOG(LogDDR, VeryVerbose, TEXT("[HIT-REACT] %s %s secao=%s air=%d"),
+		*GetName(), bHeavyHit ? TEXT("HEAVY") : TEXT("light"), *Section.ToString(), bAirborneActive ? 1 : 0);
 }
 
 void ADDRCharacterBase::RestartAirborneHoldTimer(float HoldSeconds)

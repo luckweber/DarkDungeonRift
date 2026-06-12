@@ -69,6 +69,10 @@ struct FDDRMeleeSweepParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air")
 	bool bSlamDownTargets = false;
 
+	/** Flinch PESADO no alvo (06_Hit_Large) mesmo sem launch/slam — golpes fortes (doc 63). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	bool bHeavyHitReaction = false;
+
 	/** Comportamento do player durante este slam (ver EDDRSlamPlayerFollow). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Air",
 		meta = (EditCondition = "bSlamDownTargets"))
