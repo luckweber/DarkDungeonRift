@@ -66,9 +66,20 @@ void ADDREnemyCharacter::ApplyEnemyData(UDDREnemyData* Data)
 		AttributeSet->PoiseRegenDelaySeconds = Data->PoiseRegenDelaySeconds;
 	}
 
+	const FGameplayTag ResolvedEnemyId = Data->EnemyId.IsValid()
+		? Data->EnemyId
+		: DDRTags::GetDefaultEnemyIdForRole(Data->Role);
+
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->AddLooseGameplayTag(DDRTags::Faction_Enemy);
+		AbilitySystemComponent->AddLooseGameplayTag(ResolvedEnemyId);
+
+		if (Data->Role == EDDREnemyRole::Boss)
+		{
+			AbilitySystemComponent->AddLooseGameplayTag(DDRTags::Faction_Boss);
+			AbilitySystemComponent->AddLooseGameplayTag(DDRTags::Faction_Boss_NoLaunch);
+		}
 
 		for (const TSubclassOf<UGameplayAbility>& AbilityClass : Data->Abilities)
 		{
@@ -79,6 +90,6 @@ void ADDREnemyCharacter::ApplyEnemyData(UDDREnemyData* Data)
 		}
 	}
 
-	UE_LOG(LogDDR, Log, TEXT("[ENEMY] %s aplicou data %s HP=%.0f Poise=%.0f"),
-		*GetName(), *Data->GetName(), Data->Health, Data->PoiseMax);
+	UE_LOG(LogDDR, Log, TEXT("[ENEMY] %s aplicou data %s EnemyId=%s HP=%.0f Poise=%.0f"),
+		*GetName(), *Data->GetName(), *ResolvedEnemyId.ToString(), Data->Health, Data->PoiseMax);
 }

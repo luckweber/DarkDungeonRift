@@ -16,7 +16,7 @@
 - [ ] `BP_Enemy_Grunt` + `DA_Enemy_Grunt_Melee` + `AM_Enemy_Slash` com telegrafe (§5)
 - [ ] `BP_Enemy_Archer` + projétil + **linha de telegrafe** (§6)
 - [ ] Material de telegrafe no chão (§7) — a leitura topdown!
-- [ ] Arena: spawn de 1-2 ondas + token de ataque (§8)
+- [ ] Arena: `BP_DDREncounterManager` + spawn points tag `EnemySpawn` + `StartEncounter` (§8)
 - [ ] PIE: limpar 4-8 inimigos usando chão + aéreo (§9)
 
 ---
@@ -38,7 +38,7 @@
 | Juggle/launch API (`StartAirborne`/pop/slam) | inimigo herda da base — **o juggle do dummy funciona igual** | ✅ M2 |
 | **Ragdoll knockdown** (`bRagdollOnSlammed`) | herda da base; precisa de **Physics Asset** na mesh ([60 §4.1](60_M2_Editor_Setup.md)) | ✅ M2 |
 | `ANS_DDRHitbox` / dano via `GE_DDRDamage` | os notifies e o pipeline servem pros DOIS lados | ✅ M1/M2 |
-| Tags `Faction.Enemy` · `State.Combat.Airborne` | já declaradas e aplicadas pelo juggle | ✅ |
+| Tags `Faction.Enemy` · `Enemy.*` (doc 51) · `State.Combat.Airborne` | nativas em `DDRTags` · aplicadas em `ApplyEnemyData` | ✅ |
 | Build.cs | `AIModule`, `NavigationSystem`, `Niagara` (BT/Blackboard/NavMesh) | ✅ |
 
 > 🧠 **Decisões já tomadas (não rediscutir):** Behavior Tree, não State Tree ([30 §2](../enemies/30_AI_Overview.md)) · inimigo é GAS igual ao player ([30 §1](../enemies/30_AI_Overview.md)) · data-driven: novo inimigo = novo DataAsset, **não** nova classe ([31 §1](../enemies/31_Enemy_Archetypes.md)).
@@ -128,7 +128,7 @@ Copie o BT do grunt e troque o miolo: "Perseguir" vira **manter `DesiredRange`**
 
 ## 7. Telegrafe no chão (o item nº1 da justiça topdown)
 
-Mesma receita do `M_BlobShadow` ([60 §7](60_M2_Editor_Setup.md)):
+> 🛠️ **Passo a passo completo (materiais, BP do decal, GameplayCues, valores): [64 — M3 Decals](64_M3_Decals_Telegraph_Setup.md).** Abaixo, o resumo:
 
 1. **`M_Telegraph`**: domínio **Deferred Decal**, blend Translucent, **vermelho pulsante** (Sine no Time → Opacity 0.3-0.6). Variações: cone (máscara radial angular) e **linha** (retângulo esticado, pro Atirador).
 2. Os cues das abilities aplicam: `GameplayCue.Enemy.Telegraph` (decal cone no grunt) e `GameplayCue.Proj.Telegraph` (linha no archer) — crie `GameplayCueNotify_Burst`/`Actor` BPs com essas tags que spawnam o decal pela duração do windup.
@@ -138,9 +138,135 @@ Mesma receita do `M_BlobShadow` ([60 §7](60_M2_Editor_Setup.md)):
 
 ## 8. Arena: ondas + token (escopo M3 = 1 arena, 1-2 ondas)
 
-1. Coloque 4-8 **Target Points** (spawn points) na arena.
-2. Encounter manager mínimo (BP no level ou o futuro `ADDREncounterManager`): onda 1 = 3 grunts → ao limpar → onda 2 = 2 grunts + 1 archer → portas abrem ([roadmap §5](../17_Implementation_Roadmap.md), detalhe completo no [33](../enemies/33_Spawning_Encounters.md) pro M4).
-3. **Token de ataque = 2**: o manager concede `bHasAttackToken` a no máx. 2 inimigos; devolvido no fim da ability. Cercado ≠ atacado por todos ([32 §5](../enemies/32_Enemy_Combat_Behavior.md)).
+> **Classe C++:** `ADDREncounterManager` · **BP no level:** `BP_DDREncounterManager` (child recomendado). Detalhe de design longo prazo: [33 — Spawning](../enemies/33_Spawning_Encounters.md) · arenas: [52](../world/52_Arena_Level_Design.md).
+
+### 8.0 Como o C++ orquestra (não rediscutir)
+
+```
+BP_DDREncounterManager no level
+  │
+  ├─ BeginPlay → varre o mapa por TargetPoints com tag "EnemySpawn"
+  │
+  ├─ StartEncounter()  ← VOCÊ dispara (NÃO é automático no BeginPlay nativo)
+  │     └─ StartWave(0) → spawna inimigos nos spawn points
+  │
+  ├─ Inimigo morre (tag State.Dead no ASC) → AliveEnemyCount--
+  │     └─ se 0 → StartWave(CurrentWaveIndex + 1) automaticamente
+  │
+  └─ Token (MaxConcurrentAttackTokens, default 2)
+        └─ DDREnemyAIController::UpdateBlackboard
+              → Encounter->TryGrantAttackToken se bInRange
+              → BB bHasAttackToken = true/false
+              → morte / Airborne / Stagger → token devolvido
+```
+
+> ⚠️ **`StartEncounter()` não roda sozinho.** Sem chamar essa função, a arena fica vazia mesmo com Waves configuradas no BP.
+
+### 8.1 Spawn points na arena
+
+1. Level de teste: `L_DDR_M3_Test` (ou arena do [52](../world/52_Arena_Level_Design.md)).
+2. **Place Actors → Target Point** — coloque **4–8** pontos espalhados (longe de paredes/cantos).
+3. Em **cada** Target Point → **Tags** → adicione exatamente **`EnemySpawn`** (o C++ só registra pontos com essa tag).
+4. **NavMesh** (§2): **P** no viewport → chão verde. Sem verde a IA não persegue.
+
+> O spawn point é escolhido **aleatoriamente** entre os tagueados (`PickSpawnPoint`). Spawn por tag nomeada (`Spawn_N`) = P1/M4 ([33 §2](../enemies/33_Spawning_Encounters.md)).
+
+### 8.2 Criar `BP_DDREncounterManager`
+
+1. **Add → Blueprint Class** → parent **`DDREncounterManager`** → `Content/DarkDungeonRift/Game/` → `BP_DDREncounterManager`.
+2. Arraste **uma instância** para o level (posição irrelevante — só organização; spawns vêm dos Target Points).
+3. **Class Defaults** → categoria **DDR | Encounter**:
+
+| Campo | Valor M3 | Notas |
+|---|---|---|
+| **Default Enemy Class** | **`BP_Enemy_Grunt`** | Não use `DDREnemyCharacter` cru — o BP traz arma, reações, sombra blob |
+| **Max Concurrent Attack Tokens** | **2** | Anti-overwhelm ([32 §5](../enemies/32_Enemy_Combat_Behavior.md)) |
+| **Waves** | array 1–2 elementos | ver §8.3 |
+
+### 8.3 Configurar ondas (1–2 no M3)
+
+Cada elemento de **Waves** = uma onda. Campos por onda (`FDDRWave`):
+
+| Campo | Uso |
+|---|---|
+| **Spawns** | lista `{ Enemy Data, Count }` — qual DataAsset e quantos |
+| **Delay Before Seconds** | pausa **antes** de spawnar esta onda (0 na onda 1; 2–3s na onda 2) |
+| **Max Alive** | teto de spawns **desta onda** (≥ soma dos Count) |
+
+**Exemplo M3 — só grunts (2 ondas):**
+
+| Waves[Index] | Spawns | Delay Before | Max Alive |
+|:---:|:---|---:|---:|
+| **[0]** Onda 1 | `DA_Enemy_Grunt_Melee` × **3** | 0 | 6 |
+| **[1]** Onda 2 | `DA_Enemy_Grunt_Melee` × **2** | 2.5 | 4 |
+
+**Exemplo M3+ — quando tiver archer (§6):**
+
+| Waves[Index] | Spawns | Delay Before | Max Alive |
+|:---:|:---|---:|---:|
+| **[0]** | Grunt × 3 | 0 | 6 |
+| **[1]** | Grunt × 2 + `DA_Enemy_Ranged_Archer` × 1 | 3 | 4 |
+
+> Ao matar **todos** os vivos da onda atual, a próxima começa sozinha. Log: `[ENCOUNTER] onda N iniciada` → ao fim `[ENCOUNTER] ondas completas`.
+
+### 8.4 Disparar o encontro (`StartEncounter`)
+
+Escolha **uma** opção:
+
+**A — Teste rápido PIE (recomendado agora)**  
+No `BP_DDREncounterManager` → **Event Graph**:
+
+```
+Event BeginPlay → Start Encounter
+```
+
+**B — Produção M3/M4**  
+Trigger Box na entrada da arena → **On Actor Begin Overlap** (filtrar player) → `Start Encounter` (bool `bStarted` para rodar só uma vez).
+
+> Portas que travam/abrem ao limpar = **M4** ([33 §2](../enemies/33_Spawning_Encounters.md), [42](../systems/42_Run_Room_Manager.md)). M3 só precisa spawn + token + limpar ondas.
+
+### 8.5 Token no Behavior Tree (obrigatório)
+
+O C++ **concede** o token no Blackboard; o BT **só ataca** se `bHasAttackToken == true`.
+
+No `BT_Grunt_Melee`, sequência **Atacar** precisa de **dois** decorators Blackboard:
+
+- `bInRange == true`
+- **`bHasAttackToken == true`**
+
+Sem o segundo, todos atacam juntos e o token não faz efeito.
+
+```
+Selector  [decorator §4.1: NÃO Airborne/Stagger/Dead · Observer aborts Both]
+├─ Sequence "Atacar"     [bInRange] [bHasAttackToken]
+│    └─ BTTask_DDRActivateAbility (GA_Enemy_Melee_Slash)
+├─ Sequence "Perseguir"  [TargetActor is set]
+│    └─ Move To (Acceptable Radius ~150)
+└─ Wait 0.5–1.0s
+```
+
+**Fluxo do token:** inimigo entra em alcance → controller pede token ao manager → se pool < 2, `bHasAttackToken=true` → BT ataca → ability termina / morre / entra Airborne → token devolvido.
+
+### 8.6 Checklist §8 antes do PIE
+
+- [ ] 4–8 Target Points com tag **`EnemySpawn`**
+- [ ] NavMesh verde (§2)
+- [ ] `BP_DDREncounterManager` no level com **Waves** preenchidas
+- [ ] **Default Enemy Class** = `BP_Enemy_Grunt`
+- [ ] **Max Concurrent Attack Tokens** = 2
+- [ ] **`StartEncounter`** chamado (BeginPlay ou trigger)
+- [ ] BT **Atacar** exige **`bHasAttackToken`**
+
+### 8.7 Logs esperados
+
+| Log | Significado |
+|---|---|
+| `[ENCOUNTER] onda 0 iniciada (N spawns)` | onda 1 spawnou |
+| `[ENCOUNTER] onda 1 iniciada (N spawns)` | onda 2 após limpar a 1 |
+| `[ENCOUNTER] ondas completas` | todas as ondas mortas |
+| `[ENCOUNTER] sem TargetPoints tag EnemySpawn` | faltam spawn points tagueados |
+| `[ENCOUNTER] sem ondas configuradas` | array Waves vazio |
+| `[ENEMY] ... EnemyId=Enemy.Grunt.Melee` | DataAsset aplicado no spawn |
 
 ---
 
@@ -156,6 +282,7 @@ Mesma receita do `M_BlobShadow` ([60 §7](60_M2_Editor_Setup.md)):
 | Archer | mantém distância, **linha no chão** antes do tiro, kite se você cola |
 | Tomar tiro | tracer visível veio de algum lugar legível |
 | Cercado por 5 | só **2 telegrafam por vez** (token) — pressão sem massacre |
+| Limpar onda 1 | onda 2 spawna após delay (§8.3) — log `[ENCOUNTER] onda 1` |
 | 2 inimigos lado a lado | golpe de um **não** acerta o outro (filtro de facção) |
 | `ddr.CombatDebug 1` | sweeps dos dois lados + logs `[HIT]` simétricos |
 
@@ -170,8 +297,13 @@ Mesma receita do `M_BlobShadow` ([60 §7](60_M2_Editor_Setup.md)):
 | Inimigo parado, não persegue | sem NavMesh (P não mostra verde) / `TargetActor` vazio | §2 · aggro do controller |
 | Inimigo "ataca" enquanto voa no juggle | decorator do Airborne ausente/sem Observer aborts | §4.1 — **Both** |
 | "Morri sem ver o golpe" | telegrafe só na animação | §7 — decal no chão obrigatório |
-| Massacrado quando cercado | sem token de ataque | §8 — máx. 2 |
-| Inimigo acerta outro inimigo | filtro de facção pendente no `CanHitActor` | §1 — C++ |
+| Massacrado quando cercado | sem token de ataque / BT sem `bHasAttackToken` | §8.5 — máx. 2 + decorator no BT |
+| Arena vazia no PIE | `StartEncounter` nunca chamado | §8.4 — BeginPlay ou trigger |
+| Log `sem TargetPoints tag EnemySpawn` | spawn points sem tag | §8.1 — tag **`EnemySpawn`** |
+| Todos atacam juntos | BT Atacar sem `bHasAttackToken` | §8.5 |
+| Inimigo spawna sem mesh/reações | `Default Enemy Class` = C++ cru | §8.2 — use **`BP_Enemy_Grunt`** |
+| Inimigo acerta outro inimigo | filtro de facção | §1 — `Faction.Enemy` |
+| Nada spawna no PIE | `StartEncounter` não foi chamado | §8.4 |
 | Launcher não lança o inimigo | Poise ainda não quebrou (by design no elite) — no grunt: poise > 20? | [51 §2](../enemies/51_Enemy_Catalog_MVP.md) |
 | Inimigo cai DURO de pé no slam | mesh sem Physics Asset | [60 §4.1](60_M2_Editor_Setup.md) |
 | Tiro invisível / injusto | sem tracer/linha | §6-7 |

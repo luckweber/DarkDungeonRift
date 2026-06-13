@@ -527,6 +527,63 @@ void UDDRCombatComponent::MaintainAirAltitude()
 	}
 }
 
+namespace DDRMeleeHit
+{
+	/** Direção "de onde veio o golpe" para flinch 4-way (doc 63).
+	 *  Atacante na frente → quadrante do ATACANTE (nao arco lateral da lamina).
+	 *  Pass-through / atacante atras → socket inicio do sweep ou -SweepDir. */
+	FVector ComputeHitFromDirection(
+		const AActor* InstigatorActor,
+		const AActor* VictimActor,
+		const FVector& SweepStart,
+		const FVector& SweepEnd,
+		const FHitResult& Hit)
+	{
+		if (!VictimActor)
+		{
+			return FVector::ZeroVector;
+		}
+
+		const FVector VictimLoc = VictimActor->GetActorLocation();
+		const FVector Forward = VictimActor->GetActorForwardVector().GetSafeNormal2D();
+
+		FVector ToAttacker = FVector::ZeroVector;
+		if (InstigatorActor)
+		{
+			ToAttacker = (InstigatorActor->GetActorLocation() - VictimLoc).GetSafeNormal2D();
+		}
+
+		const float AttackerFrontDot = FVector::DotProduct(Forward, ToAttacker);
+
+		// Soft-lock / combo frontal: flinch pelo lado do atacante, nao pelo arco da espada.
+		if (AttackerFrontDot > 0.f && !ToAttacker.IsNearlyZero())
+		{
+			return ToAttacker;
+		}
+
+		// Pass-through ou golpe por tras: origem do sweep (socket inicio) antes do corpo passar.
+		const FVector ToSweepStart = (SweepStart - VictimLoc).GetSafeNormal2D();
+		const float StartFrontDot = FVector::DotProduct(Forward, ToSweepStart);
+		if (StartFrontDot > AttackerFrontDot && !ToSweepStart.IsNearlyZero())
+		{
+			return ToSweepStart;
+		}
+
+		const FVector SweepDir = (SweepEnd - SweepStart).GetSafeNormal2D();
+		if (!SweepDir.IsNearlyZero())
+		{
+			return -SweepDir;
+		}
+
+		if (!ToAttacker.IsNearlyZero())
+		{
+			return ToAttacker;
+		}
+
+		return Hit.ImpactNormal.GetSafeNormal2D();
+	}
+}
+
 void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 {
 	AActor* OwnerActor = GetOwner();
@@ -592,10 +649,44 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 	}
 
 	int32 NewHits = 0;
+
+	// Lamina atravessa a capsula → 2 contatos (entrada/saida). Fica so o MAIS PROXIMO do
+	// inicio do sweep (face de entrada) para dano + direcao do flinch.
+	TMap<AActor*, FHitResult> BestHitPerActor;
 	for (const FHitResult& Hit : Hits)
 	{
 		AActor* HitActor = Hit.GetActor();
-		if (!HitActor || !CanHitActor(HitActor))
+		if (!HitActor)
+		{
+			continue;
+		}
+
+		if (FHitResult* Existing = BestHitPerActor.Find(HitActor))
+		{
+			const FVector SweepDelta = End - Start;
+			const float SweepLenSq = SweepDelta.SizeSquared2D();
+			const float Along = SweepLenSq > KINDA_SMALL_NUMBER
+				? FVector::DotProduct(Hit.ImpactPoint - Start, SweepDelta) / SweepLenSq
+				: FVector::DistSquared(Start, Hit.ImpactPoint);
+			const float ExistingAlong = SweepLenSq > KINDA_SMALL_NUMBER
+				? FVector::DotProduct(Existing->ImpactPoint - Start, SweepDelta) / SweepLenSq
+				: FVector::DistSquared(Start, Existing->ImpactPoint);
+			if (Along < ExistingAlong)
+			{
+				*Existing = Hit;
+			}
+		}
+		else
+		{
+			BestHitPerActor.Add(HitActor, Hit);
+		}
+	}
+
+	for (const TPair<AActor*, FHitResult>& Pair : BestHitPerActor)
+	{
+		AActor* HitActor = Pair.Key;
+		const FHitResult& Hit = Pair.Value;
+		if (!CanHitActor(HitActor))
 		{
 			// Gated: o sweep continuo do pin no End chamaria isto todo frame (ragdoll caido).
 			if (Params.bAoEAtOwner && CVarCombatDebug.GetValueOnGameThread() > 0)
@@ -612,7 +703,8 @@ void UDDRCombatComponent::PerformMeleeSweep(const FDDRMeleeSweepParams& Params)
 
 		HitActorsThisSwing.Add(HitActor);
 		++NewHits;
-		ApplyDamageToTarget(HitActor, Params);
+		const FVector HitFromDir = DDRMeleeHit::ComputeHitFromDirection(GetOwner(), HitActor, Start, End, Hit);
+		ApplyDamageToTarget(HitActor, Params, HitFromDir);
 		SendHitEvent(HitActor);
 
 		if (Params.bLaunchTargets)
@@ -1311,6 +1403,11 @@ bool UDDRCombatComponent::CanLaunchActor(const AActor* TargetActor)
 		return true;
 	}
 
+	if (TargetASC->HasMatchingGameplayTag(DDRTags::Faction_Boss_NoLaunch))
+	{
+		return false;
+	}
+
 	const float Poise = TargetASC->GetNumericAttribute(UDDRAttributeSet::GetPoiseAttribute());
 	return Poise <= KINDA_SMALL_NUMBER;
 }
@@ -1347,7 +1444,7 @@ bool UDDRCombatComponent::CanHitActor(AActor* OtherActor) const
 	return true;
 }
 
-void UDDRCombatComponent::ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params)
+void UDDRCombatComponent::ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params, const FVector& HitFromDirection2D)
 {
 	UAbilitySystemComponent* SourceASC = GetOwnerASC();
 	UAbilitySystemComponent* TargetASC = TargetActor ? TargetActor->FindComponentByClass<UAbilitySystemComponent>() : nullptr;
@@ -1393,7 +1490,7 @@ void UDDRCombatComponent::ApplyDamageToTarget(AActor* TargetActor, const FDDRMel
 	if (ADDRCharacterBase* TargetChar = Cast<ADDRCharacterBase>(TargetActor))
 	{
 		const bool bHeavy = Params.bLaunchTargets || Params.bSlamDownTargets || Params.bHeavyHitReaction;
-		TargetChar->PlayHitReaction(GetOwner(), bHeavy);
+		TargetChar->PlayHitReaction(GetOwner(), bHeavy, HitFromDirection2D);
 	}
 
 	if (SourceASC->IsValidLowLevel())

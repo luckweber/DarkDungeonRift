@@ -70,7 +70,7 @@ slam conecta → EndAirborne(slam)
 - Logs: `[KNOCKDOWN] queda ANIMADA ON · POUSO → Fall_End → Ground · GetUp · LEVANTOU (IA retoma)`.
 
 **Flinch 4-way (`PlayHitReaction`)** — chamado pelo pipeline de dano em TODO hit:
-- Direção = ângulo **atacante→vítima** relativo ao facing da vítima → seção `F`/`B`/`L`/`R` (mesma matemática 4 setores do dodge/jump).
+- Direção = **quadrante do atacante** se ele está à frente da vítima (`Dot(Forward, ToAttacker) > 0`); senão **socket início do sweep** ou `-SweepDir` (pass-through). Não usar só `-SweepDir` (arco da combo vira R/B errado) nem `ImpactNormal` da cápsula.
 - Severidade: `heavy` se o hitbox tem `bLaunchTargets`/`bSlamDownTargets`/**`bHeavyHitReaction`** (campo novo no `ANS_DDRHitbox`); senão `light`. **No ar** usa sempre o flinch aéreo.
 - Não sobrepõe estados maiores (knockdown/ragdoll/morte/queda do slam).
 

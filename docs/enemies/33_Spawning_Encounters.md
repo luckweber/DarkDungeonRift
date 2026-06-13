@@ -18,7 +18,7 @@ Do [03 §3](../design/03_Core_Loop_Roguelike.md):
 5. Avança.
 ```
 
-O **Encounter Manager** (por arena) orquestra isso.
+O **Encounter Manager** (por arena) orquestra isso. **Setup passo a passo no editor:** [61 §8](../systems/61_M3_Editor_Setup.md).
 
 ---
 

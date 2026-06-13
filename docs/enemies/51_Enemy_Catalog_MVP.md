@@ -67,7 +67,7 @@ Content/Data/Enemies/
 UCLASS()
 class UDDREnemyData : public UPrimaryDataAsset
 {
-    UPROPERTY(EditDefaultsOnly) FGameplayTag EnemyId;           // Enemy.Grunt.Melee
+    UPROPERTY(EditDefaultsOnly) FGameplayTag EnemyId;           // Enemy.Grunt.Melee — nativo: DDRTags::Enemy_*
     UPROPERTY(EditDefaultsOnly) FText DisplayName;
     UPROPERTY(EditDefaultsOnly) EEnemyRole Role;
     UPROPERTY(EditDefaultsOnly) float Health, PoiseMax, MoveSpeed, Mass, Armor;

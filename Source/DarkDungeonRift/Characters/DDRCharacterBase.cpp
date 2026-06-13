@@ -710,29 +710,33 @@ void ADDRCharacterBase::FinishKnockdown()
 		*GetName(), GetWorld()->GetTimeSeconds());
 }
 
-FName ADDRCharacterBase::ComputeHitReactionSection(const AActor* InstigatorActor) const
+FName ADDRCharacterBase::ComputeHitReactionSection(const FVector& HitFromDirection2D, const AActor* InstigatorFallback) const
 {
 	static const FName SectionF(TEXT("F"));
 	static const FName SectionB(TEXT("B"));
 	static const FName SectionL(TEXT("L"));
 	static const FName SectionR(TEXT("R"));
 
-	if (!InstigatorActor)
+	// De onde veio o golpe, relativo ao MEU facing: impacto na frente = flinch F.
+	FVector HitFrom = HitFromDirection2D.GetSafeNormal2D();
+	if (HitFrom.IsNearlyZero() && InstigatorFallback)
+	{
+		HitFrom = (InstigatorFallback->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+	}
+	if (HitFrom.IsNearlyZero())
 	{
 		return SectionF;
 	}
 
-	// Direcao DO GOLPE relativa ao MEU facing: atacante na frente = flinch F (recua).
-	const FVector ToInstigator = (InstigatorActor->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
 	const FVector Forward = GetActorForwardVector().GetSafeNormal2D();
-	if (ToInstigator.IsNearlyZero() || Forward.IsNearlyZero())
+	if (Forward.IsNearlyZero())
 	{
 		return SectionF;
 	}
 
 	const float AngleDeg = FMath::RadiansToDegrees(FMath::Atan2(
-		FVector::CrossProduct(Forward, ToInstigator).Z,
-		FVector::DotProduct(Forward, ToInstigator)));
+		FVector::CrossProduct(Forward, HitFrom).Z,
+		FVector::DotProduct(Forward, HitFrom)));
 
 	if (AngleDeg >= -45.f && AngleDeg <= 45.f)  return SectionF;
 	if (AngleDeg > 45.f && AngleDeg <= 135.f)   return SectionR;
@@ -740,7 +744,7 @@ FName ADDRCharacterBase::ComputeHitReactionSection(const AActor* InstigatorActor
 	return SectionB;
 }
 
-void ADDRCharacterBase::PlayHitReaction(const AActor* InstigatorActor, const bool bHeavyHit)
+void ADDRCharacterBase::PlayHitReaction(const AActor* InstigatorActor, const bool bHeavyHit, const FVector HitFromDirection2D)
 {
 	// Estados que ja SAO a reacao (ou maiores que ela): nao sobrepoe.
 	if (bRagdolled || bKnockedDown || bGuidedSlamFall)
@@ -784,15 +788,16 @@ void ADDRCharacterBase::PlayHitReaction(const AActor* InstigatorActor, const boo
 		return;
 	}
 
-	const FName Section = ComputeHitReactionSection(InstigatorActor);
+	const FName Section = ComputeHitReactionSection(HitFromDirection2D, InstigatorActor);
 	if (AnimInstance->Montage_Play(Montage, 1.f) > 0.f
 		&& Montage->GetSectionIndex(Section) != INDEX_NONE)
 	{
 		AnimInstance->Montage_JumpToSection(Section, Montage);
 	}
 
-	UE_LOG(LogDDR, VeryVerbose, TEXT("[HIT-REACT] %s %s secao=%s air=%d"),
-		*GetName(), bHeavyHit ? TEXT("HEAVY") : TEXT("light"), *Section.ToString(), bAirborneActive ? 1 : 0);
+	UE_LOG(LogDDR, Log, TEXT("[HIT-REACT] %s %s secao=%s air=%d from=(%.2f,%.2f)"),
+		*GetName(), bHeavyHit ? TEXT("HEAVY") : TEXT("light"), *Section.ToString(), bAirborneActive ? 1 : 0,
+		HitFromDirection2D.X, HitFromDirection2D.Y);
 }
 
 void ADDRCharacterBase::RestartAirborneHoldTimer(float HoldSeconds)

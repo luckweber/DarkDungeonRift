@@ -69,10 +69,10 @@ public:
 	void SetAirborneFollow(AActor* Attacker, float ForwardOffset, bool bEnable);
 
 	// ===== Reações a hit (doc 63): flinch 4-way + knockdown animado + getup =====
-	/** Toca o flinch correto (chão/ar, leve/pesado) na direção do atacante (seções F/B/L/R).
-	 *  Player e inimigo usam a MESMA função — quem decide é o estado + as montages do BP. */
+	/** Toca o flinch correto (chão/ar, leve/pesado) na direção do golpe (seções F/B/L/R).
+	 *  Atacante à frente → quadrante do atacante; pass-through → origem do sweep. */
 	UFUNCTION(BlueprintCallable, Category = "DDR|Reactions")
-	void PlayHitReaction(const AActor* InstigatorActor, bool bHeavyHit);
+	void PlayHitReaction(const AActor* InstigatorActor, bool bHeavyHit, FVector HitFromDirection2D = FVector::ZeroVector);
 
 	/** Derrubado (queda do slam animada → deitado → getup). Inatingível até levantar. */
 	UFUNCTION(BlueprintCallable, Category = "DDR|Reactions")
@@ -205,7 +205,7 @@ private:
 	UFUNCTION()
 	void OnKnockdownMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	void FinishKnockdown();
-	FName ComputeHitReactionSection(const AActor* InstigatorActor) const;
+	FName ComputeHitReactionSection(const FVector& HitFromDirection2D, const AActor* InstigatorFallback) const;
 
 	void RestartAirborneHoldTimer(float HoldSeconds);
 	void OnAirborneHoldExpired();

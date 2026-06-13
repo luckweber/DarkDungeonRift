@@ -132,7 +132,7 @@ private:
 	void MaintainAirInputLock();
 	bool IsTargetInAttackArc(const AActor* Target) const;
 	bool SharesFactionWithOwner(AActor* OtherActor) const;
-	void ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params);
+	void ApplyDamageToTarget(AActor* TargetActor, const FDDRMeleeSweepParams& Params, const FVector& HitFromDirection2D);
 	void ApplyPoiseToTarget(AActor* TargetActor, float PoiseDamage);
 	void SendHitEvent(AActor* HitActor) const;
 	UAbilitySystemComponent* GetOwnerASC() const;

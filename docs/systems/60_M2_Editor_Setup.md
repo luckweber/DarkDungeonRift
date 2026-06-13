@@ -281,8 +281,8 @@ Console extra (engine): `MotionWarping.Debug 1`.
 
 Sem isto o juggle é **ilegível** em topdown ([16 §6](../combat/16_Aerial_Combos.md)):
 
-1. Crie um material **`M_BlobShadow`**: domínio **Deferred Decal**, blend **Translucent**; um círculo radial preto (RadialGradientExponential → Opacity ~0.5).
-2. No `BP_DDRPlayer` **e** no `BP_TrainingDummy`: **Add Component → Decal** → material `M_BlobShadow`, rotação (-90,0,0), tamanho ~(80, 80, 200).
+1. Crie um material **`M_BlobShadow`**: domínio **Deferred Decal**, blend **Translucent**; Base Color **preto** e um círculo radial no **Opacity** (RadialGradientExponential × 0.55 → Opacity — a forma vai no Opacity, NÃO no Base Color).
+2. No `BP_DDRPlayer` **e** no `BP_TrainingDummy`: **Add Component → Decal** → material `M_BlobShadow`, rotação **Pitch −90** (campo **Y** do painel), Decal Size **(512, 45, 45)** — X = profundidade da projeção e os valores são **meia**-extensão. Passo a passo completo + Receives Decals OFF nas meshes: **[64 — M3 Decals §2–3](64_M3_Decals_Telegraph_Setup.md)**.
 3. O decal **projeta no chão** mesmo com o corpo no ar → o **gap sombra↔corpo = altura**. Teste: lance o dummy e veja se VOCÊ lê a altura sem pensar.
 
 ---
